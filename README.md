@@ -1,6 +1,6 @@
 # Namespaced Merkle Tree (NMT)
 
-This repository contains a namespaced Merkle tree library.
+This repository contains (or rather will contain) a namespaced Merkle tree library.
 
 
 <!--- TODO references --->
