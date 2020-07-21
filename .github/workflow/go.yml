@@ -1,16 +1,35 @@
-name: go-test-and-build
-# This workflow is run on every pull request and push to master
+name: Go
+
 on:
-  pull_request:
   push:
-    branches:
-      - master
+    branches: [ master ]
+  pull_request:
+
 jobs:
-  checks:
-    name: run
+
+  build:
+    name: Build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@master
 
-      - name: run
-        uses: cedrickring/golang-action@1.5.2
+      - name: Set up Go 1.x
+        uses: actions/setup-go@v2
+        with:
+          go-version: ^1.14
+        id: go
+
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v2
+
+      - name: Get dependencies
+        run: |
+          go get -v -t -d ./...
+
+      - name: Format
+        run: diff -u <(echo -n) <(gofmt -d .)
+
+      - name: Build
+        run: go build -v .
+
+      - name: Test
+        run: go test -v .
