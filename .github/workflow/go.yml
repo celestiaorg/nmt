@@ -1,0 +1,16 @@
+name: go-test-and-build
+# This workflow is run on every pull request and push to master
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+jobs:
+  checks:
+    name: run
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+
+      - name: run
+        uses: cedrickring/golang-action@1.5.2
