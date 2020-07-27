@@ -13,6 +13,14 @@ func (n NamespacePrefixedData) Data() []byte {
 	return n.prefixedData[n.namespaceLen:]
 }
 
+func (n NamespacePrefixedData) Bytes() []byte {
+	return n.prefixedData
+}
+
+func (n NamespacePrefixedData) NamespaceSize() int {
+	return n.namespaceLen
+}
+
 func FromPrefixedData(namespaceLen int, prefixedData []byte) *NamespacePrefixedData {
 	return &NamespacePrefixedData{
 		namespaceLen: namespaceLen,

@@ -1,0 +1,12 @@
+github.com/liamsi/merkletree v0.0.0-20200727191501-a5818ed633d4 h1:aUJAvDak+LMWRsYOlWnsAru4/dbOADDcAuGKA+rOuYc=
+github.com/liamsi/merkletree v0.0.0-20200727191501-a5818ed633d4/go.mod h1:s6tbEmNm8rCRxQr2bq5MqFx5h5HHkhNHX3YLpC28+DM=
+github.com/liamsi/merkletree v0.0.0-20200727192605-adec41500de3 h1:KCH88MUEWjfGu/gmKGv0JuAGcmBQG4Ak1v/5YFYej9Q=
+github.com/liamsi/merkletree v0.0.0-20200727192605-adec41500de3/go.mod h1:s6tbEmNm8rCRxQr2bq5MqFx5h5HHkhNHX3YLpC28+DM=
+gitlab.com/NebulousLabs/errors v0.0.0-20171229012116-7ead97ef90b8/go.mod h1:ZkMZ0dpQyWwlENaeZVBiQRjhMEZvk6VTXquzl3FOFP8=
+gitlab.com/NebulousLabs/fastrand v0.0.0-20181126182046-603482d69e40/go.mod h1:rOnSnoRyxMI3fe/7KIbVcsHRGxe30OONv8dEgo+vCfA=
+golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2/go.mod h1:djNgcEr1/C05ACkg1iLfiJU5Ep61QUkGW8qpdssI0+w=
+golang.org/x/crypto v0.0.0-20200109152110-61a87790db17/go.mod h1:LzIPMQfyMNhhGPhUkYOs5KpL4U8rLKemX1yGLhDgUto=
+golang.org/x/net v0.0.0-20190404232315-eb5bcb51f2a3/go.mod h1:t9HGtf8HONx5eT2rtn7q6eTqICYqUVnKs3thJo3Qplg=
+golang.org/x/sys v0.0.0-20190215142949-d0b11bdaac8a/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=
+golang.org/x/sys v0.0.0-20190412213103-97732733099d/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
+golang.org/x/text v0.3.0/go.mod h1:NqM8EUOU14njkJ3fqMW+pc6Ldnwhi/IjpwHt7yyuwOQ=
