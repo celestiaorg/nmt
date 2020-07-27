@@ -36,6 +36,10 @@ func (n NamespacedMerkleTree) Push(data NamespacePrefixedData) error {
 	if got != want {
 		return fmt.Errorf("%w: got: %v, want: %v", ErrMismatchedNamespaceSize, got, want)
 	}
+	// TODO: or should we only push to the actual tree at the end
+	// when we compute the root? The we can push messages bundled by namespaces together: e.g. s.t.
+	// they are lexicographically ordered by namespace IDs
+	// (first transactions,then intermediate state roots, evidence, messages etc)
 	n.tree.Push(data.Bytes())
 	return nil
 }
@@ -91,7 +95,9 @@ func (n namespacedTreeHasher) HashLeaf(leaf []byte) []byte {
 // left and right child node bytes (including their respective min and max namespace IDs).
 func (n namespacedTreeHasher) HashNode(l, r []byte) []byte {
 	h := n.New()
-	flagLen := 2 * n.NamespaceLen // note: the actual hash result gets extended by minNs || maxNs
+	// the actual hash result of the children got extended (or flagged) by their
+	// children's minNs || maxNs; hence the flagLen = 2 * NamespaceLen:
+	flagLen := 2 * n.NamespaceLen
 	leftMinNs, leftMaxNs := l[:n.NamespaceLen], l[n.NamespaceLen:flagLen]
 	rightMinNs, rightMaxNs := r[:n.NamespaceLen], r[n.NamespaceLen:flagLen]
 
