@@ -26,15 +26,13 @@ func TestFromNamespaceAndData(t *testing.T) {
 	}
 }
 
+//nolint:errcheck
 func Test_namespacedTreeHasher_HashLeaf(t *testing.T) {
 	const nsLen = 8
 	h := sha256.New()
 	h.Write([]byte{LeafPrefix})
 	h.Write([]byte{})
 	emptyHash := h.Sum(nil)
-	type args struct {
-		leaf []byte
-	}
 	tests := []struct {
 		name string
 		leaf []byte

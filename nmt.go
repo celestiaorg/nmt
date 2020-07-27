@@ -52,6 +52,7 @@ func (n NamespacedMerkleTree) Root() (minNs, maxNs NamespaceID, root []byte) {
 	return
 }
 
+//nolint:errcheck
 func (n NamespacedMerkleTree) CompactRoot() []byte {
 	h := n.baseHasher.New()
 	minNs, maxNs, root := n.Root()
@@ -79,6 +80,7 @@ func newNamespacedTreeHasher(nidLen int, baseHasher crypto.Hash) *namespacedTree
 // ns(rawData) || ns(rawData) || hash(leafPrefix || rawData), where raw data is the leaf's
 // data minus the namespaceID (namely leaf[NamespaceLen:]).
 // Note that here minNs = maxNs = ns(leaf) = leaf[:NamespaceLen].
+//nolint:errcheck
 func (n namespacedTreeHasher) HashLeaf(leaf []byte) []byte {
 	h := n.New()
 
@@ -112,7 +114,7 @@ func (n namespacedTreeHasher) HashNode(l, r []byte) []byte {
 		NodePrefix),
 		l...),
 		r...)
-
+	//nolint:errcheck
 	h.Write(b)
 	return h.Sum(res)
 }
