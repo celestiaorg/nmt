@@ -7,7 +7,7 @@ type Nmt interface {
 	// all namespaced data is expected to have the same namespace size.
 	NamespaceSize() int
 	// Push adds data with the corresponding namespace ID to the tree.
-	// Should returns an error if the namespace ID size of the input
+	// Should return an error if the namespace ID size of the input
 	// does not match the tree's NamespaceSize().
 	Push(data NamespacePrefixedData) error
 
