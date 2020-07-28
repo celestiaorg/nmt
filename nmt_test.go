@@ -69,6 +69,7 @@ func Test_namespacedTreeHasher_HashLeaf(t *testing.T) {
 func sum(hash crypto.Hash, data ...[]byte) []byte {
 	h := hash.New()
 	for _, d := range data {
+		//nolint:errcheck
 		h.Write(d)
 	}
 
