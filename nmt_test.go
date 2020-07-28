@@ -2,7 +2,7 @@ package nmt
 
 import (
 	"crypto"
-	"crypto/sha256"
+	_ "crypto/sha256"
 	"reflect"
 	"testing"
 )
@@ -28,30 +28,51 @@ func TestFromNamespaceAndData(t *testing.T) {
 
 //nolint:errcheck
 func Test_namespacedTreeHasher_HashLeaf(t *testing.T) {
-	const nsLen = 8
-	h := sha256.New()
-	h.Write([]byte{LeafPrefix})
-	h.Write([]byte{})
-	emptyHash := h.Sum(nil)
+	zeroNID := []byte{0}
+	oneNID := []byte{1}
+	longNID := []byte("namespace")
+
+	defaultRawData := []byte("a blockchain is a chain of blocks")
+
+	// Note: ensure we only hash in the raw data without the namespace prefixes
+	emptyHash := sum(crypto.SHA256, []byte{LeafPrefix}, []byte{})
+	defaultHash := sum(crypto.SHA256, []byte{LeafPrefix}, defaultRawData)
+
+	oneNIDLeaf := append(oneNID, defaultRawData...)
+	longNIDLeaf := append(longNID, defaultRawData...)
+
 	tests := []struct {
-		name string
-		leaf []byte
-		want []byte
+		name  string
+		nsLen int
+		leaf  []byte
+		want  []byte
 	}{
-		{"namespaced empty leaf", []byte("namespac"), append(append([]byte("namespac"), []byte("namespac")...), emptyHash...)},
-		// TODO: Add more test cases.
+		{"1 byte namespaced empty leaf", 1, zeroNID, append(append(zeroNID, zeroNID...), emptyHash...)},
+		{"1 byte namespaced empty leaf", 1, oneNID, append(append(oneNID, oneNID...), emptyHash...)},
+		{"1 byte namespaced leaf with data", 1, oneNIDLeaf, append(append(oneNID, oneNID...), defaultHash...)},
+		{"namespaced empty leaf", 9, longNIDLeaf, append(append(longNID, longNID...), defaultHash...)},
+		{"namespaced leaf with data", 9, longNID, append(append(longNID, longNID...), emptyHash...)},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			n := namespacedTreeHasher{
 				Hash:         crypto.SHA256,
-				NamespaceLen: nsLen,
+				NamespaceLen: tt.nsLen,
 			}
 			if got := n.HashLeaf(tt.leaf); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("HashLeaf() = %v, want %v", got, tt.want)
 			}
 		})
 	}
+}
+
+func sum(hash crypto.Hash, data ...[]byte) []byte {
+	h := hash.New()
+	for _, d := range data {
+		h.Write(d)
+	}
+
+	return h.Sum(nil)
 }
 
 func Test_namespacedTreeHasher_HashNode(t *testing.T) {
