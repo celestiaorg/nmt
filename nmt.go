@@ -52,18 +52,6 @@ func (n NamespacedMerkleTree) Root() (minNs, maxNs NamespaceID, root []byte) {
 	return
 }
 
-//nolint:errcheck
-func (n NamespacedMerkleTree) CompactRoot() []byte {
-	h := n.baseHasher.New()
-	minNs, maxNs, root := n.Root()
-	h.Write(minNs)
-	h.Write(maxNs)
-	h.Write(root)
-	// TODO: should we merkelize these 3 values instead?
-	// Or add in some form of domain seperation here too?
-	return h.Sum(nil)
-}
-
 type namespacedTreeHasher struct {
 	crypto.Hash
 	NamespaceLen int

@@ -14,8 +14,4 @@ type Nmt interface {
 	// Return the namespaced Merkle Tree's root together with the
 	// min. and max. namespace ID.
 	Root() (minNs, maxNS NamespaceID, root []byte)
-
-	// CompactRoot returns a compacted root of the namespaced Merkle Tree,
-	// e.g. hash(Nmt.Root())
-	CompactRoot() []byte
 }
