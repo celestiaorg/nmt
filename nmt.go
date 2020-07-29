@@ -16,6 +16,7 @@ const (
 
 var (
 	ErrMismatchedNamespaceSize = errors.New("mismatching namespace sizes")
+	ErrInvalidPushOrder        = errors.New("pushed data has to be lexicographically order by namespaces")
 )
 
 var _ merkletree.TreeHasher = &namespacedTreeHasher{}
@@ -24,6 +25,7 @@ var _ Nmt = &NamespacedMerkleTree{}
 type NamespacedMerkleTree struct {
 	nidLen     int
 	baseHasher crypto.Hash
+	leafs      []NamespacePrefixedData
 	tree       *merkletree.Tree
 }
 
@@ -31,20 +33,29 @@ func (n NamespacedMerkleTree) NamespaceSize() int {
 	return n.nidLen
 }
 
-func (n NamespacedMerkleTree) Push(data NamespacePrefixedData) error {
+func (n *NamespacedMerkleTree) Push(data NamespacePrefixedData) error {
 	got, want := data.NamespaceSize(), n.NamespaceSize()
 	if got != want {
 		return fmt.Errorf("%w: got: %v, want: %v", ErrMismatchedNamespaceSize, got, want)
 	}
-	// TODO: or should we only push to the actual tree at the end
-	// when we compute the root? The we can push messages bundled by namespaces together: e.g. s.t.
-	// they are lexicographically ordered by namespace IDs
-	// (first transactions,then intermediate state roots, evidence, messages etc)
+	// ensure pushed data doesn't have a smaller namespace than the previous one:
+	curSize := len(n.leafs)
+	if curSize > 0 {
+		if bytes.Compare(data.NamespaceID(), n.leafs[curSize-1].NamespaceID()) < 0 {
+			return fmt.Errorf(
+				"%w: last namespace: %v, pushed: %v",
+				ErrInvalidPushOrder,
+				n.leafs[curSize-1].NamespaceID(),
+				data.NamespaceID(),
+			)
+		}
+	}
 	n.tree.Push(data.Bytes())
+	n.leafs = append(n.leafs, data)
 	return nil
 }
 
-func (n NamespacedMerkleTree) Root() (minNs, maxNs NamespaceID, root []byte) {
+func (n *NamespacedMerkleTree) Root() (minNs, maxNs NamespaceID, root []byte) {
 	tRoot := n.tree.Root()
 	minNs = tRoot[:n.nidLen]
 	maxNs = tRoot[n.nidLen : n.nidLen*2]
@@ -69,7 +80,7 @@ func newNamespacedTreeHasher(nidLen int, baseHasher crypto.Hash) *namespacedTree
 // data minus the namespaceID (namely leaf[NamespaceLen:]).
 // Note that here minNs = maxNs = ns(leaf) = leaf[:NamespaceLen].
 //nolint:errcheck
-func (n namespacedTreeHasher) HashLeaf(leaf []byte) []byte {
+func (n *namespacedTreeHasher) HashLeaf(leaf []byte) []byte {
 	h := n.New()
 
 	nID := leaf[:n.NamespaceLen]
@@ -83,7 +94,7 @@ func (n namespacedTreeHasher) HashLeaf(leaf []byte) []byte {
 // HashNode hashes inner nodes to:
 // minNID || maxNID || hash(NodePrefix || left || right), where left and right are the full
 // left and right child node bytes (including their respective min and max namespace IDs).
-func (n namespacedTreeHasher) HashNode(l, r []byte) []byte {
+func (n *namespacedTreeHasher) HashNode(l, r []byte) []byte {
 	h := n.New()
 	// the actual hash result of the children got extended (or flagged) by their
 	// children's minNs || maxNs; hence the flagLen = 2 * NamespaceLen:
@@ -111,7 +122,13 @@ func New(namespaceLen int, baseHasher crypto.Hash) *NamespacedMerkleTree {
 	return &NamespacedMerkleTree{
 		nidLen:     namespaceLen,
 		baseHasher: baseHasher,
-		tree:       merkletree.NewFromTreehasher(newNamespacedTreeHasher(namespaceLen, baseHasher)),
+		// XXX: 100 seems like a good capacity for the leafs slice
+		// but maybe this should also be a constructor param: for cases the caller
+		// knows exactly how many leafs will be pushed this will save allocations
+		// In fact, in that case the caller could pass in the whole data at once
+		// and we could even use the passed in slice without allocating space for a copy.
+		leafs: make([]NamespacePrefixedData, 0, 100),
+		tree:  merkletree.NewFromTreehasher(newNamespacedTreeHasher(namespaceLen, baseHasher)),
 	}
 }
 

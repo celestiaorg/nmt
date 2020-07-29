@@ -105,3 +105,31 @@ func Test_namespacedTreeHasher_HashNode(t *testing.T) {
 		})
 	}
 }
+
+func TestNamespacedMerkleTree_Push(t *testing.T) {
+	tests := []struct {
+		name    string
+		data    NamespacePrefixedData
+		wantErr bool
+	}{
+		{"1st push: always OK", *FromNamespaceAndData([]byte{0, 0, 0}, []byte("dummy data")), false},
+		{"push with same namespace: OK", *FromNamespaceAndData([]byte{0, 0, 0}, []byte("dummy data")), false},
+		{"push with greater namespace: OK", *FromNamespaceAndData([]byte{0, 0, 1}, []byte("dummy data")), false},
+		{"push with smaller namespace: Err", *FromNamespaceAndData([]byte{0, 0, 0}, []byte("dummy data")), true},
+		{"push with same namespace: Ok", *FromNamespaceAndData([]byte{0, 0, 1}, []byte("dummy data")), false},
+		{"push with greater namespace: Ok", *FromNamespaceAndData([]byte{1, 0, 0}, []byte("dummy data")), false},
+		{"push with smaller namespace: Err", *FromNamespaceAndData([]byte{0, 0, 1}, []byte("dummy data")), true},
+		{"push with smaller namespace: Err", *FromNamespaceAndData([]byte{0, 0, 0}, []byte("dummy data")), true},
+		{"push with smaller namespace: Err", *FromNamespaceAndData([]byte{0, 1, 0}, []byte("dummy data")), true},
+		{"push with same as last namespace: OK", *FromNamespaceAndData([]byte{1, 0, 0}, []byte("dummy data")), false},
+		{"push with greater as last namespace: OK", *FromNamespaceAndData([]byte{1, 1, 0}, []byte("dummy data")), false},
+	}
+	n := New(3, crypto.SHA256)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := n.Push(tt.data); (err != nil) != tt.wantErr {
+				t.Errorf("Push() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
