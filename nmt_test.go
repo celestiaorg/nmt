@@ -26,7 +26,6 @@ func TestFromNamespaceAndData(t *testing.T) {
 	}
 }
 
-//nolint:errcheck
 func Test_namespacedTreeHasher_HashLeaf(t *testing.T) {
 	zeroNID := []byte{0}
 	oneNID := []byte{1}
