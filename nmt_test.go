@@ -122,6 +122,8 @@ func TestNamespacedMerkleTree_Push(t *testing.T) {
 		{"push with smaller namespace: Err", *FromNamespaceAndData([]byte{0, 1, 0}, []byte("dummy data")), true},
 		{"push with same as last namespace: OK", *FromNamespaceAndData([]byte{1, 0, 0}, []byte("dummy data")), false},
 		{"push with greater as last namespace: OK", *FromNamespaceAndData([]byte{1, 1, 0}, []byte("dummy data")), false},
+		// note this tests for another kind of error: ErrMismatchedNamespaceSize
+		{"push with wrong namespace size: Err", *FromNamespaceAndData([]byte{1, 1, 0, 0}, []byte("dummy data")), true},
 	}
 	n := New(3, crypto.SHA256)
 	for _, tt := range tests {
