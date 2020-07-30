@@ -15,3 +15,23 @@ type Nmt interface {
 	// min. and max. namespace ID.
 	Root() (minNs, maxNS NamespaceID, root []byte)
 }
+
+type NamespacedProver interface {
+	// Prove leaf at index.
+	// Note this is not NMT specific but the tree supports inclusions proves
+	// like any vanilla Merkle tree.
+	Prove(index int) (root []byte, rawProof [][]byte, proofIdx int, totalNumLeafs int)
+	// ProveNamespace returns some kind of range proof for the given NamspaceID.
+	// In case the underlying tree contains leafs with the given namespace they will be returned.
+	// If the tree does not have any entries with the given NamespaceID,
+	// this will be proven by returning the (namespaced or rather flagged)
+	// hashes of the leafs that would be in the range if they existed.
+	// Either foundLeafs or leafHashes should be nil.
+	ProveNamespace(nID NamespaceID) (
+		proofStart int,
+		proofEnd int,
+		proof [][]byte,
+		foundLeafs []NamespacePrefixedData,
+		leafHashes []byte, // XXX: introduce a type/type alias, e.g FlaggedHash
+	)
+}
