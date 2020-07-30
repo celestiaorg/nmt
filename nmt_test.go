@@ -137,10 +137,13 @@ func TestNamespacedMerkleTree_Push(t *testing.T) {
 
 func TestNamespacedMerkleTreeRoot(t *testing.T) {
 	zeroNs := []byte{0, 0, 0}
+	onesNS := []byte{1, 1, 1}
 	leaf := []byte("leaf1")
 	leafHash := sum(crypto.SHA256, []byte{LeafPrefix}, leaf)
-	flaggedLeaf := append(append(zeroNs, zeroNs...), leafHash...)
-	twoLeafsRoot := sum(crypto.SHA256, []byte{NodePrefix}, flaggedLeaf, flaggedLeaf)
+	zeroFlaggedLeaf := append(append(zeroNs, zeroNs...), leafHash...)
+	oneFlaggedLeaf := append(append(onesNS, onesNS...), leafHash...)
+	twoZeroLeafsRoot := sum(crypto.SHA256, []byte{NodePrefix}, zeroFlaggedLeaf, zeroFlaggedLeaf)
+	diffNSLeafsRoot := sum(crypto.SHA256, []byte{NodePrefix}, zeroFlaggedLeaf, oneFlaggedLeaf)
 
 	tests := []struct {
 		name       string
@@ -150,9 +153,10 @@ func TestNamespacedMerkleTreeRoot(t *testing.T) {
 		wantMaxNs  NamespaceID
 		wantRoot   []byte
 	}{
-		{"empty tree", 3, nil, nil, nil, nil},
-		{"one leaf tree", 3, []NamespacePrefixedData{*FromNamespaceAndData(zeroNs, leaf)}, zeroNs, zeroNs, leafHash},
-		{"two leafs tree", 3, []NamespacePrefixedData{*FromNamespaceAndData(zeroNs, leaf), *FromNamespaceAndData(zeroNs, leaf)}, zeroNs, zeroNs, twoLeafsRoot},
+		{"Empty", 3, nil, nil, nil, nil},
+		{"One leaf", 3, []NamespacePrefixedData{*FromNamespaceAndData(zeroNs, leaf)}, zeroNs, zeroNs, leafHash},
+		{"Two leafs", 3, []NamespacePrefixedData{*FromNamespaceAndData(zeroNs, leaf), *FromNamespaceAndData(zeroNs, leaf)}, zeroNs, zeroNs, twoZeroLeafsRoot},
+		{"Two leafs diff namespaces", 3, []NamespacePrefixedData{*FromNamespaceAndData(zeroNs, leaf), *FromNamespaceAndData(onesNS, leaf)}, zeroNs, onesNS, diffNSLeafsRoot},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
