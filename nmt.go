@@ -31,6 +31,8 @@ type NamespacedMerkleTree struct {
 }
 
 func (n NamespacedMerkleTree) Prove(index int) (root []byte, rawProof [][]byte, proofIdx int, totalNumLeafs int) {
+	// TODO: store nodes and re-use the hashes instead recomputing the tree here
+	// merkletree.BuildRangeProof(index, index+1, )
 	panic("TODO implement")
 }
 
@@ -66,7 +68,13 @@ func (n *NamespacedMerkleTree) Push(data NamespacePrefixedData) error {
 
 func (n *NamespacedMerkleTree) Root() (minNs, maxNs NamespaceID, root []byte) {
 	if len(n.leafs) == 0 {
-		return nil, nil, n.tree.Root()
+		// XXX: this choice is debatable as it will produce the same output
+		// as pushing zeroNs||pre-imageZeroes to the tree (where pre-imageZeroes = pre-image(0x000...) )
+		// TODO add an EmptyRoot() function to the TreeHasher interface and make this
+		// configurable without code changes to this library
+		emptyNs := bytes.Repeat([]byte{0}, n.nidLen)
+		placeHolderHash := bytes.Repeat([]byte{0}, n.baseHasher.Size())
+		return emptyNs, emptyNs, placeHolderHash
 	}
 	tRoot := n.tree.Root()
 	minNs = tRoot[:n.nidLen]

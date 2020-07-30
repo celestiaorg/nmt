@@ -1,6 +1,7 @@
 package nmt
 
 import (
+	"bytes"
 	"crypto"
 	_ "crypto/sha256"
 	"reflect"
@@ -169,6 +170,7 @@ func TestNamespacedMerkleTreeRoot(t *testing.T) {
 	oneFlaggedLeaf := append(append(onesNS, onesNS...), leafHash...)
 	twoZeroLeafsRoot := sum(crypto.SHA256, []byte{NodePrefix}, zeroFlaggedLeaf, zeroFlaggedLeaf)
 	diffNSLeafsRoot := sum(crypto.SHA256, []byte{NodePrefix}, zeroFlaggedLeaf, oneFlaggedLeaf)
+	emptyRoot := bytes.Repeat([]byte{0}, crypto.SHA256.Size())
 
 	tests := []struct {
 		name       string
@@ -178,7 +180,9 @@ func TestNamespacedMerkleTreeRoot(t *testing.T) {
 		wantMaxNs  NamespaceID
 		wantRoot   []byte
 	}{
-		{"Empty", 3, nil, nil, nil, nil},
+		// TODO: change this according to the basecase in the spec:
+		// https://github.com/lazyledger/lazyledger-specs/blob/master/specs/data_structures.md#namespace-merkle-tree
+		{"Empty", 3, nil, zeroNs, zeroNs, emptyRoot},
 		{"One leaf", 3, []NamespacePrefixedData{*FromNamespaceAndData(zeroNs, leaf)}, zeroNs, zeroNs, leafHash},
 		{"Two leafs", 3, []NamespacePrefixedData{*FromNamespaceAndData(zeroNs, leaf), *FromNamespaceAndData(zeroNs, leaf)}, zeroNs, zeroNs, twoZeroLeafsRoot},
 		{"Two leafs diff namespaces", 3, []NamespacePrefixedData{*FromNamespaceAndData(zeroNs, leaf), *FromNamespaceAndData(onesNS, leaf)}, zeroNs, onesNS, diffNSLeafsRoot},
