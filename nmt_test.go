@@ -76,29 +76,52 @@ func sum(hash crypto.Hash, data ...[]byte) []byte {
 }
 
 func Test_namespacedTreeHasher_HashNode(t *testing.T) {
-	type fields struct {
-		Hash         crypto.Hash
-		NamespaceLen int
-	}
-	type args struct {
+	sum(crypto.SHA256, []byte{NodePrefix}, []byte{0, 0, 0, 0}, []byte{1, 1, 1, 1})
+	type children struct {
 		l []byte
 		r []byte
 	}
+
 	tests := []struct {
-		name   string
-		fields fields
-		args   args
-		want   []byte
+		name     string
+		nidLen   int
+		children children
+		want     []byte
 	}{
-		// TODO: Add test cases!
+		{"leftmin<rightmin && leftmax<rightmax", 2,
+			children{[]byte{0, 0, 0, 0}, []byte{1, 1, 1, 1}},
+			append(
+				[]byte{0, 0, 1, 1},
+				sum(crypto.SHA256, []byte{NodePrefix}, []byte{0, 0, 0, 0}, []byte{1, 1, 1, 1})...,
+			),
+		},
+		{"leftmin==rightmin && leftmax<rightmax", 2,
+			children{[]byte{0, 0, 0, 0}, []byte{0, 0, 1, 1}},
+			append(
+				[]byte{0, 0, 1, 1},
+				sum(crypto.SHA256, []byte{NodePrefix}, []byte{0, 0, 0, 0}, []byte{0, 0, 1, 1})...,
+			),
+		},
+		{"leftmin==rightmin && leftmax>rightmax", 2,
+			children{[]byte{0, 0, 1, 1}, []byte{0, 0, 0, 1}},
+			append(
+				[]byte{0, 0, 1, 1},
+				sum(crypto.SHA256, []byte{NodePrefix}, []byte{0, 0, 1, 1}, []byte{0, 0, 0, 1})...,
+			),
+		},
+		// XXX: can this happen in practice? or is this an invalid state?
+		{"leftmin>rightmin && leftmax<rightmax", 2,
+			children{[]byte{1, 1, 0, 0}, []byte{0, 0, 0, 1}},
+			append(
+				[]byte{0, 0, 1, 1},
+				sum(crypto.SHA256, []byte{NodePrefix}, []byte{0, 0, 1, 1}, []byte{0, 0, 0, 1})...,
+			),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			n := namespacedTreeHasher{
-				Hash:         tt.fields.Hash,
-				NamespaceLen: tt.fields.NamespaceLen,
-			}
-			if got := n.HashNode(tt.args.l, tt.args.r); !reflect.DeepEqual(got, tt.want) {
+			n := newNamespacedTreeHasher(tt.nidLen, crypto.SHA256)
+			if got := n.HashNode(tt.children.l, tt.children.r); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("HashNode() = %v, want %v", got, tt.want)
 			}
 		})
@@ -136,6 +159,8 @@ func TestNamespacedMerkleTree_Push(t *testing.T) {
 }
 
 func TestNamespacedMerkleTreeRoot(t *testing.T) {
+	// does some sanity checks on root computation
+	// TODO: add in more realistic test-vectors
 	zeroNs := []byte{0, 0, 0}
 	onesNS := []byte{1, 1, 1}
 	leaf := []byte("leaf1")
