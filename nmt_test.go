@@ -113,8 +113,8 @@ func Test_namespacedTreeHasher_HashNode(t *testing.T) {
 		{"leftmin>rightmin && leftmax<rightmax", 2,
 			children{[]byte{1, 1, 0, 0}, []byte{0, 0, 0, 1}},
 			append(
-				[]byte{0, 0, 1, 1},
-				sum(crypto.SHA256, []byte{NodePrefix}, []byte{0, 0, 1, 1}, []byte{0, 0, 0, 1})...,
+				[]byte{0, 0, 0, 1},
+				sum(crypto.SHA256, []byte{NodePrefix}, []byte{1, 1, 0, 0}, []byte{0, 0, 0, 1})...,
 			),
 		},
 	}
