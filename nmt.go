@@ -56,6 +56,9 @@ func (n *NamespacedMerkleTree) Push(data NamespacePrefixedData) error {
 }
 
 func (n *NamespacedMerkleTree) Root() (minNs, maxNs NamespaceID, root []byte) {
+	if len(n.leafs) == 0 {
+		return nil, nil, n.tree.Root()
+	}
 	tRoot := n.tree.Root()
 	minNs = tRoot[:n.nidLen]
 	maxNs = tRoot[n.nidLen : n.nidLen*2]

@@ -134,3 +134,44 @@ func TestNamespacedMerkleTree_Push(t *testing.T) {
 		})
 	}
 }
+
+func TestNamespacedMerkleTreeRoot(t *testing.T) {
+	zeroNs := []byte{0, 0, 0}
+	leaf := []byte("leaf1")
+	leafHash := sum(crypto.SHA256, []byte{LeafPrefix}, leaf)
+	flaggedLeaf := append(append(zeroNs, zeroNs...), leafHash...)
+	twoLeafsRoot := sum(crypto.SHA256, []byte{NodePrefix}, flaggedLeaf, flaggedLeaf)
+
+	tests := []struct {
+		name       string
+		nidLen     int
+		pushedData []NamespacePrefixedData
+		wantMinNs  NamespaceID
+		wantMaxNs  NamespaceID
+		wantRoot   []byte
+	}{
+		{"empty tree", 3, nil, nil, nil, nil},
+		{"one leaf tree", 3, []NamespacePrefixedData{*FromNamespaceAndData(zeroNs, leaf)}, zeroNs, zeroNs, leafHash},
+		{"two leafs tree", 3, []NamespacePrefixedData{*FromNamespaceAndData(zeroNs, leaf), *FromNamespaceAndData(zeroNs, leaf)}, zeroNs, zeroNs, twoLeafsRoot},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			n := New(tt.nidLen, crypto.SHA256)
+			for _, d := range tt.pushedData {
+				if err := n.Push(d); err != nil {
+					t.Errorf("Push() error = %v, expected no error", err)
+				}
+			}
+			gotMinNs, gotMaxNs, gotRoot := n.Root()
+			if !reflect.DeepEqual(gotMinNs, tt.wantMinNs) {
+				t.Errorf("Root() gotMinNs = %v, want %v", gotMinNs, tt.wantMinNs)
+			}
+			if !reflect.DeepEqual(gotMaxNs, tt.wantMaxNs) {
+				t.Errorf("Root() gotMaxNs = %v, want %v", gotMaxNs, tt.wantMaxNs)
+			}
+			if !reflect.DeepEqual(gotRoot, tt.wantRoot) {
+				t.Errorf("Root() gotRoot = %v, want %v", gotRoot, tt.wantRoot)
+			}
+		})
+	}
+}
