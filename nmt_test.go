@@ -208,3 +208,62 @@ func TestNamespacedMerkleTreeRoot(t *testing.T) {
 		})
 	}
 }
+
+func TestNamespacedMerkleTree_ProveNamespace_Ranges(t *testing.T) {
+	tests := []struct {
+		name           string
+		nidLen         int
+		pushData       []NamespacePrefixedData
+		proveNID       NamespaceID
+		wantProofStart int
+		wantProofEnd   int
+		wantFound      bool
+	}{
+		{"found", 1,
+			[]NamespacePrefixedData{{1, []byte("0_data")}}, []byte("0"),
+			0, 1, true},
+		{"not found", 1,
+			[]NamespacePrefixedData{{1, []byte("0_data")}}, []byte("1"),
+			0, 0, false},
+		{"two leafs and found", 1,
+			[]NamespacePrefixedData{{1, []byte("0_data")}, {1, []byte("1_data")}}, []byte("1"),
+			1, 2, true},
+		{"two leafs and found", 1,
+			[]NamespacePrefixedData{{1, []byte("0_data")}, {1, []byte("0_data")}}, []byte("1"),
+			0, 0, false},
+		{"three leafs and found", 1,
+			[]NamespacePrefixedData{{1, []byte("0_data")}, {1, []byte("0_data")}, {1, []byte("1_data")}}, []byte("1"),
+			2, 3, true},
+		{"three leafs and not found but with range", 2,
+			[]NamespacePrefixedData{{2, []byte("00_data")}, {2, []byte("00_data")}, {2, []byte("11_data")}}, []byte("01"),
+			2, 3, false},
+		{"three leafs and not found but within range", 2,
+			[]NamespacePrefixedData{{2, []byte("00_data")}, {2, []byte("00_data")}, {2, []byte("11_data")}}, []byte("01"),
+			2, 3, false},
+		{"4 leafs and not found but within range", 2,
+			[]NamespacePrefixedData{{2, []byte("00_data")}, {2, []byte("00_data")}, {2, []byte("11_data")}, {2, []byte("11_data")}}, []byte("01"),
+			2, 3, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			n := New(tt.nidLen, crypto.SHA256)
+			for _, d := range tt.pushData {
+				err := n.Push(d)
+				if err != nil {
+					t.Fatalf("invalid test case: %v", tt.name)
+				}
+			}
+			gotProofStart, gotProofEnd, _, gotFoundLeafs, gotLeafHashes := n.ProveNamespace(tt.proveNID)
+			if gotProofStart != tt.wantProofStart {
+				t.Errorf("ProveNamespace() gotProofStart = %v, want %v", gotProofStart, tt.wantProofStart)
+			}
+			if gotProofEnd != tt.wantProofEnd {
+				t.Errorf("ProveNamespace() gotProofEnd = %v, want %v", gotProofEnd, tt.wantProofEnd)
+			}
+			gotFound := gotFoundLeafs != nil && gotLeafHashes == nil
+			if gotFound != tt.wantFound {
+				t.Errorf("ProveNamespace() gotFound = %v, wantFound = %v ", gotFound, tt.wantFound)
+			}
+		})
+	}
+}

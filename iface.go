@@ -1,7 +1,5 @@
 package nmt
 
-type NamespaceID []byte
-
 type Nmt interface {
 	// NamespaceSize returns the underlying namespace size. Note that
 	// all namespaced data is expected to have the same namespace size.
@@ -18,9 +16,9 @@ type Nmt interface {
 
 type NamespacedProver interface {
 	// Prove leaf at index.
-	// Note this is not NMT specific but the tree supports inclusions proves
-	// like any vanilla Merkle tree.
-	Prove(index int) (root []byte, rawProof [][]byte, proofIdx int, totalNumLeafs int)
+	// Note this is not really NMT specific (XXX the min/maxNs is stripped off the root)
+	// but the tree supports inclusions proves like any vanilla Merkle tree.
+	Prove(index int) (rawRoot []byte, rawProof [][]byte, proofIdx int, totalNumLeafs int, err error)
 	// ProveNamespace returns some kind of range proof for the given NamspaceID.
 	// In case the underlying tree contains leafs with the given namespace they will be returned.
 	// If the tree does not have any entries with the given NamespaceID,
@@ -32,6 +30,6 @@ type NamespacedProver interface {
 		proofEnd int,
 		proof [][]byte,
 		foundLeafs []NamespacePrefixedData,
-		leafHashes []byte, // XXX: introduce a type/type alias, e.g FlaggedHash
+		leafHashes [][]byte, // XXX: introduce a type/type alias, e.g FlaggedHash
 	)
 }
