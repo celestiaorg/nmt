@@ -180,7 +180,7 @@ func TestNamespacedMerkleTreeRoot(t *testing.T) {
 		wantMaxNs  NamespaceID
 		wantRoot   []byte
 	}{
-		// TODO: change this according to the basecase in the spec:
+		// default empty root according to base case:
 		// https://github.com/lazyledger/lazyledger-specs/blob/master/specs/data_structures.md#namespace-merkle-tree
 		{"Empty", 3, nil, zeroNs, zeroNs, emptyRoot},
 		{"One leaf", 3, []NamespacePrefixedData{*FromNamespaceAndData(zeroNs, leaf)}, zeroNs, zeroNs, leafHash},
