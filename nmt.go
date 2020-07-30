@@ -21,12 +21,21 @@ var (
 
 var _ merkletree.TreeHasher = &namespacedTreeHasher{}
 var _ Nmt = &NamespacedMerkleTree{}
+var _ NamespacedProver = &NamespacedMerkleTree{}
 
 type NamespacedMerkleTree struct {
 	nidLen     int
 	baseHasher crypto.Hash
 	leafs      []NamespacePrefixedData
 	tree       *merkletree.Tree
+}
+
+func (n NamespacedMerkleTree) Prove(index int) (root []byte, rawProof [][]byte, proofIdx int, totalNumLeafs int) {
+	panic("TODO implement")
+}
+
+func (n NamespacedMerkleTree) ProveNamespace(nID NamespaceID) (proofStart int, proofEnd int, proof [][]byte, foundLeafs []NamespacePrefixedData, leafHashes []byte) {
+	panic("TODO implement")
 }
 
 func (n NamespacedMerkleTree) NamespaceSize() int {
