@@ -33,13 +33,6 @@ func (n NamespacePrefixedData) NamespaceSize() int {
 	return n.namespaceLen
 }
 
-func FromPrefixedData(namespaceLen int, prefixedData []byte) *NamespacePrefixedData {
-	return &NamespacePrefixedData{
-		namespaceLen: namespaceLen,
-		prefixedData: prefixedData,
-	}
-}
-
 func FromNamespaceAndData(namespace []byte, data []byte) *NamespacePrefixedData {
 	return &NamespacePrefixedData{
 		namespaceLen: len(namespace),

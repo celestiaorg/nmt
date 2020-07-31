@@ -55,7 +55,7 @@ func Test_namespacedTreeHasher_HashLeaf(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			n := namespacedTreeHasher{
+			n := DefaultNamespacedTreeHasher{
 				Hash:         crypto.SHA256,
 				NamespaceLen: tt.nsLen,
 			}
@@ -121,7 +121,7 @@ func Test_namespacedTreeHasher_HashNode(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			n := newNamespacedTreeHasher(tt.nidLen, crypto.SHA256)
+			n := NewDefaultNamespacedTreeHasher(tt.nidLen, crypto.SHA256)
 			if got := n.HashNode(tt.children.l, tt.children.r); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("HashNode() = %v, want %v", got, tt.want)
 			}

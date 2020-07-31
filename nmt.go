@@ -21,20 +21,12 @@ var (
 	ErrInvalidPushOrder        = errors.New("pushed data has to be lexicographically order by namespaces")
 )
 
-var _ merkletree.TreeHasher = &namespacedTreeHasher{}
-var _ Nmt = &NamespacedMerkleTree{}
-var _ NamespacedProver = &NamespacedMerkleTree{}
-
-// TODO: move this iface to merkletree implementation
-type TreeHasher interface {
-	merkletree.TreeHasher
-	Size() int
-}
+var _ TreeHasher = &DefaultNamespacedTreeHasher{}
 
 type NamespacedMerkleTree struct {
-	nidLen     int
-	baseHasher TreeHasher
-	tree       *merkletree.Tree
+	namespaceLen int
+	treeHasher   TreeHasher
+	tree         *merkletree.Tree
 
 	// just cache stuff until we pass in a store and keep all nodes in there
 	leafs      []NamespacePrefixedData
@@ -44,8 +36,16 @@ type NamespacedMerkleTree struct {
 	namespaceRanges map[string]merkletree.LeafRange
 }
 
-func (n NamespacedMerkleTree) Prove(index int) (proof [][]byte, proofIdx int, totalNumLeafs int, err error) {
-	subTreeHasher := internal.NewCachedSubtreeHasher(n.leafHashes, n.baseHasher)
+// Prove leaf at index.
+// Note this is not really NMT specific but the tree supports inclusions proofs
+// like any vanilla Merkle tree.
+func (n NamespacedMerkleTree) Prove(index int) (
+	proof [][]byte,
+	proofIdx int,
+	totalNumLeafs int,
+	err error, // TODO: we can probably get rid of the error here too
+) {
+	subTreeHasher := internal.NewCachedSubtreeHasher(n.leafHashes, n.treeHasher)
 	proofIdx = index
 	totalNumLeafs = len(n.leafs)
 	// TODO: store nodes and re-use the hashes instead recomputing parts of the tree here
@@ -54,7 +54,24 @@ func (n NamespacedMerkleTree) Prove(index int) (proof [][]byte, proofIdx int, to
 	return
 }
 
-func (n NamespacedMerkleTree) ProveNamespace(nID NamespaceID) (int, int, [][]byte, []NamespacePrefixedData, [][]byte) {
+// ProveNamespace returns some kind of range proof for the given NamespaceID.
+// In case the underlying tree contains leafs with the given namespace
+// their start and end index will be returned together with a range proof and the found leafs.
+// In the above case the leafHashes will be nil.
+// If the tree does not have any entries with the given NamespaceID,
+// but the will be proven by returning the (namespaced or rather flagged)
+// hashes of the leafs that would be in the range if they existed.
+// Either foundLeafs or leafHashes should be nil.
+// Note that in cases (nID < minNID) or (maxNID < nID) we do not
+// generate any proof and we return an empty range (0,0) to
+// indicate that this namespace is not contained in the tree.
+func (n NamespacedMerkleTree) ProveNamespace(nID NamespaceID) (
+	proofStart int,
+	proofEnd int,
+	proof [][]byte,
+	foundLeafs []NamespacePrefixedData,
+	leafHashes [][]byte, // XXX: introduce a type/type alias, e.g FlaggedHas
+) {
 	found, proofStart, proofEnd := n.foundNamespaceID(nID)
 
 	// If we did not find the namespace, that either means that there is a gap in the tree
@@ -91,9 +108,8 @@ func (n NamespacedMerkleTree) ProveNamespace(nID NamespaceID) (int, int, [][]byt
 			prevLeaf = curLeaf
 		}
 	}
-	var proof [][]byte
 	if found || foundRangeStart {
-		subTreeHasher := internal.NewCachedSubtreeHasher(n.leafHashes, n.baseHasher)
+		subTreeHasher := internal.NewCachedSubtreeHasher(n.leafHashes, n.treeHasher)
 		var err error
 		proof, err = merkletree.BuildRangeProof(proofStart, proofEnd, subTreeHasher)
 		if err != nil {
@@ -112,8 +128,9 @@ func (n NamespacedMerkleTree) ProveNamespace(nID NamespaceID) (int, int, [][]byt
 	if found {
 		return proofStart, proofEnd, proof, proofMessages, nil
 	}
-	// Note that in cases (nID < minNID) or (maxNID < nID) we do not generate any proof.
-	// Also we return an empty range (0,0) to indicate that this namespace is contained in the tree.
+	// Note that in cases (nID < minNID) or (maxNID < nID) we do not generate any
+	// proof. Also we return an empty range (0,0) to indicate that this namespace is
+	// *not* contained in the tree.
 	return proofStart, proofEnd, proof, nil, n.leafHashes[proofStart:proofEnd]
 }
 
@@ -124,10 +141,16 @@ func (n *NamespacedMerkleTree) foundNamespaceID(nID NamespaceID) (bool, int, int
 	return found, int(foundRng.Start), int(foundRng.End)
 }
 
+// NamespaceSize returns the underlying namespace size. Note that
+// all namespaced data is expected to have the same namespace size.
 func (n NamespacedMerkleTree) NamespaceSize() int {
-	return n.nidLen
+	return n.namespaceLen
 }
 
+// Push adds data with the corresponding namespace ID to the tree.
+// Returns an error if the namespace ID size of the input
+// does not match the tree's NamespaceSize() or the leafs are not pushed in
+// order (i.e. lexicographically sorted by namespace ID).
 func (n *NamespacedMerkleTree) Push(data NamespacePrefixedData) error {
 	got, want := data.NamespaceSize(), n.NamespaceSize()
 	if got != want {
@@ -147,25 +170,25 @@ func (n *NamespacedMerkleTree) Push(data NamespacePrefixedData) error {
 	}
 	n.tree.Push(data.Bytes())
 	n.leafs = append(n.leafs, data)
-	n.leafHashes = append(n.leafHashes, n.baseHasher.HashLeaf(data.Bytes()))
+	n.leafHashes = append(n.leafHashes, n.treeHasher.HashLeaf(data.Bytes()))
 	n.updateNamespaceRanges()
 	return nil
 }
 
-func (n *NamespacedMerkleTree) Root() (minNs, maxNs NamespaceID, root []byte) {
+// Return the namespaced Merkle Tree's root together with the
+// min. and max. namespace ID.
+func (n *NamespacedMerkleTree) Root() (
+	minNs NamespaceID,
+	maxNs NamespaceID,
+	root []byte,
+) {
 	if len(n.leafs) == 0 {
-		// XXX: this choice is debatable as it will produce the same output
-		// as pushing zeroNs||pre-imageZeroes to the tree (where pre-imageZeroes = pre-image(0x000...) )
-		// TODO add an EmptyRoot() function to the TreeHasher interface and make this
-		// configurable without code changes to this library
-		emptyNs := bytes.Repeat([]byte{0}, n.nidLen)
-		placeHolderHash := bytes.Repeat([]byte{0}, n.baseHasher.Size())
-		return emptyNs, emptyNs, placeHolderHash
+		return n.treeHasher.EmptyRoot()
 	}
 	tRoot := n.tree.Root()
-	minNs = tRoot[:n.nidLen]
-	maxNs = tRoot[n.nidLen : n.nidLen*2]
-	root = tRoot[n.nidLen*2:]
+	minNs = tRoot[:n.namespaceLen]
+	maxNs = tRoot[n.namespaceLen : n.namespaceLen*2]
+	root = tRoot[n.namespaceLen*2:]
 	return
 }
 
@@ -189,16 +212,22 @@ func (n *NamespacedMerkleTree) updateNamespaceRanges() {
 	}
 }
 
-type namespacedTreeHasher struct {
+type DefaultNamespacedTreeHasher struct {
 	crypto.Hash
 	NamespaceLen int
 }
 
-func newNamespacedTreeHasher(nidLen int, baseHasher crypto.Hash) *namespacedTreeHasher {
-	return &namespacedTreeHasher{
+func NewDefaultNamespacedTreeHasher(nidLen int, baseHasher crypto.Hash) *DefaultNamespacedTreeHasher {
+	return &DefaultNamespacedTreeHasher{
 		Hash:         baseHasher,
 		NamespaceLen: nidLen,
 	}
+}
+
+func (n *DefaultNamespacedTreeHasher) EmptyRoot() (minNs, maxNs NamespaceID, root []byte) {
+	emptyNs := bytes.Repeat([]byte{0}, n.NamespaceLen)
+	placeHolderHash := bytes.Repeat([]byte{0}, n.Size())
+	return emptyNs, emptyNs, placeHolderHash
 }
 
 // HashLeaf hashes leafs to:
@@ -206,7 +235,7 @@ func newNamespacedTreeHasher(nidLen int, baseHasher crypto.Hash) *namespacedTree
 // data minus the namespaceID (namely leaf[NamespaceLen:]).
 // Note that here minNs = maxNs = ns(leaf) = leaf[:NamespaceLen].
 //nolint:errcheck
-func (n *namespacedTreeHasher) HashLeaf(leaf []byte) []byte {
+func (n *DefaultNamespacedTreeHasher) HashLeaf(leaf []byte) []byte {
 	h := n.New()
 
 	nID := leaf[:n.NamespaceLen]
@@ -220,7 +249,7 @@ func (n *namespacedTreeHasher) HashLeaf(leaf []byte) []byte {
 // HashNode hashes inner nodes to:
 // minNID || maxNID || hash(NodePrefix || left || right), where left and right are the full
 // left and right child node bytes (including their respective min and max namespace IDs).
-func (n *namespacedTreeHasher) HashNode(l, r []byte) []byte {
+func (n *DefaultNamespacedTreeHasher) HashNode(l, r []byte) []byte {
 	h := n.New()
 	// the actual hash result of the children got extended (or flagged) by their
 	// children's minNs || maxNs; hence the flagLen = 2 * NamespaceLen:
@@ -246,8 +275,8 @@ func (n *namespacedTreeHasher) HashNode(l, r []byte) []byte {
 
 func New(namespaceLen int, baseHasher crypto.Hash) *NamespacedMerkleTree {
 	return &NamespacedMerkleTree{
-		nidLen:     namespaceLen,
-		baseHasher: newNamespacedTreeHasher(namespaceLen, baseHasher),
+		namespaceLen: namespaceLen,
+		treeHasher:   NewDefaultNamespacedTreeHasher(namespaceLen, baseHasher),
 		// XXX: 100 seems like a good capacity for the leafs slice
 		// but maybe this should also be a constructor param: for cases the caller
 		// knows exactly how many leafs will be pushed this will save allocations
@@ -256,7 +285,7 @@ func New(namespaceLen int, baseHasher crypto.Hash) *NamespacedMerkleTree {
 		leafs:           make([]NamespacePrefixedData, 0, 100),
 		leafHashes:      make([][]byte, 0, 100),
 		namespaceRanges: make(map[string]merkletree.LeafRange),
-		tree:            merkletree.NewFromTreehasher(newNamespacedTreeHasher(namespaceLen, baseHasher)),
+		tree:            merkletree.NewFromTreehasher(NewDefaultNamespacedTreeHasher(namespaceLen, baseHasher)),
 	}
 }
 
