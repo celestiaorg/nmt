@@ -243,6 +243,14 @@ func TestNamespacedMerkleTree_ProveNamespace_Ranges(t *testing.T) {
 		{"4 leafs and not found but within range", 2,
 			[]NamespacePrefixedData{{2, []byte("00_data")}, {2, []byte("00_data")}, {2, []byte("11_data")}, {2, []byte("11_data")}}, []byte("01"),
 			2, 3, false},
+		// In the cases (nID < minNID) or (maxNID < nID) we do not generate any proof
+		// and the (minNS, maxNs, root) should be indication enough that nID is not in that range.
+		{"4 leafs, not found and nID < minNID", 2,
+			[]NamespacePrefixedData{{2, []byte("01_data")}, {2, []byte("01_data")}, {2, []byte("01_data")}, {2, []byte("11_data")}}, []byte("00"),
+			0, 0, false},
+		{"4 leafs, not found and nID > maxNID ", 2,
+			[]NamespacePrefixedData{{2, []byte("00_data")}, {2, []byte("00_data")}, {2, []byte("01_data")}, {2, []byte("01_data")}}, []byte("11"),
+			0, 0, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

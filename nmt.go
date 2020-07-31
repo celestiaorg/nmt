@@ -54,7 +54,7 @@ func (n NamespacedMerkleTree) Prove(index int) (proof [][]byte, proofIdx int, to
 	return
 }
 
-func (n NamespacedMerkleTree) ProveNamespace(nID NamespaceID) (proofStart int, proofEnd int, proof [][]byte, foundLeafs []NamespacePrefixedData, leafHashes [][]byte) {
+func (n NamespacedMerkleTree) ProveNamespace(nID NamespaceID) (int, int, [][]byte, []NamespacePrefixedData, [][]byte) {
 	found, proofStart, proofEnd := n.foundNamespaceID(nID)
 
 	// If we did not find the namespace, that either means that there is a gap in the tree
@@ -69,6 +69,7 @@ func (n NamespacedMerkleTree) ProveNamespace(nID NamespaceID) (proofStart int, p
 		var prevLeaf NamespacePrefixedData
 		for index, curLeaf := range n.leafs {
 			if index == 0 {
+				prevLeaf = curLeaf
 				continue
 			}
 			prevNs := prevLeaf.NamespaceID()
@@ -90,21 +91,29 @@ func (n NamespacedMerkleTree) ProveNamespace(nID NamespaceID) (proofStart int, p
 			prevLeaf = curLeaf
 		}
 	}
-
+	var proof [][]byte
 	if found || foundRangeStart {
 		subTreeHasher := internal.NewCachedSubtreeHasher(n.leafHashes, n.baseHasher)
 		var err error
 		proof, err = merkletree.BuildRangeProof(proofStart, proofEnd, subTreeHasher)
 		if err != nil {
-			panic(fmt.Sprintf("unexpected err: %v, range: [%v, %v)", err, proofStart, proofEnd))
+			// This should never happen.
+			// TODO would be good to back this by more tests and fuzzing.
+			panic(fmt.Sprintf(
+				"unexpected err: %v on nID: %v, range: [%v, %v)",
+				err,
+				nID,
+				proofStart,
+				proofEnd,
+			))
 		}
 	}
 	proofMessages := n.leafs[proofStart:proofEnd]
 	if found {
 		return proofStart, proofEnd, proof, proofMessages, nil
 	}
-	// XXX further clarify the edge-case (!found && !foundRangeStart)
-	// !found: we return leafHashes instead:
+	// Note that in cases (nID < minNID) or (maxNID < nID) we do not generate any proof.
+	// Also we return an empty range (0,0) to indicate that this namespace is contained in the tree.
 	return proofStart, proofEnd, proof, nil, n.leafHashes[proofStart:proofEnd]
 }
 
