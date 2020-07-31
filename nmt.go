@@ -4,10 +4,12 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/liamsi/merkletree"
+
 	"github.com/lazyledger/nmt/internal"
 	"github.com/lazyledger/nmt/treehasher"
+	// anonymous import to increase the readability
 	. "github.com/lazyledger/nmt/types"
-	"github.com/liamsi/merkletree"
 )
 
 var (
