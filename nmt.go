@@ -198,12 +198,7 @@ func (n *NamespacedMerkleTree) Push(data namespace.PrefixedData) error {
 	n.leafs = append(n.leafs, data)
 	n.leafHashes = append(n.leafHashes, n.treeHasher.HashLeaf(data.Bytes()))
 	n.updateNamespaceRanges()
-	if data.NamespaceID().Less(n.minNID) {
-		n.minNID = data.NamespaceID()
-	}
-	if n.maxNID.Less(data.NamespaceID()) {
-		n.maxNID = data.NamespaceID()
-	}
+	n.updateMinMaxID(data)
 	return nil
 }
 
@@ -242,5 +237,14 @@ func (n *NamespacedMerkleTree) updateNamespaceRanges() {
 				End:   lastRange.End + 1,
 			}
 		}
+	}
+}
+
+func (n *NamespacedMerkleTree) updateMinMaxID(data namespace.PrefixedData) {
+	if data.NamespaceID().Less(n.minNID) {
+		n.minNID = data.NamespaceID()
+	}
+	if n.maxNID.Less(data.NamespaceID()) {
+		n.maxNID = data.NamespaceID()
 	}
 }
