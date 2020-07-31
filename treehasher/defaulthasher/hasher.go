@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"crypto"
 
+	"github.com/lazyledger/nmt/namespace"
 	"github.com/lazyledger/nmt/treehasher"
-	"github.com/lazyledger/nmt/types"
 )
 
 const (
@@ -31,7 +31,7 @@ func New(nidLen int, baseHasher crypto.Hash) *DefaultNamespacedTreeHasher {
 	}
 }
 
-func (n *DefaultNamespacedTreeHasher) EmptyRoot() (minNs, maxNs types.NamespaceID, root []byte) {
+func (n *DefaultNamespacedTreeHasher) EmptyRoot() (minNs, maxNs namespace.ID, root []byte) {
 	emptyNs := bytes.Repeat([]byte{0}, n.NamespaceLen)
 	placeHolderHash := bytes.Repeat([]byte{0}, n.Size())
 	return emptyNs, emptyNs, placeHolderHash

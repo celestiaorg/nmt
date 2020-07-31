@@ -7,9 +7,8 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/lazyledger/nmt/namespace"
 	"github.com/lazyledger/nmt/treehasher/defaulthasher"
-	// anonymous import only to improve readability
-	. "github.com/lazyledger/nmt/types"
 )
 
 const (
@@ -22,15 +21,15 @@ func TestFromNamespaceAndData(t *testing.T) {
 		name      string
 		namespace []byte
 		data      []byte
-		want      *NamespacePrefixedData
+		want      *namespace.PrefixedData
 	}{
-		0: {"simple case", []byte("namespace1"), []byte("data1"), FromPrefixedData(10, append([]byte("namespace1"), []byte("data1")...))},
-		1: {"simpler case", []byte("1"), []byte("d"), FromPrefixedData(1, append([]byte("1"), []byte("d")...))},
+		0: {"simple case", []byte("namespace1"), []byte("data1"), namespace.NewPrefixedData(10, append([]byte("namespace1"), []byte("data1")...))},
+		1: {"simpler case", []byte("1"), []byte("d"), namespace.NewPrefixedData(1, append([]byte("1"), []byte("d")...))},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := FromNamespaceAndData(tt.namespace, tt.data); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("FromNamespaceAndData() = %v, want %v", got, tt.want)
+			if got := namespace.PrefixedDataFrom(tt.namespace, tt.data); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("PrefixedDataFrom() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -39,22 +38,22 @@ func TestFromNamespaceAndData(t *testing.T) {
 func TestNamespacedMerkleTree_Push(t *testing.T) {
 	tests := []struct {
 		name    string
-		data    NamespacePrefixedData
+		data    namespace.PrefixedData
 		wantErr bool
 	}{
-		{"1st push: always OK", *FromNamespaceAndData([]byte{0, 0, 0}, []byte("dummy data")), false},
-		{"push with same namespace: OK", *FromNamespaceAndData([]byte{0, 0, 0}, []byte("dummy data")), false},
-		{"push with greater namespace: OK", *FromNamespaceAndData([]byte{0, 0, 1}, []byte("dummy data")), false},
-		{"push with smaller namespace: Err", *FromNamespaceAndData([]byte{0, 0, 0}, []byte("dummy data")), true},
-		{"push with same namespace: Ok", *FromNamespaceAndData([]byte{0, 0, 1}, []byte("dummy data")), false},
-		{"push with greater namespace: Ok", *FromNamespaceAndData([]byte{1, 0, 0}, []byte("dummy data")), false},
-		{"push with smaller namespace: Err", *FromNamespaceAndData([]byte{0, 0, 1}, []byte("dummy data")), true},
-		{"push with smaller namespace: Err", *FromNamespaceAndData([]byte{0, 0, 0}, []byte("dummy data")), true},
-		{"push with smaller namespace: Err", *FromNamespaceAndData([]byte{0, 1, 0}, []byte("dummy data")), true},
-		{"push with same as last namespace: OK", *FromNamespaceAndData([]byte{1, 0, 0}, []byte("dummy data")), false},
-		{"push with greater as last namespace: OK", *FromNamespaceAndData([]byte{1, 1, 0}, []byte("dummy data")), false},
+		{"1st push: always OK", *namespace.PrefixedDataFrom([]byte{0, 0, 0}, []byte("dummy data")), false},
+		{"push with same namespace: OK", *namespace.PrefixedDataFrom([]byte{0, 0, 0}, []byte("dummy data")), false},
+		{"push with greater namespace: OK", *namespace.PrefixedDataFrom([]byte{0, 0, 1}, []byte("dummy data")), false},
+		{"push with smaller namespace: Err", *namespace.PrefixedDataFrom([]byte{0, 0, 0}, []byte("dummy data")), true},
+		{"push with same namespace: Ok", *namespace.PrefixedDataFrom([]byte{0, 0, 1}, []byte("dummy data")), false},
+		{"push with greater namespace: Ok", *namespace.PrefixedDataFrom([]byte{1, 0, 0}, []byte("dummy data")), false},
+		{"push with smaller namespace: Err", *namespace.PrefixedDataFrom([]byte{0, 0, 1}, []byte("dummy data")), true},
+		{"push with smaller namespace: Err", *namespace.PrefixedDataFrom([]byte{0, 0, 0}, []byte("dummy data")), true},
+		{"push with smaller namespace: Err", *namespace.PrefixedDataFrom([]byte{0, 1, 0}, []byte("dummy data")), true},
+		{"push with same as last namespace: OK", *namespace.PrefixedDataFrom([]byte{1, 0, 0}, []byte("dummy data")), false},
+		{"push with greater as last namespace: OK", *namespace.PrefixedDataFrom([]byte{1, 1, 0}, []byte("dummy data")), false},
 		// note this tests for another kind of error: ErrMismatchedNamespaceSize
-		{"push with wrong namespace size: Err", *FromNamespaceAndData([]byte{1, 1, 0, 0}, []byte("dummy data")), true},
+		{"push with wrong namespace size: Err", *namespace.PrefixedDataFrom([]byte{1, 1, 0, 0}, []byte("dummy data")), true},
 	}
 	n := New(defaulthasher.New(3, crypto.SHA256))
 	for _, tt := range tests {
@@ -82,17 +81,17 @@ func TestNamespacedMerkleTreeRoot(t *testing.T) {
 	tests := []struct {
 		name       string
 		nidLen     int
-		pushedData []NamespacePrefixedData
-		wantMinNs  NamespaceID
-		wantMaxNs  NamespaceID
+		pushedData []namespace.PrefixedData
+		wantMinNs  namespace.ID
+		wantMaxNs  namespace.ID
 		wantRoot   []byte
 	}{
 		// default empty root according to base case:
 		// https://github.com/lazyledger/lazyledger-specs/blob/master/specs/data_structures.md#namespace-merkle-tree
 		{"Empty", 3, nil, zeroNs, zeroNs, emptyRoot},
-		{"One leaf", 3, []NamespacePrefixedData{*FromNamespaceAndData(zeroNs, leaf)}, zeroNs, zeroNs, leafHash},
-		{"Two leafs", 3, []NamespacePrefixedData{*FromNamespaceAndData(zeroNs, leaf), *FromNamespaceAndData(zeroNs, leaf)}, zeroNs, zeroNs, twoZeroLeafsRoot},
-		{"Two leafs diff namespaces", 3, []NamespacePrefixedData{*FromNamespaceAndData(zeroNs, leaf), *FromNamespaceAndData(onesNS, leaf)}, zeroNs, onesNS, diffNSLeafsRoot},
+		{"One leaf", 3, []namespace.PrefixedData{*namespace.PrefixedDataFrom(zeroNs, leaf)}, zeroNs, zeroNs, leafHash},
+		{"Two leafs", 3, []namespace.PrefixedData{*namespace.PrefixedDataFrom(zeroNs, leaf), *namespace.PrefixedDataFrom(zeroNs, leaf)}, zeroNs, zeroNs, twoZeroLeafsRoot},
+		{"Two leafs diff namespaces", 3, []namespace.PrefixedData{*namespace.PrefixedDataFrom(zeroNs, leaf), *namespace.PrefixedDataFrom(onesNS, leaf)}, zeroNs, onesNS, diffNSLeafsRoot},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -120,43 +119,43 @@ func TestNamespacedMerkleTree_ProveNamespace_Ranges(t *testing.T) {
 	tests := []struct {
 		name           string
 		nidLen         int
-		pushData       []NamespacePrefixedData
-		proveNID       NamespaceID
+		pushData       []namespace.PrefixedData
+		proveNID       namespace.ID
 		wantProofStart int
 		wantProofEnd   int
 		wantFound      bool
 	}{
 		{"found", 1,
-			[]NamespacePrefixedData{*FromPrefixedData(1, []byte("0_data"))}, []byte("0"),
+			[]namespace.PrefixedData{*namespace.NewPrefixedData(1, []byte("0_data"))}, []byte("0"),
 			0, 1, true},
 		{"not found", 1,
-			[]NamespacePrefixedData{*FromPrefixedData(1, []byte("0_data"))}, []byte("1"),
+			[]namespace.PrefixedData{*namespace.NewPrefixedData(1, []byte("0_data"))}, []byte("1"),
 			0, 0, false},
 		{"two leafs and found", 1,
-			[]NamespacePrefixedData{*FromPrefixedData(1, []byte("0_data")), *FromPrefixedData(1, []byte("1_data"))}, []byte("1"),
+			[]namespace.PrefixedData{*namespace.NewPrefixedData(1, []byte("0_data")), *namespace.NewPrefixedData(1, []byte("1_data"))}, []byte("1"),
 			1, 2, true},
 		{"two leafs and found", 1,
-			[]NamespacePrefixedData{*FromPrefixedData(1, []byte("0_data")), *FromPrefixedData(1, []byte("0_data"))}, []byte("1"),
+			[]namespace.PrefixedData{*namespace.NewPrefixedData(1, []byte("0_data")), *namespace.NewPrefixedData(1, []byte("0_data"))}, []byte("1"),
 			0, 0, false},
 		{"three leafs and found", 1,
-			[]NamespacePrefixedData{*FromPrefixedData(1, []byte("0_data")), *FromPrefixedData(1, []byte("0_data")), *FromPrefixedData(1, []byte("1_data"))}, []byte("1"),
+			[]namespace.PrefixedData{*namespace.NewPrefixedData(1, []byte("0_data")), *namespace.NewPrefixedData(1, []byte("0_data")), *namespace.NewPrefixedData(1, []byte("1_data"))}, []byte("1"),
 			2, 3, true},
 		{"three leafs and not found but with range", 2,
-			[]NamespacePrefixedData{*FromPrefixedData(2, []byte("00_data")), *FromPrefixedData(2, []byte("00_data")), *FromPrefixedData(2, []byte("11_data"))}, []byte("01"),
+			[]namespace.PrefixedData{*namespace.NewPrefixedData(2, []byte("00_data")), *namespace.NewPrefixedData(2, []byte("00_data")), *namespace.NewPrefixedData(2, []byte("11_data"))}, []byte("01"),
 			2, 3, false},
 		{"three leafs and not found but within range", 2,
-			[]NamespacePrefixedData{*FromPrefixedData(2, []byte("00_data")), *FromPrefixedData(2, []byte("00_data")), *FromPrefixedData(2, []byte("11_data"))}, []byte("01"),
+			[]namespace.PrefixedData{*namespace.NewPrefixedData(2, []byte("00_data")), *namespace.NewPrefixedData(2, []byte("00_data")), *namespace.NewPrefixedData(2, []byte("11_data"))}, []byte("01"),
 			2, 3, false},
 		{"4 leafs and not found but within range", 2,
-			[]NamespacePrefixedData{*FromPrefixedData(2, []byte("00_data")), *FromPrefixedData(2, []byte("00_data")), *FromPrefixedData(2, []byte("11_data")), *FromPrefixedData(2, []byte("11_data"))}, []byte("01"),
+			[]namespace.PrefixedData{*namespace.NewPrefixedData(2, []byte("00_data")), *namespace.NewPrefixedData(2, []byte("00_data")), *namespace.NewPrefixedData(2, []byte("11_data")), *namespace.NewPrefixedData(2, []byte("11_data"))}, []byte("01"),
 			2, 3, false},
 		// In the cases (nID < minNID) or (maxNID < nID) we do not generate any proof
 		// and the (minNS, maxNs, root) should be indication enough that nID is not in that range.
 		{"4 leafs, not found and nID < minNID", 2,
-			[]NamespacePrefixedData{*FromPrefixedData(2, []byte("01_data")), *FromPrefixedData(2, []byte("01_data")), *FromPrefixedData(2, []byte("01_data")), *FromPrefixedData(2, []byte("11_data"))}, []byte("00"),
+			[]namespace.PrefixedData{*namespace.NewPrefixedData(2, []byte("01_data")), *namespace.NewPrefixedData(2, []byte("01_data")), *namespace.NewPrefixedData(2, []byte("01_data")), *namespace.NewPrefixedData(2, []byte("11_data"))}, []byte("00"),
 			0, 0, false},
 		{"4 leafs, not found and nID > maxNID ", 2,
-			[]NamespacePrefixedData{*FromPrefixedData(2, []byte("00_data")), *FromPrefixedData(2, []byte("00_data")), *FromPrefixedData(2, []byte("01_data")), *FromPrefixedData(2, []byte("01_data"))}, []byte("11"),
+			[]namespace.PrefixedData{*namespace.NewPrefixedData(2, []byte("00_data")), *namespace.NewPrefixedData(2, []byte("00_data")), *namespace.NewPrefixedData(2, []byte("01_data")), *namespace.NewPrefixedData(2, []byte("01_data"))}, []byte("11"),
 			0, 0, false},
 	}
 	for _, tt := range tests {

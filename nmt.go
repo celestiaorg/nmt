@@ -7,9 +7,8 @@ import (
 	"github.com/liamsi/merkletree"
 
 	"github.com/lazyledger/nmt/internal"
+	"github.com/lazyledger/nmt/namespace"
 	"github.com/lazyledger/nmt/treehasher"
-	// anonymous import to increase the readability
-	. "github.com/lazyledger/nmt/types"
 )
 
 var (
@@ -22,7 +21,7 @@ type NamespacedMerkleTree struct {
 	tree       *merkletree.Tree
 
 	// just cache stuff until we pass in a store and keep all nodes in there
-	leafs      []NamespacePrefixedData
+	leafs      []namespace.PrefixedData
 	leafHashes [][]byte
 	// this can be used to efficiently lookup the range for an
 	// existing namespace without iterating through the leafs
@@ -58,11 +57,11 @@ func (n NamespacedMerkleTree) Prove(index int) (
 // Note that in cases (nID < minNID) or (maxNID < nID) we do not
 // generate any proof and we return an empty range (0,0) to
 // indicate that this namespace is not contained in the tree.
-func (n NamespacedMerkleTree) ProveNamespace(nID NamespaceID) (
+func (n NamespacedMerkleTree) ProveNamespace(nID namespace.ID) (
 	proofStart int,
 	proofEnd int,
 	proof [][]byte,
-	foundLeafs []NamespacePrefixedData,
+	foundLeafs []namespace.PrefixedData,
 	leafHashes [][]byte, // XXX: introduce a type/type alias, e.g FlaggedHas
 ) {
 	found, proofStart, proofEnd := n.foundNamespaceID(nID)
@@ -76,7 +75,7 @@ func (n NamespacedMerkleTree) ProveNamespace(nID NamespaceID) (
 		// Generate a proof for an absence using the
 		// range the namespace would be in
 		// TODO: document this as a proper godoc comment
-		var prevLeaf NamespacePrefixedData
+		var prevLeaf namespace.PrefixedData
 		for index, curLeaf := range n.leafs {
 			if index == 0 {
 				prevLeaf = curLeaf
@@ -127,7 +126,7 @@ func (n NamespacedMerkleTree) ProveNamespace(nID NamespaceID) (
 	return proofStart, proofEnd, proof, nil, n.leafHashes[proofStart:proofEnd]
 }
 
-func (n *NamespacedMerkleTree) foundNamespaceID(nID NamespaceID) (bool, int, int) {
+func (n *NamespacedMerkleTree) foundNamespaceID(nID namespace.ID) (bool, int, int) {
 	foundRng, found := n.namespaceRanges[string(nID)]
 	// XXX casting from uint64 to int is kinda crappy but nebolousLabs'
 	// range proof api requires int params only to convert them to uint64 ...
@@ -144,7 +143,7 @@ func (n NamespacedMerkleTree) NamespaceSize() int {
 // Returns an error if the namespace ID size of the input
 // does not match the tree's NamespaceSize() or the leafs are not pushed in
 // order (i.e. lexicographically sorted by namespace ID).
-func (n *NamespacedMerkleTree) Push(data NamespacePrefixedData) error {
+func (n *NamespacedMerkleTree) Push(data namespace.PrefixedData) error {
 	got, want := data.NamespaceSize(), n.NamespaceSize()
 	if got != want {
 		return fmt.Errorf("%w: got: %v, want: %v", ErrMismatchedNamespaceSize, got, want)
@@ -171,8 +170,8 @@ func (n *NamespacedMerkleTree) Push(data NamespacePrefixedData) error {
 // Return the namespaced Merkle Tree's root together with the
 // min. and max. namespace ID.
 func (n *NamespacedMerkleTree) Root() (
-	minNs NamespaceID,
-	maxNs NamespaceID,
+	minNs namespace.ID,
+	maxNs namespace.ID,
 	root []byte,
 ) {
 	if len(n.leafs) == 0 {
@@ -214,7 +213,7 @@ func New(treeHasher treehasher.NmTreeHasher) *NamespacedMerkleTree {
 		// knows exactly how many leafs will be pushed this will save allocations
 		// In fact, in that case the caller could pass in the whole data at once
 		// and we could even use the passed in slice without allocating space for a copy.
-		leafs:           make([]NamespacePrefixedData, 0, 100),
+		leafs:           make([]namespace.PrefixedData, 0, 100),
 		leafHashes:      make([][]byte, 0, 100),
 		namespaceRanges: make(map[string]merkletree.LeafRange),
 		tree:            merkletree.NewFromTreehasher(treeHasher),
