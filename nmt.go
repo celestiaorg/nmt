@@ -44,14 +44,12 @@ type NamespacedMerkleTree struct {
 	namespaceRanges map[string]merkletree.LeafRange
 }
 
-func (n NamespacedMerkleTree) Prove(index int) (root []byte, rawProof [][]byte, proofIdx int, totalNumLeafs int, err error) {
+func (n NamespacedMerkleTree) Prove(index int) (proof [][]byte, proofIdx int, totalNumLeafs int, err error) {
 	subTreeHasher := internal.NewCachedSubtreeHasher(n.leafHashes, n.baseHasher)
-	// XXX do we really need to return the root?
-	_, _, root = n.Root()
 	proofIdx = index
 	totalNumLeafs = len(n.leafs)
 	// TODO: store nodes and re-use the hashes instead recomputing parts of the tree here
-	rawProof, err = merkletree.BuildRangeProof(index, index+1, subTreeHasher)
+	proof, err = merkletree.BuildRangeProof(index, index+1, subTreeHasher)
 
 	return
 }

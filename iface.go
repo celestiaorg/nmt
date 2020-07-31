@@ -18,7 +18,7 @@ type NamespacedProver interface {
 	// Prove leaf at index.
 	// Note this is not really NMT specific (XXX the min/maxNs is stripped off the root)
 	// but the tree supports inclusions proves like any vanilla Merkle tree.
-	Prove(index int) (rawRoot []byte, rawProof [][]byte, proofIdx int, totalNumLeafs int, err error)
+	Prove(index int) (proof [][]byte, proofIdx int, totalNumLeafs int, err error)
 	// ProveNamespace returns some kind of range proof for the given NamspaceID.
 	// In case the underlying tree contains leafs with the given namespace they will be returned.
 	// If the tree does not have any entries with the given NamespaceID,
