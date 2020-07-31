@@ -13,7 +13,7 @@ import (
 
 var (
 	ErrMismatchedNamespaceSize = errors.New("mismatching namespace sizes")
-	ErrInvalidPushOrder        = errors.New("pushed data has to be lexicographically order by namespaces")
+	ErrInvalidPushOrder        = errors.New("pushed data has to be lexicographically ordered by namespace IDs")
 )
 
 type NamespacedMerkleTree struct {
@@ -26,6 +26,21 @@ type NamespacedMerkleTree struct {
 	// this can be used to efficiently lookup the range for an
 	// existing namespace without iterating through the leafs
 	namespaceRanges map[string]merkletree.LeafRange
+}
+
+func New(treeHasher treehasher.NmTreeHasher) *NamespacedMerkleTree {
+	return &NamespacedMerkleTree{
+		treeHasher: treeHasher,
+		// XXX: 100 seems like a good capacity for the leafs slice
+		// but maybe this should also be a constructor param: for cases the caller
+		// knows exactly how many leafs will be pushed this will save allocations
+		// In fact, in that case the caller could pass in the whole data at once
+		// and we could even use the passed in slice without allocating space for a copy.
+		leafs:           make([]namespace.PrefixedData, 0, 100),
+		leafHashes:      make([][]byte, 0, 100),
+		namespaceRanges: make(map[string]merkletree.LeafRange),
+		tree:            merkletree.NewFromTreehasher(treeHasher),
+	}
 }
 
 // Prove leaf at index.
@@ -202,20 +217,5 @@ func (n *NamespacedMerkleTree) updateNamespaceRanges() {
 				End:   lastRange.End + 1,
 			}
 		}
-	}
-}
-
-func New(treeHasher treehasher.NmTreeHasher) *NamespacedMerkleTree {
-	return &NamespacedMerkleTree{
-		treeHasher: treeHasher,
-		// XXX: 100 seems like a good capacity for the leafs slice
-		// but maybe this should also be a constructor param: for cases the caller
-		// knows exactly how many leafs will be pushed this will save allocations
-		// In fact, in that case the caller could pass in the whole data at once
-		// and we could even use the passed in slice without allocating space for a copy.
-		leafs:           make([]namespace.PrefixedData, 0, 100),
-		leafHashes:      make([][]byte, 0, 100),
-		namespaceRanges: make(map[string]merkletree.LeafRange),
-		tree:            merkletree.NewFromTreehasher(treeHasher),
 	}
 }
