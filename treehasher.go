@@ -1,13 +1,13 @@
-package treehasher
+package nmt
 
 import (
 	"github.com/lazyledger/nmt/namespace"
 )
 
 // TODO: make all methods "namespaced" too (like EmptyRoot())
-type NmTreeHasher interface {
-	// EmptyRoot returns the namespaced root for a no-leafs Namespaced Merkle tree.
-	// This can be used to define whatever
+type Hasher interface {
+	// EmptyRoot returns the namespaced root for a no-leafs Namespaced Merkle
+	// tree.
 	EmptyRoot() (minNs, maxNs namespace.ID, root []byte)
 
 	// HashLeaf defines how a leaf is hashed.

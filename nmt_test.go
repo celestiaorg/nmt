@@ -1,4 +1,4 @@
-package nmt
+package nmt_test
 
 import (
 	"bytes"
@@ -7,8 +7,9 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/lazyledger/nmt"
+	"github.com/lazyledger/nmt/defaulthasher"
 	"github.com/lazyledger/nmt/namespace"
-	"github.com/lazyledger/nmt/treehasher/defaulthasher"
 )
 
 const (
@@ -55,7 +56,7 @@ func TestNamespacedMerkleTree_Push(t *testing.T) {
 		// note this tests for another kind of error: ErrMismatchedNamespaceSize
 		{"push with wrong namespace size: Err", *namespace.PrefixedDataFrom([]byte{1, 1, 0, 0}, []byte("dummy data")), true},
 	}
-	n := New(defaulthasher.New(3, crypto.SHA256))
+	n := nmt.New(defaulthasher.New(3, crypto.SHA256))
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if err := n.Push(tt.data); (err != nil) != tt.wantErr {
@@ -95,7 +96,7 @@ func TestNamespacedMerkleTreeRoot(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			n := New(defaulthasher.New(tt.nidLen, crypto.SHA256))
+			n := nmt.New(defaulthasher.New(tt.nidLen, crypto.SHA256))
 			for _, d := range tt.pushedData {
 				if err := n.Push(d); err != nil {
 					t.Errorf("Push() error = %v, expected no error", err)
@@ -160,7 +161,7 @@ func TestNamespacedMerkleTree_ProveNamespace_Ranges(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			n := New(defaulthasher.New(tt.nidLen, crypto.SHA256))
+			n := nmt.New(defaulthasher.New(tt.nidLen, crypto.SHA256))
 			for _, d := range tt.pushData {
 				err := n.Push(d)
 				if err != nil {

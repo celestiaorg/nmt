@@ -5,7 +5,6 @@ import (
 	"crypto"
 
 	"github.com/lazyledger/nmt/namespace"
-	"github.com/lazyledger/nmt/treehasher"
 )
 
 const (
@@ -13,25 +12,23 @@ const (
 	NodePrefix = 1
 )
 
-var _ treehasher.NmTreeHasher = &DefaultNamespacedTreeHasher{}
-
-type DefaultNamespacedTreeHasher struct {
+type DefaultHasher struct {
 	crypto.Hash
 	NamespaceLen int
 }
 
-func (n *DefaultNamespacedTreeHasher) NamespaceSize() int {
+func (n *DefaultHasher) NamespaceSize() int {
 	return n.NamespaceLen
 }
 
-func New(nidLen int, baseHasher crypto.Hash) *DefaultNamespacedTreeHasher {
-	return &DefaultNamespacedTreeHasher{
+func New(nidLen int, baseHasher crypto.Hash) *DefaultHasher {
+	return &DefaultHasher{
 		Hash:         baseHasher,
 		NamespaceLen: nidLen,
 	}
 }
 
-func (n *DefaultNamespacedTreeHasher) EmptyRoot() (minNs, maxNs namespace.ID, root []byte) {
+func (n *DefaultHasher) EmptyRoot() (minNs, maxNs namespace.ID, root []byte) {
 	emptyNs := bytes.Repeat([]byte{0}, n.NamespaceLen)
 	placeHolderHash := bytes.Repeat([]byte{0}, n.Size())
 	return emptyNs, emptyNs, placeHolderHash
@@ -42,7 +39,7 @@ func (n *DefaultNamespacedTreeHasher) EmptyRoot() (minNs, maxNs namespace.ID, ro
 // data minus the namespaceID (namely leaf[NamespaceLen:]).
 // Note that here minNs = maxNs = ns(leaf) = leaf[:NamespaceLen].
 //nolint:errcheck
-func (n *DefaultNamespacedTreeHasher) HashLeaf(leaf []byte) []byte {
+func (n *DefaultHasher) HashLeaf(leaf []byte) []byte {
 	h := n.New()
 
 	nID := leaf[:n.NamespaceLen]
@@ -56,7 +53,7 @@ func (n *DefaultNamespacedTreeHasher) HashLeaf(leaf []byte) []byte {
 // HashNode hashes inner nodes to:
 // minNID || maxNID || hash(NodePrefix || left || right), where left and right are the full
 // left and right child node bytes (including their respective min and max namespace IDs).
-func (n *DefaultNamespacedTreeHasher) HashNode(l, r []byte) []byte {
+func (n *DefaultHasher) HashNode(l, r []byte) []byte {
 	h := n.New()
 	// the actual hash result of the children got extended (or flagged) by their
 	// children's minNs || maxNs; hence the flagLen = 2 * NamespaceLen:

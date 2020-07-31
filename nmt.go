@@ -9,7 +9,6 @@ import (
 
 	"github.com/lazyledger/nmt/internal"
 	"github.com/lazyledger/nmt/namespace"
-	"github.com/lazyledger/nmt/treehasher"
 )
 
 var (
@@ -18,7 +17,7 @@ var (
 )
 
 type NamespacedMerkleTree struct {
-	treeHasher treehasher.NmTreeHasher
+	treeHasher Hasher
 	tree       *merkletree.Tree
 
 	// just cache stuff until we pass in a store and keep all nodes in there
@@ -31,7 +30,7 @@ type NamespacedMerkleTree struct {
 	maxNID          namespace.ID
 }
 
-func New(treeHasher treehasher.NmTreeHasher) *NamespacedMerkleTree {
+func New(treeHasher Hasher) *NamespacedMerkleTree {
 	return &NamespacedMerkleTree{
 		treeHasher: treeHasher,
 		tree:       merkletree.NewFromTreehasher(treeHasher),
