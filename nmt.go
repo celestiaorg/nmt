@@ -1,19 +1,13 @@
 package nmt
 
 import (
-	"bytes"
-	"crypto"
 	"errors"
 	"fmt"
 
 	"github.com/lazyledger/nmt/internal"
-
+	"github.com/lazyledger/nmt/treehasher"
+	. "github.com/lazyledger/nmt/types"
 	"github.com/liamsi/merkletree"
-)
-
-const (
-	LeafPrefix = 0
-	NodePrefix = 1
 )
 
 var (
@@ -21,12 +15,9 @@ var (
 	ErrInvalidPushOrder        = errors.New("pushed data has to be lexicographically order by namespaces")
 )
 
-var _ TreeHasher = &DefaultNamespacedTreeHasher{}
-
 type NamespacedMerkleTree struct {
-	namespaceLen int
-	treeHasher   TreeHasher
-	tree         *merkletree.Tree
+	treeHasher treehasher.NmTreeHasher
+	tree       *merkletree.Tree
 
 	// just cache stuff until we pass in a store and keep all nodes in there
 	leafs      []NamespacePrefixedData
@@ -144,7 +135,7 @@ func (n *NamespacedMerkleTree) foundNamespaceID(nID NamespaceID) (bool, int, int
 // NamespaceSize returns the underlying namespace size. Note that
 // all namespaced data is expected to have the same namespace size.
 func (n NamespacedMerkleTree) NamespaceSize() int {
-	return n.namespaceLen
+	return n.treeHasher.NamespaceSize()
 }
 
 // Push adds data with the corresponding namespace ID to the tree.
@@ -186,9 +177,10 @@ func (n *NamespacedMerkleTree) Root() (
 		return n.treeHasher.EmptyRoot()
 	}
 	tRoot := n.tree.Root()
-	minNs = tRoot[:n.namespaceLen]
-	maxNs = tRoot[n.namespaceLen : n.namespaceLen*2]
-	root = tRoot[n.namespaceLen*2:]
+	namespaceLen := n.NamespaceSize()
+	minNs = tRoot[:namespaceLen]
+	maxNs = tRoot[namespaceLen : namespaceLen*2]
+	root = tRoot[namespaceLen*2:]
 	return
 }
 
@@ -212,71 +204,9 @@ func (n *NamespacedMerkleTree) updateNamespaceRanges() {
 	}
 }
 
-type DefaultNamespacedTreeHasher struct {
-	crypto.Hash
-	NamespaceLen int
-}
-
-func NewDefaultNamespacedTreeHasher(nidLen int, baseHasher crypto.Hash) *DefaultNamespacedTreeHasher {
-	return &DefaultNamespacedTreeHasher{
-		Hash:         baseHasher,
-		NamespaceLen: nidLen,
-	}
-}
-
-func (n *DefaultNamespacedTreeHasher) EmptyRoot() (minNs, maxNs NamespaceID, root []byte) {
-	emptyNs := bytes.Repeat([]byte{0}, n.NamespaceLen)
-	placeHolderHash := bytes.Repeat([]byte{0}, n.Size())
-	return emptyNs, emptyNs, placeHolderHash
-}
-
-// HashLeaf hashes leafs to:
-// ns(rawData) || ns(rawData) || hash(leafPrefix || rawData), where raw data is the leaf's
-// data minus the namespaceID (namely leaf[NamespaceLen:]).
-// Note that here minNs = maxNs = ns(leaf) = leaf[:NamespaceLen].
-//nolint:errcheck
-func (n *DefaultNamespacedTreeHasher) HashLeaf(leaf []byte) []byte {
-	h := n.New()
-
-	nID := leaf[:n.NamespaceLen]
-	data := leaf[n.NamespaceLen:]
-	res := append(append(make([]byte, 0), nID...), nID...)
-	h.Write([]byte{LeafPrefix})
-	h.Write(data)
-	return h.Sum(res)
-}
-
-// HashNode hashes inner nodes to:
-// minNID || maxNID || hash(NodePrefix || left || right), where left and right are the full
-// left and right child node bytes (including their respective min and max namespace IDs).
-func (n *DefaultNamespacedTreeHasher) HashNode(l, r []byte) []byte {
-	h := n.New()
-	// the actual hash result of the children got extended (or flagged) by their
-	// children's minNs || maxNs; hence the flagLen = 2 * NamespaceLen:
-	flagLen := 2 * n.NamespaceLen
-	leftMinNs, leftMaxNs := l[:n.NamespaceLen], l[n.NamespaceLen:flagLen]
-	rightMinNs, rightMaxNs := r[:n.NamespaceLen], r[n.NamespaceLen:flagLen]
-
-	minNs := min(leftMinNs, rightMinNs)
-	maxNs := max(leftMaxNs, rightMaxNs)
-	res := append(append(make([]byte, 0), minNs...), maxNs...)
-
-	// Note this seems a little faster than calling several Write()s on the
-	// underlying Hash function (see: https://github.com/google/trillian/pull/1503):
-	b := append(append(append(
-		make([]byte, 0, 1+len(l)+len(r)),
-		NodePrefix),
-		l...),
-		r...)
-	//nolint:errcheck
-	h.Write(b)
-	return h.Sum(res)
-}
-
-func New(namespaceLen int, baseHasher crypto.Hash) *NamespacedMerkleTree {
+func New(treeHasher treehasher.NmTreeHasher) *NamespacedMerkleTree {
 	return &NamespacedMerkleTree{
-		namespaceLen: namespaceLen,
-		treeHasher:   NewDefaultNamespacedTreeHasher(namespaceLen, baseHasher),
+		treeHasher: treeHasher,
 		// XXX: 100 seems like a good capacity for the leafs slice
 		// but maybe this should also be a constructor param: for cases the caller
 		// knows exactly how many leafs will be pushed this will save allocations
@@ -285,20 +215,6 @@ func New(namespaceLen int, baseHasher crypto.Hash) *NamespacedMerkleTree {
 		leafs:           make([]NamespacePrefixedData, 0, 100),
 		leafHashes:      make([][]byte, 0, 100),
 		namespaceRanges: make(map[string]merkletree.LeafRange),
-		tree:            merkletree.NewFromTreehasher(NewDefaultNamespacedTreeHasher(namespaceLen, baseHasher)),
+		tree:            merkletree.NewFromTreehasher(treeHasher),
 	}
-}
-
-func max(ns []byte, ns2 []byte) []byte {
-	if bytes.Compare(ns, ns2) >= 0 {
-		return ns
-	}
-	return ns2
-}
-
-func min(ns []byte, ns2 []byte) []byte {
-	if bytes.Compare(ns, ns2) <= 0 {
-		return ns
-	}
-	return ns2
 }

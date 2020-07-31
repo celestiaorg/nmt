@@ -6,6 +6,14 @@ import (
 	_ "crypto/sha256"
 	"reflect"
 	"testing"
+
+	"github.com/lazyledger/nmt/treehasher/defaulthasher"
+	. "github.com/lazyledger/nmt/types"
+)
+
+const (
+	LeafPrefix = defaulthasher.LeafPrefix
+	NodePrefix = defaulthasher.NodePrefix
 )
 
 func TestFromNamespaceAndData(t *testing.T) {
@@ -15,8 +23,8 @@ func TestFromNamespaceAndData(t *testing.T) {
 		data      []byte
 		want      *NamespacePrefixedData
 	}{
-		0: {"simple case", []byte("namespace1"), []byte("data1"), &NamespacePrefixedData{10, append([]byte("namespace1"), []byte("data1")...)}},
-		1: {"simpler case", []byte("1"), []byte("d"), &NamespacePrefixedData{1, append([]byte("1"), []byte("d")...)}},
+		0: {"simple case", []byte("namespace1"), []byte("data1"), FromPrefixedData(10, append([]byte("namespace1"), []byte("data1")...))},
+		1: {"simpler case", []byte("1"), []byte("d"), FromPrefixedData(1, append([]byte("1"), []byte("d")...))},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -55,10 +63,7 @@ func Test_namespacedTreeHasher_HashLeaf(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			n := DefaultNamespacedTreeHasher{
-				Hash:         crypto.SHA256,
-				NamespaceLen: tt.nsLen,
-			}
+			n := defaulthasher.New(tt.nsLen, crypto.SHA256)
 			if got := n.HashLeaf(tt.leaf); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("HashLeaf() = %v, want %v", got, tt.want)
 			}
@@ -121,7 +126,7 @@ func Test_namespacedTreeHasher_HashNode(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			n := NewDefaultNamespacedTreeHasher(tt.nidLen, crypto.SHA256)
+			n := defaulthasher.New(tt.nidLen, crypto.SHA256)
 			if got := n.HashNode(tt.children.l, tt.children.r); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("HashNode() = %v, want %v", got, tt.want)
 			}
@@ -149,7 +154,7 @@ func TestNamespacedMerkleTree_Push(t *testing.T) {
 		// note this tests for another kind of error: ErrMismatchedNamespaceSize
 		{"push with wrong namespace size: Err", *FromNamespaceAndData([]byte{1, 1, 0, 0}, []byte("dummy data")), true},
 	}
-	n := New(3, crypto.SHA256)
+	n := New(defaulthasher.New(3, crypto.SHA256))
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if err := n.Push(tt.data); (err != nil) != tt.wantErr {
@@ -189,7 +194,7 @@ func TestNamespacedMerkleTreeRoot(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			n := New(tt.nidLen, crypto.SHA256)
+			n := New(defaulthasher.New(tt.nidLen, crypto.SHA256))
 			for _, d := range tt.pushedData {
 				if err := n.Push(d); err != nil {
 					t.Errorf("Push() error = %v, expected no error", err)
@@ -220,41 +225,41 @@ func TestNamespacedMerkleTree_ProveNamespace_Ranges(t *testing.T) {
 		wantFound      bool
 	}{
 		{"found", 1,
-			[]NamespacePrefixedData{{1, []byte("0_data")}}, []byte("0"),
+			[]NamespacePrefixedData{*FromPrefixedData(1, []byte("0_data"))}, []byte("0"),
 			0, 1, true},
 		{"not found", 1,
-			[]NamespacePrefixedData{{1, []byte("0_data")}}, []byte("1"),
+			[]NamespacePrefixedData{*FromPrefixedData(1, []byte("0_data"))}, []byte("1"),
 			0, 0, false},
 		{"two leafs and found", 1,
-			[]NamespacePrefixedData{{1, []byte("0_data")}, {1, []byte("1_data")}}, []byte("1"),
+			[]NamespacePrefixedData{*FromPrefixedData(1, []byte("0_data")), *FromPrefixedData(1, []byte("1_data"))}, []byte("1"),
 			1, 2, true},
 		{"two leafs and found", 1,
-			[]NamespacePrefixedData{{1, []byte("0_data")}, {1, []byte("0_data")}}, []byte("1"),
+			[]NamespacePrefixedData{*FromPrefixedData(1, []byte("0_data")), *FromPrefixedData(1, []byte("0_data"))}, []byte("1"),
 			0, 0, false},
 		{"three leafs and found", 1,
-			[]NamespacePrefixedData{{1, []byte("0_data")}, {1, []byte("0_data")}, {1, []byte("1_data")}}, []byte("1"),
+			[]NamespacePrefixedData{*FromPrefixedData(1, []byte("0_data")), *FromPrefixedData(1, []byte("0_data")), *FromPrefixedData(1, []byte("1_data"))}, []byte("1"),
 			2, 3, true},
 		{"three leafs and not found but with range", 2,
-			[]NamespacePrefixedData{{2, []byte("00_data")}, {2, []byte("00_data")}, {2, []byte("11_data")}}, []byte("01"),
+			[]NamespacePrefixedData{*FromPrefixedData(2, []byte("00_data")), *FromPrefixedData(2, []byte("00_data")), *FromPrefixedData(2, []byte("11_data"))}, []byte("01"),
 			2, 3, false},
 		{"three leafs and not found but within range", 2,
-			[]NamespacePrefixedData{{2, []byte("00_data")}, {2, []byte("00_data")}, {2, []byte("11_data")}}, []byte("01"),
+			[]NamespacePrefixedData{*FromPrefixedData(2, []byte("00_data")), *FromPrefixedData(2, []byte("00_data")), *FromPrefixedData(2, []byte("11_data"))}, []byte("01"),
 			2, 3, false},
 		{"4 leafs and not found but within range", 2,
-			[]NamespacePrefixedData{{2, []byte("00_data")}, {2, []byte("00_data")}, {2, []byte("11_data")}, {2, []byte("11_data")}}, []byte("01"),
+			[]NamespacePrefixedData{*FromPrefixedData(2, []byte("00_data")), *FromPrefixedData(2, []byte("00_data")), *FromPrefixedData(2, []byte("11_data")), *FromPrefixedData(2, []byte("11_data"))}, []byte("01"),
 			2, 3, false},
 		// In the cases (nID < minNID) or (maxNID < nID) we do not generate any proof
 		// and the (minNS, maxNs, root) should be indication enough that nID is not in that range.
 		{"4 leafs, not found and nID < minNID", 2,
-			[]NamespacePrefixedData{{2, []byte("01_data")}, {2, []byte("01_data")}, {2, []byte("01_data")}, {2, []byte("11_data")}}, []byte("00"),
+			[]NamespacePrefixedData{*FromPrefixedData(2, []byte("01_data")), *FromPrefixedData(2, []byte("01_data")), *FromPrefixedData(2, []byte("01_data")), *FromPrefixedData(2, []byte("11_data"))}, []byte("00"),
 			0, 0, false},
 		{"4 leafs, not found and nID > maxNID ", 2,
-			[]NamespacePrefixedData{{2, []byte("00_data")}, {2, []byte("00_data")}, {2, []byte("01_data")}, {2, []byte("01_data")}}, []byte("11"),
+			[]NamespacePrefixedData{*FromPrefixedData(2, []byte("00_data")), *FromPrefixedData(2, []byte("00_data")), *FromPrefixedData(2, []byte("01_data")), *FromPrefixedData(2, []byte("01_data"))}, []byte("11"),
 			0, 0, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			n := New(tt.nidLen, crypto.SHA256)
+			n := New(defaulthasher.New(tt.nidLen, crypto.SHA256))
 			for _, d := range tt.pushData {
 				err := n.Push(d)
 				if err != nil {

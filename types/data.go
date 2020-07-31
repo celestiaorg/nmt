@@ -1,16 +1,4 @@
-package nmt
-
-import "bytes"
-
-type NamespaceID []byte
-
-func (nid NamespaceID) Less(other NamespaceID) bool {
-	return bytes.Compare(nid, other) < 0
-}
-
-func (nid NamespaceID) Equal(other NamespaceID) bool {
-	return bytes.Equal(nid, other)
-}
+package types
 
 type NamespacePrefixedData struct {
 	namespaceLen int
@@ -31,6 +19,13 @@ func (n NamespacePrefixedData) Bytes() []byte {
 
 func (n NamespacePrefixedData) NamespaceSize() int {
 	return n.namespaceLen
+}
+
+func FromPrefixedData(namespaceLen int, prefixedData []byte) *NamespacePrefixedData {
+	return &NamespacePrefixedData{
+		namespaceLen: namespaceLen,
+		prefixedData: prefixedData,
+	}
 }
 
 func FromNamespaceAndData(namespace []byte, data []byte) *NamespacePrefixedData {
