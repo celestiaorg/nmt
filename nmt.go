@@ -69,13 +69,13 @@ func (n NamespacedMerkleTree) Prove(index int) (
 //
 //In case the underlying tree contains leafs with the given namespace
 // their start and end index will be returned together with a range proof and
-// the found leafs. In that case the returned leafHashes will be nil.
+// the found leaves. In that case the returned leafHashes will be nil.
 //
 // If the tree does not have any entries with the given Namespace ID,
 // but the namespace is within the range of the tree's min and max namespace,
 // this will be proven by returning the (namespaced or rather flagged)
-// hashes of the leafs that would be in that range if they existed. In that
-// case the returned leafs will be nil.
+// hashes of the leaves that would be in that range if they existed. In that
+// case the returned leaves will be nil.
 //
 // In the case (nID < minNID) or (maxNID < nID) we do not
 // generate any proof and we return an empty range (0,0) to
