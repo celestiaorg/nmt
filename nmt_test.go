@@ -117,7 +117,7 @@ func TestNamespacedMerkleTreeRoot(t *testing.T) {
 	}
 }
 
-func TestNamespacedMerkleTree_ProveNamespace_Ranges(t *testing.T) {
+func TestNamespacedMerkleTree_ProveNamespace_Ranges_And_Verify(t *testing.T) {
 	tests := []struct {
 		name           string
 		nidLen         uint8
@@ -128,37 +128,48 @@ func TestNamespacedMerkleTree_ProveNamespace_Ranges(t *testing.T) {
 		wantFound      bool
 	}{
 		{"found", 1,
-			[]namespace.PrefixedData{*namespace.NewPrefixedData(1, []byte("0_data"))}, []byte("0"),
-			0, 1, true},
+			[]namespace.PrefixedData{*namespace.NewPrefixedData(1, []byte("0_data"))},
+			[]byte("0"),
+			0, 1,
+			true},
 		{"not found", 1,
-			[]namespace.PrefixedData{*namespace.NewPrefixedData(1, []byte("0_data"))}, []byte("1"),
-			0, 0, false},
+			[]namespace.PrefixedData{*namespace.NewPrefixedData(1, []byte("0_data"))},
+			[]byte("1"),
+			0, 0,
+			false},
 		{"two leafs and found", 1,
 			[]namespace.PrefixedData{*namespace.NewPrefixedData(1, []byte("0_data")), *namespace.NewPrefixedData(1, []byte("1_data"))}, []byte("1"),
-			1, 2, true},
+			1, 2,
+			true},
 		{"two leafs and found", 1,
 			[]namespace.PrefixedData{*namespace.NewPrefixedData(1, []byte("0_data")), *namespace.NewPrefixedData(1, []byte("0_data"))}, []byte("1"),
 			0, 0, false},
 		{"three leafs and found", 1,
 			[]namespace.PrefixedData{*namespace.NewPrefixedData(1, []byte("0_data")), *namespace.NewPrefixedData(1, []byte("0_data")), *namespace.NewPrefixedData(1, []byte("1_data"))}, []byte("1"),
-			2, 3, true},
+			2, 3,
+			true},
 		{"three leafs and not found but with range", 2,
 			[]namespace.PrefixedData{*namespace.NewPrefixedData(2, []byte("00_data")), *namespace.NewPrefixedData(2, []byte("00_data")), *namespace.NewPrefixedData(2, []byte("11_data"))}, []byte("01"),
-			2, 3, false},
+			2, 3,
+			false},
 		{"three leafs and not found but within range", 2,
 			[]namespace.PrefixedData{*namespace.NewPrefixedData(2, []byte("00_data")), *namespace.NewPrefixedData(2, []byte("00_data")), *namespace.NewPrefixedData(2, []byte("11_data"))}, []byte("01"),
-			2, 3, false},
+			2, 3,
+			false},
 		{"4 leafs and not found but within range", 2,
 			[]namespace.PrefixedData{*namespace.NewPrefixedData(2, []byte("00_data")), *namespace.NewPrefixedData(2, []byte("00_data")), *namespace.NewPrefixedData(2, []byte("11_data")), *namespace.NewPrefixedData(2, []byte("11_data"))}, []byte("01"),
-			2, 3, false},
+			2, 3,
+			false},
 		// In the cases (nID < minNID) or (maxNID < nID) we do not generate any proof
 		// and the (minNS, maxNs, root) should be indication enough that nID is not in that range.
 		{"4 leafs, not found and nID < minNID", 2,
 			[]namespace.PrefixedData{*namespace.NewPrefixedData(2, []byte("01_data")), *namespace.NewPrefixedData(2, []byte("01_data")), *namespace.NewPrefixedData(2, []byte("01_data")), *namespace.NewPrefixedData(2, []byte("11_data"))}, []byte("00"),
-			0, 0, false},
+			0, 0,
+			false},
 		{"4 leafs, not found and nID > maxNID ", 2,
 			[]namespace.PrefixedData{*namespace.NewPrefixedData(2, []byte("00_data")), *namespace.NewPrefixedData(2, []byte("00_data")), *namespace.NewPrefixedData(2, []byte("01_data")), *namespace.NewPrefixedData(2, []byte("01_data"))}, []byte("11"),
-			0, 0, false},
+			0, 0,
+			false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -182,6 +193,15 @@ func TestNamespacedMerkleTree_ProveNamespace_Ranges(t *testing.T) {
 			gotFound := gotProof.IsNonEmptyRange() && len(gotProof.LeafHashes()) == 0
 			if gotFound != tt.wantFound {
 				t.Errorf("ProveNamespace() gotFound = %v, wantFound = %v ", gotFound, tt.wantFound)
+			}
+			// Verification
+
+			gotChecksOut, gotErr := gotProof.VerifyNamespace(tt.proveNID, n.Root(), n.Get(tt.proveNID))
+			if gotErr != nil {
+				t.Errorf("Proof.VerifyNamespace() unexpected error: %v", gotErr)
+			}
+			if !gotChecksOut {
+				t.Errorf("Proof.VerifyNamespace() gotChecksOut: %v, want: true", gotChecksOut)
 			}
 		})
 	}

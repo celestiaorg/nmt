@@ -100,9 +100,6 @@ func (proof Proof) VerifyNamespace(nID namespace.ID, root namespace.IntervalDige
 	if len(data) == 0 && proof.start == proof.end && len(proof.nodes) == 0 {
 		return true, nil
 	}
-	if proof.IsNonEmptyRange() && len(data) != proof.End()-proof.start {
-		return false, errors.New("no data provided for non-empty range proof")
-	}
 	var lh merkletree.LeafHasher
 	nIDLen := nID.Size()
 	if proof.IsOfAbsence() {
