@@ -173,7 +173,8 @@ func TestNamespacedMerkleTree_ProveNamespace_Ranges_And_Verify(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			n := nmt.New(defaulthasher.New(tt.nidLen, crypto.SHA256))
+			defaultHasher := defaulthasher.New(tt.nidLen, crypto.SHA256)
+			n := nmt.New(defaultHasher)
 			for _, d := range tt.pushData {
 				err := n.Push(d)
 				if err != nil {
@@ -196,7 +197,7 @@ func TestNamespacedMerkleTree_ProveNamespace_Ranges_And_Verify(t *testing.T) {
 			}
 			// Verification
 
-			gotChecksOut, gotErr := gotProof.VerifyNamespace(tt.proveNID, n.Get(tt.proveNID), n.Root())
+			gotChecksOut, gotErr := gotProof.VerifyNamespace(defaultHasher, tt.proveNID, n.Get(tt.proveNID), n.Root())
 			if gotErr != nil {
 				t.Errorf("Proof.VerifyNamespace() unexpected error: %v", gotErr)
 			}

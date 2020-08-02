@@ -2,15 +2,17 @@ package nmt
 
 import (
 	"bytes"
-	"crypto"
 	"errors"
 	"math"
 	"math/bits"
 
 	"github.com/liamsi/merkletree"
 
-	"github.com/lazyledger/nmt/defaulthasher"
 	"github.com/lazyledger/nmt/namespace"
+)
+
+var (
+	ErrConflictingNamespaceIDs = errors.New("conflicting namespace IDs in data")
 )
 
 // Proof represents proof of a namespace.ID in an NMT.
@@ -89,7 +91,7 @@ func NewAbsenceProof(proofStart, proofEnd int, proofNodes [][]byte, leafHashes [
 }
 
 // VerifyNamespace verifies TODO
-func (proof Proof) VerifyNamespace(nID namespace.ID, data []namespace.PrefixedData, root namespace.IntervalDigest) (bool, error) {
+func (proof Proof) VerifyNamespace(nth Hasher, nID namespace.ID, data []namespace.PrefixedData, root namespace.IntervalDigest) (bool, error) {
 	// TODO add more sanity checks
 
 	// empty range, proof and empty data: always checks out
@@ -101,22 +103,22 @@ func (proof Proof) VerifyNamespace(nID namespace.ID, data []namespace.PrefixedDa
 	if proof.IsOfAbsence() {
 		gotLeafHashes = proof.leafHashes
 	} else {
-		// TODO make this configurable like for the tree:
-		hashLeafFunc := defaulthasher.New(nIDLen, crypto.SHA256).HashLeaf
+		// collect leaf hashes from provided data and
+		// do some sanity checks:
+		hashLeafFunc := nth.HashLeaf
 		for _, gotLeaf := range data {
 			if gotLeaf.NamespaceSize() != nIDLen {
-				// TODO wrap error:
 				return false, ErrMismatchedNamespaceSize
 			}
 			if !gotLeaf.NamespaceID().Equal(nID) {
-				return false, errors.New("conflicting namespace IDs in data")
+				return false, ErrConflictingNamespaceIDs
 			}
 			gotLeafHashes = append(gotLeafHashes, hashLeafFunc(gotLeaf.Bytes()))
 		}
 	}
 
 	// manually build a tree using the proof hashes
-	tree := merkletree.NewFromTreehasher(defaulthasher.New(nIDLen, crypto.SHA256))
+	tree := merkletree.NewFromTreehasher(nth)
 	var leafIndex uint64
 	leftSubtrees := make([][]byte, 0, len(proof.nodes))
 	consumeUntil := func(end uint64) error {
