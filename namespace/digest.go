@@ -43,3 +43,7 @@ func (d IntervalDigest) Hash() []byte {
 func (d IntervalDigest) Bytes() []byte {
 	return append(append(d.min, d.max...), d.digest...)
 }
+
+func (d IntervalDigest) String() string {
+	return string(append(append(d.min, d.max...), d.digest...))
+}

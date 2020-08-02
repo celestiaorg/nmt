@@ -19,3 +19,6 @@ func (nid ID) LessOrEqual(other ID) bool {
 func (nid ID) Size() uint8 {
 	return uint8(len(nid))
 }
+func (nid ID) String() string {
+	return string(nid)
+}

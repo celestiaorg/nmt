@@ -196,7 +196,7 @@ func TestNamespacedMerkleTree_ProveNamespace_Ranges_And_Verify(t *testing.T) {
 			}
 			// Verification
 
-			gotChecksOut, gotErr := gotProof.VerifyNamespace(tt.proveNID, n.Root(), n.Get(tt.proveNID))
+			gotChecksOut, gotErr := gotProof.VerifyNamespace(tt.proveNID, n.Get(tt.proveNID), n.Root())
 			if gotErr != nil {
 				t.Errorf("Proof.VerifyNamespace() unexpected error: %v", gotErr)
 			}

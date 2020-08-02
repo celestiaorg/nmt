@@ -89,23 +89,18 @@ func NewProofOfAbsence(proofStart, proofEnd int, proofNodes [][]byte, leafHashes
 }
 
 // VerifyNamespace verifies TODO
-func (proof Proof) VerifyNamespace(nID namespace.ID, root namespace.IntervalDigest, data []namespace.PrefixedData) (bool, error) {
+func (proof Proof) VerifyNamespace(nID namespace.ID, data []namespace.PrefixedData, root namespace.IntervalDigest) (bool, error) {
 	// TODO add more sanity checks
-	// Empty list is always included but we want to prove the whole namespace
-	//if len(data) == 0 {
-	//	return true, nil
-	//}
 
-	// empty range, proof and empty data:
+	// empty range, proof and empty data: always checks out
 	if len(data) == 0 && proof.start == proof.end && len(proof.nodes) == 0 {
 		return true, nil
 	}
-	var lh merkletree.LeafHasher
+	gotLeafHashes := make([][]byte, 0, len(data))
 	nIDLen := nID.Size()
 	if proof.IsOfAbsence() {
-		lh = merkletree.NewCachedLeafHasher(proof.leafHashes)
+		gotLeafHashes = proof.leafHashes
 	} else {
-		gotLeafHashes := make([][]byte, 0, len(data))
 		// TODO make this configurable like for the tree:
 		hashLeafFunc := defaulthasher.New(nIDLen, crypto.SHA256).HashLeaf
 		for _, gotLeaf := range data {
@@ -118,7 +113,6 @@ func (proof Proof) VerifyNamespace(nID namespace.ID, root namespace.IntervalDige
 			}
 			gotLeafHashes = append(gotLeafHashes, hashLeafFunc(gotLeaf.Bytes()))
 		}
-		lh = merkletree.NewCachedLeafHasher(gotLeafHashes)
 	}
 
 	// manually build a tree using the proof hashes
@@ -147,18 +141,14 @@ func (proof Proof) VerifyNamespace(nID namespace.ID, root namespace.IntervalDige
 	}
 	// add leaf hashes within the proof range
 	for i := proof.Start(); i < proof.End(); i++ {
-		// TODO we actually don't need a merkletree.LeafHasher ...
-		leafHash, err := lh.NextLeafHash()
-		if err != nil {
-			return false, err
-		}
+		leafHash := gotLeafHashes[0]
+		gotLeafHashes = gotLeafHashes[1:]
 		if err := tree.PushSubTree(0, leafHash); err != nil {
-			panic(err)
+			return false, err // TODO wrap error
 		}
 	}
 	leafIndex += uint64(proof.End() - proof.Start())
 
-	// TODO: Completeness
 	rightSubtrees := proof.nodes
 	for _, subtree := range leftSubtrees {
 		leftSubTreeMax := namespace.IntervalDigestFromBytes(nIDLen, subtree).Max()
