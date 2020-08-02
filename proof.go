@@ -75,16 +75,16 @@ func NewEmptyRangeProof() Proof {
 	return Proof{0, 0, nil, nil}
 }
 
-// NewProofOfInclusion constructs a proof that proves that a namespace.ID
+// NewInclusionProof constructs a proof that proves that a namespace.ID
 // is included in an NMT.
-func NewProofOfInclusion(proofStart, proofEnd int, proofNodes [][]byte) Proof {
+func NewInclusionProof(proofStart, proofEnd int, proofNodes [][]byte) Proof {
 	return Proof{proofStart, proofEnd, proofNodes, nil}
 }
 
-// NewProofOfAbsence constructs a proof that proves that a namespace.ID
+// NewAbsenceProof constructs a proof that proves that a namespace.ID
 // falls within the range of an NMT but no leaf with that namespace.ID is
 // included.
-func NewProofOfAbsence(proofStart, proofEnd int, proofNodes [][]byte, leafHashes [][]byte) Proof {
+func NewAbsenceProof(proofStart, proofEnd int, proofNodes [][]byte, leafHashes [][]byte) Proof {
 	return Proof{proofStart, proofEnd, proofNodes, leafHashes}
 }
 
@@ -149,6 +149,7 @@ func (proof Proof) VerifyNamespace(nID namespace.ID, data []namespace.PrefixedDa
 	}
 	leafIndex += uint64(proof.End() - proof.Start())
 
+	// Prove completeness:
 	rightSubtrees := proof.nodes
 	for _, subtree := range leftSubtrees {
 		leftSubTreeMax := namespace.IntervalDigestFromBytes(nIDLen, subtree).Max()

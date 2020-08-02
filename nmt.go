@@ -58,7 +58,7 @@ func (n NamespacedMerkleTree) Prove(index int) (Proof, error) {
 		return NewEmptyRangeProof(), nil
 	}
 
-	return NewProofOfInclusion(index, index+1, proof), nil
+	return NewInclusionProof(index, index+1, proof), nil
 }
 
 // ProveNamespace returns a range proof for the given NamespaceID.
@@ -108,9 +108,9 @@ func (n NamespacedMerkleTree) ProveNamespace(nID namespace.ID) (Proof, error) {
 	}
 
 	if found {
-		return NewProofOfInclusion(proofStart, proofEnd, proof), nil
+		return NewInclusionProof(proofStart, proofEnd, proof), nil
 	}
-	return NewProofOfAbsence(proofStart, proofEnd, proof, n.leafHashes[proofStart:proofEnd]), nil
+	return NewAbsenceProof(proofStart, proofEnd, proof, n.leafHashes[proofStart:proofEnd]), nil
 }
 
 // Get returns leaves for the given namespace.ID.
