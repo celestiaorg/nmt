@@ -50,24 +50,20 @@ func New(treeHasher Hasher) *NamespacedMerkleTree {
 // Prove leaf at index.
 // Note this is not really NMT specific but the tree supports inclusions proofs
 // like any vanilla Merkle tree.
-func (n NamespacedMerkleTree) Prove(index int) (
-	proof [][]byte,
-	proofIdx int,
-	totalNumLeafs int,
-	err error, // TODO: we can probably get rid of the error here too
-) {
+func (n NamespacedMerkleTree) Prove(index int) (Proof, error) {
 	subTreeHasher := internal.NewCachedSubtreeHasher(n.leafHashes, n.treeHasher)
-	proofIdx = index
-	totalNumLeafs = len(n.leafs)
 	// TODO: store nodes and re-use the hashes instead recomputing parts of the tree here
-	proof, err = merkletree.BuildRangeProof(index, index+1, subTreeHasher)
+	proof, err := merkletree.BuildRangeProof(index, index+1, subTreeHasher)
+	if err != nil {
+		return NewEmptyRangeProof(), nil
+	}
 
-	return
+	return NewProofOfInclusion(index, index+1, proof), nil
 }
 
 // ProveNamespace returns a range proof for the given NamespaceID.
 //
-//In case the underlying tree contains leafs with the given namespace
+// In case the underlying tree contains leafs with the given namespace
 // their start and end index will be returned together with a range proof and
 // the found leaves. In that case the returned leafHashes will be nil.
 //
@@ -80,17 +76,11 @@ func (n NamespacedMerkleTree) Prove(index int) (
 // In the case (nID < minNID) or (maxNID < nID) we do not
 // generate any proof and we return an empty range (0,0) to
 // indicate that this namespace is not contained in the tree.
-func (n NamespacedMerkleTree) ProveNamespace(nID namespace.ID) (
-	proofStart int,
-	proofEnd int,
-	proof [][]byte,
-	foundLeafs []namespace.PrefixedData,
-	leafHashes [][]byte, // XXX: introduce a type/type alias, e.g FlaggedHas
-) {
+func (n NamespacedMerkleTree) ProveNamespace(nID namespace.ID) (Proof, error) {
 	// In the cases (nID < minNID) or (maxNID < nID),
 	// return empty range and no proof:
 	if nID.Less(n.minNID) || n.maxNID.Less(nID) {
-		return 0, 0, nil, nil, nil
+		return NewEmptyRangeProof(), nil
 	}
 
 	found, proofStart, proofEnd := n.foundInRange(nID)
@@ -104,26 +94,23 @@ func (n NamespacedMerkleTree) ProveNamespace(nID namespace.ID) (
 	// the corresponding leaf hashes).
 	subTreeHasher := internal.NewCachedSubtreeHasher(n.leafHashes, n.treeHasher)
 	var err error
-	proof, err = merkletree.BuildRangeProof(proofStart, proofEnd, subTreeHasher)
+	proof, err := merkletree.BuildRangeProof(proofStart, proofEnd, subTreeHasher)
 	if err != nil {
 		// This should never happen.
 		// TODO would be good to back this by more tests and fuzzing.
-		panic(fmt.Sprintf(
-			"unexpected err: %v on nID: %v, range: [%v, %v)",
+		return Proof{}, fmt.Errorf(
+			"unexpected err: %w on nID: %v, range: [%v, %v)",
 			err,
 			nID,
 			proofStart,
 			proofEnd,
-		))
+		)
 	}
 
-	proofMessages := n.leafs[proofStart:proofEnd]
 	if found {
-		// Return (inclusion) range proof:
-		return proofStart, proofEnd, proof, proofMessages, nil
+		return NewProofOfInclusion(proofStart, proofEnd, proof), nil
 	}
-	// Return proof of absence (returning the leaf hashes:
-	return proofStart, proofEnd, proof, nil, n.leafHashes[proofStart:proofEnd]
+	return NewProofOfAbsence(proofStart, proofEnd, proof, n.leafHashes[proofStart:proofEnd]), nil
 }
 
 func (n NamespacedMerkleTree) calculateAbsenceRange(nID namespace.ID) (int, int) {

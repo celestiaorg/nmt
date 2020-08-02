@@ -168,14 +168,17 @@ func TestNamespacedMerkleTree_ProveNamespace_Ranges(t *testing.T) {
 					t.Fatalf("invalid test case: %v", tt.name)
 				}
 			}
-			gotProofStart, gotProofEnd, _, gotFoundLeafs, gotLeafHashes := n.ProveNamespace(tt.proveNID)
-			if gotProofStart != tt.wantProofStart {
-				t.Errorf("ProveNamespace() gotProofStart = %v, want %v", gotProofStart, tt.wantProofStart)
+			gotProof, err := n.ProveNamespace(tt.proveNID)
+			if err != nil {
+				t.Fatalf("ProveNamespace() unexpected error: %v", err)
 			}
-			if gotProofEnd != tt.wantProofEnd {
-				t.Errorf("ProveNamespace() gotProofEnd = %v, want %v", gotProofEnd, tt.wantProofEnd)
+			if gotProof.Start() != tt.wantProofStart {
+				t.Errorf("ProveNamespace() gotProofStart = %v, want %v", gotProof.Start(), tt.wantProofStart)
 			}
-			gotFound := gotFoundLeafs != nil && gotLeafHashes == nil
+			if gotProof.End() != tt.wantProofEnd {
+				t.Errorf("ProveNamespace() gotProofEnd = %v, want %v", gotProof.End(), tt.wantProofEnd)
+			}
+			gotFound := gotProof.IsNonEmptyRange() && len(gotProof.LeafHashes()) == 0
 			if gotFound != tt.wantFound {
 				t.Errorf("ProveNamespace() gotFound = %v, wantFound = %v ", gotFound, tt.wantFound)
 			}
