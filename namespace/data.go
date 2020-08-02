@@ -1,7 +1,7 @@
 package namespace
 
 type PrefixedData struct {
-	namespaceLen int
+	namespaceLen uint8
 	prefixedData []byte
 }
 
@@ -17,20 +17,20 @@ func (n PrefixedData) Bytes() []byte {
 	return n.prefixedData
 }
 
-func (n PrefixedData) NamespaceSize() int {
+func (n PrefixedData) NamespaceSize() uint8 {
 	return n.namespaceLen
 }
 
-func NewPrefixedData(namespaceLen int, prefixedData []byte) *PrefixedData {
+func NewPrefixedData(namespaceLen uint8, prefixedData []byte) *PrefixedData {
 	return &PrefixedData{
 		namespaceLen: namespaceLen,
 		prefixedData: prefixedData,
 	}
 }
 
-func PrefixedDataFrom(namespace []byte, data []byte) *PrefixedData {
+func PrefixedDataFrom(nID ID, data []byte) *PrefixedData {
 	return &PrefixedData{
-		namespaceLen: len(namespace),
-		prefixedData: append(namespace, data...),
+		namespaceLen: nID.Size(),
+		prefixedData: append(nID, data...),
 	}
 }

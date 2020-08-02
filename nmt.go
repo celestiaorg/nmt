@@ -34,16 +34,16 @@ func New(treeHasher Hasher) *NamespacedMerkleTree {
 	return &NamespacedMerkleTree{
 		treeHasher: treeHasher,
 		tree:       merkletree.NewFromTreehasher(treeHasher),
-		// XXX: 100 seems like a good capacity for the leafs slice
+		// XXX: 100 seems like a good capacity for the leaves slice
 		// but maybe this should also be a constructor param: for cases the caller
-		// knows exactly how many leafs will be pushed this will save allocations
+		// knows exactly how many leaves will be pushed this will save allocations
 		// In fact, in that case the caller could pass in the whole data at once
 		// and we could even use the passed in slice without allocating space for a copy.
 		leafs:           make([]namespace.PrefixedData, 0, 100),
 		leafHashes:      make([][]byte, 0, 100),
 		namespaceRanges: make(map[string]merkletree.LeafRange),
-		minNID:          bytes.Repeat([]byte{0xFF}, treeHasher.NamespaceSize()),
-		maxNID:          bytes.Repeat([]byte{0x00}, treeHasher.NamespaceSize()),
+		minNID:          bytes.Repeat([]byte{0xFF}, int(treeHasher.NamespaceSize())),
+		maxNID:          bytes.Repeat([]byte{0x00}, int(treeHasher.NamespaceSize())),
 	}
 }
 
@@ -63,7 +63,7 @@ func (n NamespacedMerkleTree) Prove(index int) (Proof, error) {
 
 // ProveNamespace returns a range proof for the given NamespaceID.
 //
-// In case the underlying tree contains leafs with the given namespace
+// In case the underlying tree contains leaves with the given namespace
 // their start and end index will be returned together with a range proof and
 // the found leaves. In that case the returned leafHashes will be nil.
 //
@@ -113,6 +113,21 @@ func (n NamespacedMerkleTree) ProveNamespace(nID namespace.ID) (Proof, error) {
 	return NewProofOfAbsence(proofStart, proofEnd, proof, n.leafHashes[proofStart:proofEnd]), nil
 }
 
+// Get returns leaves for the given namespace.ID.
+func (n NamespacedMerkleTree) Get(nID namespace.ID) []namespace.PrefixedData {
+	_, start, end := n.foundInRange(nID)
+	return n.leafs[start:end]
+}
+
+// Get is a convenience method returns leaves for the given namespace.ID
+// together with the proof for that namespace. It returns the same result
+// as calling the combination of Get(nid) and ProveNamespace(nid).
+func (n NamespacedMerkleTree) GetWithProof(nID namespace.ID) ([]namespace.PrefixedData, Proof, error) {
+	data := n.Get(nID)
+	proof, err := n.ProveNamespace(nID)
+	return data, proof, err
+}
+
 func (n NamespacedMerkleTree) calculateAbsenceRange(nID namespace.ID) (int, int) {
 	foundRangeStart := false
 	proofStart, proofEnd := 0, 0
@@ -154,7 +169,7 @@ func (n *NamespacedMerkleTree) foundInRange(nID namespace.ID) (bool, int, int) {
 
 // NamespaceSize returns the underlying namespace size. Note that
 // all namespaced data is expected to have the same namespace size.
-func (n NamespacedMerkleTree) NamespaceSize() int {
+func (n NamespacedMerkleTree) NamespaceSize() uint8 {
 	return n.treeHasher.NamespaceSize()
 }
 
@@ -190,20 +205,11 @@ func (n *NamespacedMerkleTree) Push(data namespace.PrefixedData) error {
 
 // Return the namespaced Merkle Tree's root together with the
 // min. and max. namespace ID.
-func (n *NamespacedMerkleTree) Root() (
-	minNs namespace.ID,
-	maxNs namespace.ID,
-	root []byte,
-) {
+func (n *NamespacedMerkleTree) Root() namespace.IntervalDigest {
 	if len(n.leafs) == 0 {
 		return n.treeHasher.EmptyRoot()
 	}
-	tRoot := n.tree.Root()
-	namespaceLen := n.NamespaceSize()
-	minNs = tRoot[:namespaceLen]
-	maxNs = tRoot[namespaceLen : namespaceLen*2]
-	root = tRoot[namespaceLen*2:]
-	return
+	return namespace.IntervalDigestFromBytes(n.NamespaceSize(), n.tree.Root())
 }
 
 func (n *NamespacedMerkleTree) updateNamespaceRanges() {

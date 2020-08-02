@@ -8,7 +8,7 @@ import (
 type Hasher interface {
 	// EmptyRoot returns the namespaced root for a no-leafs Namespaced Merkle
 	// tree.
-	EmptyRoot() (minNs, maxNs namespace.ID, root []byte)
+	EmptyRoot() namespace.IntervalDigest
 
 	// HashLeaf defines how a leaf is hashed.
 	HashLeaf(leaf []byte) []byte
@@ -19,5 +19,5 @@ type Hasher interface {
 	// Size returns the size of the underlying hasher.
 	Size() int
 	// Return the size of the namespace
-	NamespaceSize() int
+	NamespaceSize() uint8
 }

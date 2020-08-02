@@ -56,7 +56,7 @@ func TestNamespacedMerkleTree_Push(t *testing.T) {
 		// note this tests for another kind of error: ErrMismatchedNamespaceSize
 		{"push with wrong namespace size: Err", *namespace.PrefixedDataFrom([]byte{1, 1, 0, 0}, []byte("dummy data")), true},
 	}
-	n := nmt.New(defaulthasher.New(3, crypto.SHA256))
+	n := nmt.New(defaulthasher.New(uint8(3), crypto.SHA256))
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if err := n.Push(tt.data); (err != nil) != tt.wantErr {
@@ -81,7 +81,7 @@ func TestNamespacedMerkleTreeRoot(t *testing.T) {
 
 	tests := []struct {
 		name       string
-		nidLen     int
+		nidLen     uint8
 		pushedData []namespace.PrefixedData
 		wantMinNs  namespace.ID
 		wantMaxNs  namespace.ID
@@ -102,7 +102,8 @@ func TestNamespacedMerkleTreeRoot(t *testing.T) {
 					t.Errorf("Push() error = %v, expected no error", err)
 				}
 			}
-			gotMinNs, gotMaxNs, gotRoot := n.Root()
+			root := n.Root()
+			gotMinNs, gotMaxNs, gotRoot := root.Min(), root.Max(), root.Hash()
 			if !reflect.DeepEqual(gotMinNs, tt.wantMinNs) {
 				t.Errorf("Root() gotMinNs = %v, want %v", gotMinNs, tt.wantMinNs)
 			}
@@ -119,7 +120,7 @@ func TestNamespacedMerkleTreeRoot(t *testing.T) {
 func TestNamespacedMerkleTree_ProveNamespace_Ranges(t *testing.T) {
 	tests := []struct {
 		name           string
-		nidLen         int
+		nidLen         uint8
 		pushData       []namespace.PrefixedData
 		proveNID       namespace.ID
 		wantProofStart int

@@ -1,5 +1,18 @@
 package nmt
 
+import (
+	"bytes"
+	"crypto"
+	"errors"
+	"math"
+	"math/bits"
+
+	"github.com/liamsi/merkletree"
+
+	"github.com/lazyledger/nmt/defaulthasher"
+	"github.com/lazyledger/nmt/namespace"
+)
+
 // Proof represents proof of a namespace.ID in an NMT.
 // In case this proof proves the absence of a namespace.ID
 // in a tree it also contains the leaf hashes of the range
@@ -73,4 +86,111 @@ func NewProofOfInclusion(proofStart, proofEnd int, proofNodes [][]byte) Proof {
 // included.
 func NewProofOfAbsence(proofStart, proofEnd int, proofNodes [][]byte, leafHashes [][]byte) Proof {
 	return Proof{proofStart, proofEnd, proofNodes, leafHashes}
+}
+
+// VerifyNamespace verifies TODO
+func (proof Proof) VerifyNamespace(nID namespace.ID, root namespace.IntervalDigest, data []namespace.PrefixedData) (bool, error) {
+	// TODO add more sanity checks
+	// Empty list is always included but we want to prove the whole namespace
+	//if len(data) == 0 {
+	//	return true, nil
+	//}
+
+	// empty range, proof and empty data:
+	if len(data) == 0 && proof.start == proof.end && len(proof.nodes) == 0 {
+		return true, nil
+	}
+	if proof.IsNonEmptyRange() && len(data) != proof.End()-proof.start {
+		return false, errors.New("no data provided for non-empty range proof")
+	}
+	var lh merkletree.LeafHasher
+	nIDLen := nID.Size()
+	if proof.IsOfAbsence() {
+		lh = merkletree.NewCachedLeafHasher(proof.leafHashes)
+	} else {
+		gotLeafHashes := make([][]byte, 0, len(data))
+		// TODO make this configurable like for the tree:
+		hashLeafFunc := defaulthasher.New(nIDLen, crypto.SHA256).HashLeaf
+		for _, gotLeaf := range data {
+			if gotLeaf.NamespaceSize() != nIDLen {
+				// TODO wrap error:
+				return false, ErrMismatchedNamespaceSize
+			}
+			if !gotLeaf.NamespaceID().Equal(nID) {
+				return false, errors.New("conflicting namespace IDs in data")
+			}
+			gotLeafHashes = append(gotLeafHashes, hashLeafFunc(gotLeaf.Bytes()))
+		}
+		lh = merkletree.NewCachedLeafHasher(gotLeafHashes)
+	}
+
+	// manually build a tree using the proof hashes
+	tree := merkletree.NewFromTreehasher(defaulthasher.New(nIDLen, crypto.SHA256))
+	var leafIndex uint64
+	leftSubtrees := make([][]byte, 0, len(proof.nodes))
+	consumeUntil := func(end uint64) error {
+		for leafIndex != end && len(proof.nodes) > 0 {
+			subtreeSize := nextSubtreeSize(leafIndex, end)
+			i := bits.TrailingZeros64(uint64(subtreeSize)) // log2
+			if err := tree.PushSubTree(i, proof.nodes[0]); err != nil {
+				// This *probably* should never happen, but just to guard
+				// against adversarial inputs, return an error instead of
+				// panicking.
+				return err
+			}
+			leftSubtrees = append(leftSubtrees, proof.nodes[0])
+			proof.nodes = proof.nodes[1:]
+			leafIndex += uint64(subtreeSize)
+		}
+		return nil
+	}
+	// add proof hashes from leaves [leafIndex, r.Start)
+	if err := consumeUntil(uint64(proof.Start())); err != nil {
+		return false, err
+	}
+	// add leaf hashes within the proof range
+	for i := proof.Start(); i < proof.End(); i++ {
+		// TODO we actually don't need a merkletree.LeafHasher ...
+		leafHash, err := lh.NextLeafHash()
+		if err != nil {
+			return false, err
+		}
+		if err := tree.PushSubTree(0, leafHash); err != nil {
+			panic(err)
+		}
+	}
+	leafIndex += uint64(proof.End() - proof.Start())
+
+	// TODO: Completeness
+	rightSubtrees := proof.nodes
+	for _, subtree := range leftSubtrees {
+		leftSubTreeMax := namespace.IntervalDigestFromBytes(nIDLen, subtree).Max()
+		if nID.LessOrEqual(leftSubTreeMax) {
+			return false, nil
+		}
+	}
+	for _, subtree := range rightSubtrees {
+		rightSubTreeMin := namespace.IntervalDigestFromBytes(nIDLen, subtree).Min()
+		if rightSubTreeMin.LessOrEqual(nID) {
+			return false, nil
+		}
+	}
+
+	// add remaining proof hashes after the last range ends
+	if err := consumeUntil(math.MaxUint64); err != nil {
+		return false, err
+	}
+
+	return bytes.Equal(tree.Root(), root.Bytes()), nil
+}
+
+// nextSubtreeSize returns the size of the subtree adjacent to start that does
+// not overlap end.
+func nextSubtreeSize(start, end uint64) int {
+	ideal := bits.TrailingZeros64(start)
+	max := bits.Len64(end-start) - 1
+	if ideal > max {
+		return 1 << uint(max)
+	}
+	return 1 << uint(ideal)
 }

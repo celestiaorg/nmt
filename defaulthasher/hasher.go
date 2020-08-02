@@ -14,24 +14,25 @@ const (
 
 type DefaultHasher struct {
 	crypto.Hash
-	NamespaceLen int
+	NamespaceLen uint8
 }
 
-func (n *DefaultHasher) NamespaceSize() int {
+func (n *DefaultHasher) NamespaceSize() uint8 {
 	return n.NamespaceLen
 }
 
-func New(nidLen int, baseHasher crypto.Hash) *DefaultHasher {
+func New(nidLen uint8, baseHasher crypto.Hash) *DefaultHasher {
 	return &DefaultHasher{
 		Hash:         baseHasher,
 		NamespaceLen: nidLen,
 	}
 }
 
-func (n *DefaultHasher) EmptyRoot() (minNs, maxNs namespace.ID, root []byte) {
-	emptyNs := bytes.Repeat([]byte{0}, n.NamespaceLen)
+func (n *DefaultHasher) EmptyRoot() namespace.IntervalDigest {
+	emptyNs := bytes.Repeat([]byte{0}, int(n.NamespaceLen))
 	placeHolderHash := bytes.Repeat([]byte{0}, n.Size())
-	return emptyNs, emptyNs, placeHolderHash
+
+	return namespace.NewIntervalDigest(emptyNs, emptyNs, placeHolderHash)
 }
 
 // HashLeaf hashes leafs to:
@@ -52,7 +53,8 @@ func (n *DefaultHasher) HashLeaf(leaf []byte) []byte {
 
 // HashNode hashes inner nodes to:
 // minNID || maxNID || hash(NodePrefix || left || right), where left and right are the full
-// left and right child node bytes (including their respective min and max namespace IDs).
+// left and right child node bytes, including their respective min and max namespace IDs:
+// left = left.Min() || left.Max() || l.Hash().
 func (n *DefaultHasher) HashNode(l, r []byte) []byte {
 	h := n.New()
 	// the actual hash result of the children got extended (or flagged) by their

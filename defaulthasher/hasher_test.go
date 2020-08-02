@@ -23,7 +23,7 @@ func Test_namespacedTreeHasher_HashLeaf(t *testing.T) {
 
 	tests := []struct {
 		name  string
-		nsLen int
+		nsLen uint8
 		leaf  []byte
 		want  []byte
 	}{
@@ -52,7 +52,7 @@ func Test_namespacedTreeHasher_HashNode(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		nidLen   int
+		nidLen   uint8
 		children children
 		want     []byte
 	}{
