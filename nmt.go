@@ -129,8 +129,6 @@ func (n NamespacedMerkleTree) GetWithProof(nID namespace.ID) ([]namespace.Prefix
 }
 
 func (n NamespacedMerkleTree) calculateAbsenceIndex(nID namespace.ID) int {
-	foundRangeStart := false
-
 	var prevLeaf namespace.PrefixedData
 	for index, curLeaf := range n.leaves {
 		if index == 0 {
@@ -147,10 +145,7 @@ func (n NamespacedMerkleTree) calculateAbsenceIndex(nID namespace.ID) int {
 		// because if we either side was equal, we would have found the
 		// namespace before.
 		if prevNs.Less(nID) && nID.Less(currentNs) {
-			if !foundRangeStart {
-				foundRangeStart = true
-				return index
-			}
+			return index
 		}
 		prevLeaf = curLeaf
 	}
