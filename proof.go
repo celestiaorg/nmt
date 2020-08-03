@@ -118,6 +118,11 @@ func (proof Proof) VerifyNamespace(nth Hasher, nID namespace.ID, data []namespac
 			gotLeafHashes = append(gotLeafHashes, hashLeafFunc(gotLeaf.Bytes()))
 		}
 	}
+	// with verifyCompleteness set to true:
+	return proof.verifyLeafHashes(nth, true, nID, gotLeafHashes, root)
+}
+
+func (proof Proof) verifyLeafHashes(nth Hasher, verifyCompleteness bool, nID namespace.ID, gotLeafHashes [][]byte, root namespace.IntervalDigest) (bool, error) {
 	// The code below is almost identical to NebulousLabs'
 	// merkletree.VerifyMultiRangeProof.
 	//
@@ -163,18 +168,20 @@ func (proof Proof) VerifyNamespace(nth Hasher, nID namespace.ID, data []namespac
 	}
 	leafIndex += uint64(proof.End() - proof.Start())
 
-	// Prove completeness:
-	rightSubtrees := proof.nodes
-	for _, subtree := range leftSubtrees {
-		leftSubTreeMax := namespace.IntervalDigestFromBytes(nIDLen, subtree).Max()
-		if nID.LessOrEqual(leftSubTreeMax) {
-			return false, nil
+	// Verify completeness:
+	if verifyCompleteness { // in case of single leaf proves this should be false
+		rightSubtrees := proof.nodes
+		for _, subtree := range leftSubtrees {
+			leftSubTreeMax := namespace.IntervalDigestFromBytes(nth.NamespaceSize(), subtree).Max()
+			if nID.LessOrEqual(leftSubTreeMax) {
+				return false, nil
+			}
 		}
-	}
-	for _, subtree := range rightSubtrees {
-		rightSubTreeMin := namespace.IntervalDigestFromBytes(nIDLen, subtree).Min()
-		if rightSubTreeMin.LessOrEqual(nID) {
-			return false, nil
+		for _, subtree := range rightSubtrees {
+			rightSubTreeMin := namespace.IntervalDigestFromBytes(nth.NamespaceSize(), subtree).Min()
+			if rightSubTreeMin.LessOrEqual(nID) {
+				return false, nil
+			}
 		}
 	}
 
@@ -184,6 +191,10 @@ func (proof Proof) VerifyNamespace(nth Hasher, nID namespace.ID, data []namespac
 	}
 
 	return bytes.Equal(tree.Root(), root.Bytes()), nil
+}
+
+func (proof Proof) VerifyInclusion(nth Hasher, data namespace.PrefixedData, root namespace.IntervalDigest) (bool, error) {
+	return proof.verifyLeafHashes(nth, false, data.NamespaceID(), [][]byte{nth.HashLeaf(data.Bytes())}, root)
 }
 
 // nextSubtreeSize returns the size of the subtree adjacent to start that does

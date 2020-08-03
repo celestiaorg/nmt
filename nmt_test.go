@@ -202,7 +202,7 @@ func TestNamespacedMerkleTree_ProveNamespace_Ranges_And_Verify(t *testing.T) {
 			}
 			gotFound := gotProof.IsNonEmptyRange() && len(gotProof.LeafHash()) == 0
 			if gotFound != tt.wantFound {
-				t.Errorf("ProveNamespace() gotFound = %v, wantFound = %v ", gotFound, tt.wantFound)
+				t.Errorf("Proof.ProveNamespace() gotFound = %v, wantFound = %v ", gotFound, tt.wantFound)
 			}
 			if gotFound && len(tt.pushData) > 1 && len(gotProof.Nodes()) == 0 {
 				t.Errorf("Proof.Nodes() returned empty array, want: len(gotProof.Nodes()) > 0, gotProof: %v", gotProof)
@@ -215,6 +215,22 @@ func TestNamespacedMerkleTree_ProveNamespace_Ranges_And_Verify(t *testing.T) {
 			}
 			if !gotChecksOut {
 				t.Errorf("Proof.VerifyNamespace() gotChecksOut: %v, want: true", gotChecksOut)
+			}
+
+			if !gotProof.IsOfAbsence() && tt.wantFound {
+				for idx, data := range tt.pushData {
+					gotSingleProof, err := n.Prove(idx)
+					if err != nil {
+						t.Fatalf("unexpected error on Prove(): %v", err)
+					}
+					gotChecksOut, gotErr := gotSingleProof.VerifyInclusion(defaultHasher, data, n.Root())
+					if gotErr != nil {
+						t.Errorf("Proof.VerifyInclusion() unexpected error: %v", gotErr)
+					}
+					if !gotChecksOut {
+						t.Errorf("Proof.VerifyInclusion() gotChecksOut: %v, want: true", gotChecksOut)
+					}
+				}
 			}
 		})
 	}
