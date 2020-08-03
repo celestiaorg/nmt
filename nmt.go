@@ -55,7 +55,7 @@ func (n NamespacedMerkleTree) Prove(index int) (Proof, error) {
 	// TODO: store nodes and re-use the hashes instead recomputing parts of the tree here
 	proof, err := merkletree.BuildRangeProof(index, index+1, subTreeHasher)
 	if err != nil {
-		return NewEmptyRangeProof(), nil
+		return NewEmptyRangeProof(), err
 	}
 
 	return NewInclusionProof(index, index+1, proof), nil
