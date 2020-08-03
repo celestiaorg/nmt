@@ -164,7 +164,7 @@ func TestNamespacedMerkleTree_ProveNamespace_Ranges_And_Verify(t *testing.T) {
 			[]byte{0, 1},
 			2, 3,
 			false},
-		{"4 leaves and not found but within range (00, 01, 02, 03, <1,0>, 11)", 2,
+		{"5 leaves and not found but within range (00, 01, 02, 03, <1,0>, 11)", 2,
 			append(generateLeafData(2, 0, 4, []byte("_data")), makeLeafData([]byte{1, 1}, []byte("_data"))),
 			[]byte{1, 0},
 			4, 5,
@@ -227,9 +227,9 @@ func makeLeafData(ns []byte, data []byte) namespace.PrefixedData {
 	return *namespace.NewPrefixedData(uint8(len(ns)), append(ns, data...))
 }
 
-// generates leaf data starting from namespace
-// from zero+start till zero+end,
-// where zero := 0*nsLen
+// generates a consecutive range of leaf data
+// starting from namespace zero+start till zero+end,
+// where zero := 0*nsLen interpreted Uvarint
 func generateLeafData(nsLen uint8, nsStartIdx, nsEndIdx int, data []byte) []namespace.PrefixedData {
 	if nsEndIdx >= math.MaxUint8*int(nsLen) {
 		panic(fmt.Sprintf("invalid nsEndIdx: %v, has to be < %v", nsEndIdx, 2<<(nsLen-1)))
