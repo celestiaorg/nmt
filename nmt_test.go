@@ -299,6 +299,7 @@ func TestNamespacedMerkleTree_ProveErrors(t *testing.T) {
 }
 
 func shouldPanic(t *testing.T, f func()) {
+	//nolint:errcheck
 	defer func() { recover() }()
 	f()
 	t.Errorf("should have panicked")
