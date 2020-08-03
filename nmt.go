@@ -85,7 +85,8 @@ func (n NamespacedMerkleTree) ProveNamespace(nID namespace.ID) (Proof, error) {
 	found, proofStart, proofEnd := n.foundInRange(nID)
 	if !found {
 		// To generate a proof for an absence we calculate the
-		// (one element) range the namespace would be in:
+		// position of the leaf that is in the place of where
+		// the namespace would be in:
 		proofStart = n.calculateAbsenceIndex(nID)
 		proofEnd = proofStart + 1
 	}

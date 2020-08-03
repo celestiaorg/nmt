@@ -209,7 +209,8 @@ func TestNamespacedMerkleTree_ProveNamespace_Ranges_And_Verify(t *testing.T) {
 			}
 
 			// Verification round-trip should always pass:
-			gotChecksOut, gotErr := gotProof.VerifyNamespace(defaultHasher, tt.proveNID, n.Get(tt.proveNID), n.Root())
+			gotGetLeaves := n.Get(tt.proveNID)
+			gotChecksOut, gotErr := gotProof.VerifyNamespace(defaultHasher, tt.proveNID, gotGetLeaves, n.Root())
 			if gotErr != nil {
 				t.Errorf("Proof.VerifyNamespace() unexpected error: %v", gotErr)
 			}
@@ -217,6 +218,7 @@ func TestNamespacedMerkleTree_ProveNamespace_Ranges_And_Verify(t *testing.T) {
 				t.Errorf("Proof.VerifyNamespace() gotChecksOut: %v, want: true", gotChecksOut)
 			}
 
+			// VerifyInclusion for each pushed leaf should always pass:
 			if !gotProof.IsOfAbsence() && tt.wantFound {
 				for idx, data := range tt.pushData {
 					gotSingleProof, err := n.Prove(idx)
@@ -231,6 +233,19 @@ func TestNamespacedMerkleTree_ProveNamespace_Ranges_And_Verify(t *testing.T) {
 						t.Errorf("Proof.VerifyInclusion() gotChecksOut: %v, want: true", gotChecksOut)
 					}
 				}
+			}
+
+			// GetWithProof equiv. to Get and ProveNamespace
+			gotGetWithProoftLeaves, gotGetProof, err := n.GetWithProof(tt.proveNID)
+			if err != nil {
+				t.Fatalf("GetWithProof() unexpected error: %v", err)
+			}
+			if !reflect.DeepEqual(gotGetProof, gotProof) {
+				t.Fatalf("GetWithProof() got Proof %v, want: %v", gotGetProof, gotProof)
+			}
+
+			if !reflect.DeepEqual(gotGetWithProoftLeaves, gotGetLeaves) {
+				t.Fatalf("GetWithProof() got data: %v, want: %v", gotGetLeaves, tt.pushData)
 			}
 		})
 	}
