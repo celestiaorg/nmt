@@ -34,7 +34,7 @@ jobs:
       - name: Test and Coverage
         run: |
           export PATH=$PATH:$(go env GOPATH)/bin
-          ./scripts/test_coverage.sh
+          go test -v -coverpkg=./... -covermode=atomic -coverprofile coverage.txt
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v1
