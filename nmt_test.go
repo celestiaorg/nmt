@@ -25,7 +25,7 @@ func TestFromNamespaceAndData(t *testing.T) {
 		name      string
 		namespace []byte
 		data      []byte
-		want      *namespace.PrefixedData
+		want      namespace.PrefixedData
 	}{
 		0: {"simple case", []byte("namespace1"), []byte("data1"), namespace.NewPrefixedData(10, append([]byte("namespace1"), []byte("data1")...))},
 		1: {"simpler case", []byte("1"), []byte("d"), namespace.NewPrefixedData(1, append([]byte("1"), []byte("d")...))},
@@ -45,19 +45,19 @@ func TestNamespacedMerkleTree_Push(t *testing.T) {
 		data    namespace.PrefixedData
 		wantErr bool
 	}{
-		{"1st push: always OK", *namespace.PrefixedDataFrom([]byte{0, 0, 0}, []byte("dummy data")), false},
-		{"push with same namespace: OK", *namespace.PrefixedDataFrom([]byte{0, 0, 0}, []byte("dummy data")), false},
-		{"push with greater namespace: OK", *namespace.PrefixedDataFrom([]byte{0, 0, 1}, []byte("dummy data")), false},
-		{"push with smaller namespace: Err", *namespace.PrefixedDataFrom([]byte{0, 0, 0}, []byte("dummy data")), true},
-		{"push with same namespace: Ok", *namespace.PrefixedDataFrom([]byte{0, 0, 1}, []byte("dummy data")), false},
-		{"push with greater namespace: Ok", *namespace.PrefixedDataFrom([]byte{1, 0, 0}, []byte("dummy data")), false},
-		{"push with smaller namespace: Err", *namespace.PrefixedDataFrom([]byte{0, 0, 1}, []byte("dummy data")), true},
-		{"push with smaller namespace: Err", *namespace.PrefixedDataFrom([]byte{0, 0, 0}, []byte("dummy data")), true},
-		{"push with smaller namespace: Err", *namespace.PrefixedDataFrom([]byte{0, 1, 0}, []byte("dummy data")), true},
-		{"push with same as last namespace: OK", *namespace.PrefixedDataFrom([]byte{1, 0, 0}, []byte("dummy data")), false},
-		{"push with greater as last namespace: OK", *namespace.PrefixedDataFrom([]byte{1, 1, 0}, []byte("dummy data")), false},
+		{"1st push: always OK", namespace.PrefixedDataFrom([]byte{0, 0, 0}, []byte("dummy data")), false},
+		{"push with same namespace: OK", namespace.PrefixedDataFrom([]byte{0, 0, 0}, []byte("dummy data")), false},
+		{"push with greater namespace: OK", namespace.PrefixedDataFrom([]byte{0, 0, 1}, []byte("dummy data")), false},
+		{"push with smaller namespace: Err", namespace.PrefixedDataFrom([]byte{0, 0, 0}, []byte("dummy data")), true},
+		{"push with same namespace: Ok", namespace.PrefixedDataFrom([]byte{0, 0, 1}, []byte("dummy data")), false},
+		{"push with greater namespace: Ok", namespace.PrefixedDataFrom([]byte{1, 0, 0}, []byte("dummy data")), false},
+		{"push with smaller namespace: Err", namespace.PrefixedDataFrom([]byte{0, 0, 1}, []byte("dummy data")), true},
+		{"push with smaller namespace: Err", namespace.PrefixedDataFrom([]byte{0, 0, 0}, []byte("dummy data")), true},
+		{"push with smaller namespace: Err", namespace.PrefixedDataFrom([]byte{0, 1, 0}, []byte("dummy data")), true},
+		{"push with same as last namespace: OK", namespace.PrefixedDataFrom([]byte{1, 0, 0}, []byte("dummy data")), false},
+		{"push with greater as last namespace: OK", namespace.PrefixedDataFrom([]byte{1, 1, 0}, []byte("dummy data")), false},
 		// note this tests for another kind of error: ErrMismatchedNamespaceSize
-		{"push with wrong namespace size: Err", *namespace.PrefixedDataFrom([]byte{1, 1, 0, 0}, []byte("dummy data")), true},
+		{"push with wrong namespace size: Err", namespace.PrefixedDataFrom([]byte{1, 1, 0, 0}, []byte("dummy data")), true},
 	}
 	n := nmt.New(defaulthasher.New(uint8(3), crypto.SHA256))
 	for _, tt := range tests {
@@ -93,9 +93,9 @@ func TestNamespacedMerkleTreeRoot(t *testing.T) {
 		// default empty root according to base case:
 		// https://github.com/lazyledger/lazyledger-specs/blob/master/specs/data_structures.md#namespace-merkle-tree
 		{"Empty", 3, nil, zeroNs, zeroNs, emptyRoot},
-		{"One leaf", 3, []namespace.PrefixedData{*namespace.PrefixedDataFrom(zeroNs, leaf)}, zeroNs, zeroNs, leafHash},
-		{"Two leaves", 3, []namespace.PrefixedData{*namespace.PrefixedDataFrom(zeroNs, leaf), *namespace.PrefixedDataFrom(zeroNs, leaf)}, zeroNs, zeroNs, twoZeroLeafsRoot},
-		{"Two leaves diff namespaces", 3, []namespace.PrefixedData{*namespace.PrefixedDataFrom(zeroNs, leaf), *namespace.PrefixedDataFrom(onesNS, leaf)}, zeroNs, onesNS, diffNSLeafsRoot},
+		{"One leaf", 3, []namespace.PrefixedData{namespace.PrefixedDataFrom(zeroNs, leaf)}, zeroNs, zeroNs, leafHash},
+		{"Two leaves", 3, []namespace.PrefixedData{namespace.PrefixedDataFrom(zeroNs, leaf), namespace.PrefixedDataFrom(zeroNs, leaf)}, zeroNs, zeroNs, twoZeroLeafsRoot},
+		{"Two leaves diff namespaces", 3, []namespace.PrefixedData{namespace.PrefixedDataFrom(zeroNs, leaf), namespace.PrefixedDataFrom(onesNS, leaf)}, zeroNs, onesNS, diffNSLeafsRoot},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -172,11 +172,11 @@ func TestNamespacedMerkleTree_ProveNamespace_Ranges_And_Verify(t *testing.T) {
 		// In the cases (nID < minNID) or (maxNID < nID) we do not generate any proof
 		// and the (minNS, maxNs, root) should be indication enough that nID is not in that range.
 		{"4 leaves, not found and nID < minNID", 2,
-			[]namespace.PrefixedData{*namespace.NewPrefixedData(2, []byte("01_data")), *namespace.NewPrefixedData(2, []byte("01_data")), *namespace.NewPrefixedData(2, []byte("01_data")), *namespace.NewPrefixedData(2, []byte("11_data"))}, []byte("00"),
+			[]namespace.PrefixedData{namespace.NewPrefixedData(2, []byte("01_data")), namespace.NewPrefixedData(2, []byte("01_data")), namespace.NewPrefixedData(2, []byte("01_data")), namespace.NewPrefixedData(2, []byte("11_data"))}, []byte("00"),
 			0, 0,
 			false},
 		{"4 leaves, not found and nID > maxNID ", 2,
-			[]namespace.PrefixedData{*namespace.NewPrefixedData(2, []byte("00_data")), *namespace.NewPrefixedData(2, []byte("00_data")), *namespace.NewPrefixedData(2, []byte("01_data")), *namespace.NewPrefixedData(2, []byte("01_data"))}, []byte("11"),
+			[]namespace.PrefixedData{namespace.NewPrefixedData(2, []byte("00_data")), namespace.NewPrefixedData(2, []byte("00_data")), namespace.NewPrefixedData(2, []byte("01_data")), namespace.NewPrefixedData(2, []byte("01_data"))}, []byte("11"),
 			0, 0,
 			false},
 	}
@@ -309,7 +309,7 @@ func makeLeafData(ns []byte, data []byte) namespace.PrefixedData {
 	if len(ns) > math.MaxUint8 {
 		panic("namespace too large")
 	}
-	return *namespace.NewPrefixedData(uint8(len(ns)), append(ns, data...))
+	return namespace.NewPrefixedData(uint8(len(ns)), append(ns, data...))
 }
 
 // generates a consecutive range of leaf data
@@ -332,7 +332,7 @@ func generateLeafData(nsLen uint8, nsStartIdx, nsEndIdx int, data []byte) []name
 		nsUnpadded := make([]byte, 10)
 		n := binary.PutUvarint(nsUnpadded, curNsUint)
 		copy(curNs[len(startNS)-n:], nsUnpadded[:n])
-		res = append(res, *namespace.NewPrefixedData(nsLen, append(curNs, data...)))
+		res = append(res, namespace.NewPrefixedData(nsLen, append(curNs, data...)))
 	}
 	return res
 }

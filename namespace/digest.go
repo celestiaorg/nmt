@@ -45,5 +45,10 @@ func (d IntervalDigest) Bytes() []byte {
 }
 
 func (d IntervalDigest) String() string {
-	return fmt.Sprintf("{min:%x, max:%x, digest:%x}", d.min, d.max, d.digest)
+	return fmt.Sprintf(
+		`{
+  min: %x
+  max: %x
+  digest: %x
+}`, d.min, d.max, d.digest)
 }

@@ -14,6 +14,7 @@ import (
 
 var (
 	ErrConflictingNamespaceIDs = errors.New("conflicting namespace IDs in data")
+	ErrMissingData             = errors.New("not enough leaf data provided")
 )
 
 // Proof represents proof of a namespace.ID in an NMT.
@@ -117,6 +118,9 @@ func (proof Proof) VerifyNamespace(nth Hasher, nID namespace.ID, data []namespac
 			}
 			gotLeafHashes = append(gotLeafHashes, hashLeafFunc(gotLeaf.Bytes()))
 		}
+	}
+	if !proof.IsOfAbsence() && len(gotLeafHashes) != (proof.End()-proof.Start()) {
+		return false, ErrMissingData
 	}
 	// with verifyCompleteness set to true:
 	return proof.verifyLeafHashes(nth, true, nID, gotLeafHashes, root)
