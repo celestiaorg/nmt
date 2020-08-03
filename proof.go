@@ -28,11 +28,11 @@ type Proof struct {
 	// Nodes that together with the corresponding leaf values
 	// can be used to recompute the root and verify this proof.
 	nodes [][]byte
-	// leafHashes are nil if the namespace is present in the NMT.
+	// leafHash are nil if the namespace is present in the NMT.
 	// In case the namespace to be proved is in the min/max range of
-	// the tree but absent, this will contain the leaf hashes
+	// the tree but absent, this will contain the leaf hash
 	// necessary to verify the proof of absence.
-	leafHashes [][]byte
+	leafHash []byte
 }
 
 // Start index of this proof.
@@ -55,15 +55,15 @@ func (proof Proof) Nodes() [][]byte {
 // IsOfAbsence returns true if this proof proves the absence
 // of leaves of a namespace in the tree.
 func (proof Proof) IsOfAbsence() bool {
-	return len(proof.leafHashes) > 0
+	return len(proof.leafHash) > 0
 }
 
-// LeafHashes returns nil if the namespace has leaves in the NMT.
+// LeafHash returns nil if the namespace has leaves in the NMT.
 // In case the namespace.ID to be proved is in the min/max range of
-// the tree but absent, this will contain the leaf hashes
+// the tree but absent, this will contain the leaf hash
 // necessary to verify the proof of absence.
-func (proof Proof) LeafHashes() [][]byte {
-	return proof.leafHashes
+func (proof Proof) LeafHash() []byte {
+	return proof.leafHash
 }
 
 // IsNonEmptyRange returns if this proof contains a valid,
@@ -87,8 +87,8 @@ func NewInclusionProof(proofStart, proofEnd int, proofNodes [][]byte) Proof {
 // NewAbsenceProof constructs a proof that proves that a namespace.ID
 // falls within the range of an NMT but no leaf with that namespace.ID is
 // included.
-func NewAbsenceProof(proofStart, proofEnd int, proofNodes [][]byte, leafHashes [][]byte) Proof {
-	return Proof{proofStart, proofEnd, proofNodes, leafHashes}
+func NewAbsenceProof(proofStart, proofEnd int, proofNodes [][]byte, leafHash []byte) Proof {
+	return Proof{proofStart, proofEnd, proofNodes, leafHash}
 }
 
 // VerifyNamespace verifies TODO
@@ -103,7 +103,7 @@ func (proof Proof) VerifyNamespace(nth Hasher, nID namespace.ID, data []namespac
 	gotLeafHashes := make([][]byte, 0, len(data))
 	nIDLen := nID.Size()
 	if proof.IsOfAbsence() {
-		gotLeafHashes = proof.leafHashes
+		gotLeafHashes = append(gotLeafHashes, proof.leafHash)
 	} else {
 		// collect leaf hashes from provided data and
 		// do some sanity checks:

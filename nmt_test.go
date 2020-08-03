@@ -200,7 +200,7 @@ func TestNamespacedMerkleTree_ProveNamespace_Ranges_And_Verify(t *testing.T) {
 			if gotProof.End() != tt.wantProofEnd {
 				t.Errorf("ProveNamespace() gotProofEnd = %v, want %v", gotProof.End(), tt.wantProofEnd)
 			}
-			gotFound := gotProof.IsNonEmptyRange() && len(gotProof.LeafHashes()) == 0
+			gotFound := gotProof.IsNonEmptyRange() && len(gotProof.LeafHash()) == 0
 			if gotFound != tt.wantFound {
 				t.Errorf("ProveNamespace() gotFound = %v, wantFound = %v ", gotFound, tt.wantFound)
 			}

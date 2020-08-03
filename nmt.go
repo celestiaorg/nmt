@@ -65,13 +65,12 @@ func (n NamespacedMerkleTree) Prove(index int) (Proof, error) {
 //
 // In case the underlying tree contains leaves with the given namespace
 // their start and end index will be returned together with a range proof and
-// the found leaves. In that case the returned leafHashes will be nil.
+// the found leaves. In that case the returned leafHash will be nil.
 //
 // If the tree does not have any entries with the given Namespace ID,
 // but the namespace is within the range of the tree's min and max namespace,
 // this will be proven by returning the (namespaced or rather flagged)
-// hashes of the leaves that would be in that range if they existed. In that
-// case the returned leaves will be nil.
+// hash of the leaf that is in the range instead of the namespace.
 //
 // In the case (nID < minNID) or (maxNID < nID) we do not
 // generate any proof and we return an empty range (0,0) to
@@ -86,8 +85,9 @@ func (n NamespacedMerkleTree) ProveNamespace(nID namespace.ID) (Proof, error) {
 	found, proofStart, proofEnd := n.foundInRange(nID)
 	if !found {
 		// To generate a proof for an absence we calculate the
-		// range the namespace would be in:
-		proofStart, proofEnd = n.calculateAbsenceRange(nID)
+		// (one element) range the namespace would be in:
+		proofStart = n.calculateAbsenceIndex(nID)
+		proofEnd = proofStart + 1
 	}
 	// At this point we either found the namespace in the tree or calculated
 	// the range it would be in (to generate a proof of absence and to return
@@ -110,7 +110,7 @@ func (n NamespacedMerkleTree) ProveNamespace(nID namespace.ID) (Proof, error) {
 	if found {
 		return NewInclusionProof(proofStart, proofEnd, proof), nil
 	}
-	return NewAbsenceProof(proofStart, proofEnd, proof, n.leafHashes[proofStart:proofEnd]), nil
+	return NewAbsenceProof(proofStart, proofEnd, proof, n.leafHashes[proofStart]), nil
 }
 
 // Get returns leaves for the given namespace.ID.
@@ -128,9 +128,9 @@ func (n NamespacedMerkleTree) GetWithProof(nID namespace.ID) ([]namespace.Prefix
 	return data, proof, err
 }
 
-func (n NamespacedMerkleTree) calculateAbsenceRange(nID namespace.ID) (int, int) {
+func (n NamespacedMerkleTree) calculateAbsenceIndex(nID namespace.ID) int {
 	foundRangeStart := false
-	proofStart, proofEnd := 0, 0
+
 	var prevLeaf namespace.PrefixedData
 	for index, curLeaf := range n.leaves {
 		if index == 0 {
@@ -149,13 +149,12 @@ func (n NamespacedMerkleTree) calculateAbsenceRange(nID namespace.ID) (int, int)
 		if prevNs.Less(nID) && nID.Less(currentNs) {
 			if !foundRangeStart {
 				foundRangeStart = true
-				proofStart = index
+				return index
 			}
-			proofEnd = index + 1
 		}
 		prevLeaf = curLeaf
 	}
-	return proofStart, proofEnd
+	return 0
 }
 
 func (n *NamespacedMerkleTree) foundInRange(nID namespace.ID) (bool, int, int) {
