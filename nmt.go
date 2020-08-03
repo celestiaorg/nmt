@@ -187,7 +187,7 @@ func (n *NamespacedMerkleTree) Push(data namespace.PrefixedData) error {
 	if curSize > 0 {
 		if data.NamespaceID().Less(n.leaves[curSize-1].NamespaceID()) {
 			return fmt.Errorf(
-				"%w: last namespace: %v, pushed: %v",
+				"%w: last namespace: %x, pushed: %x",
 				ErrInvalidPushOrder,
 				n.leaves[curSize-1].NamespaceID(),
 				data.NamespaceID(),

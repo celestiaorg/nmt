@@ -187,7 +187,7 @@ func TestNamespacedMerkleTree_ProveNamespace_Ranges_And_Verify(t *testing.T) {
 			for _, d := range tt.pushData {
 				err := n.Push(d)
 				if err != nil {
-					t.Fatalf("invalid test case: %v", tt.name)
+					t.Fatalf("invalid test case: %v, error on Push(): %v", tt.name, err)
 				}
 			}
 			gotProof, err := n.ProveNamespace(tt.proveNID)
