@@ -91,8 +91,8 @@ func TestNamespacedMerkleTreeRoot(t *testing.T) {
 		// https://github.com/lazyledger/lazyledger-specs/blob/master/specs/data_structures.md#namespace-merkle-tree
 		{"Empty", 3, nil, zeroNs, zeroNs, emptyRoot},
 		{"One leaf", 3, []namespace.PrefixedData{*namespace.PrefixedDataFrom(zeroNs, leaf)}, zeroNs, zeroNs, leafHash},
-		{"Two leafs", 3, []namespace.PrefixedData{*namespace.PrefixedDataFrom(zeroNs, leaf), *namespace.PrefixedDataFrom(zeroNs, leaf)}, zeroNs, zeroNs, twoZeroLeafsRoot},
-		{"Two leafs diff namespaces", 3, []namespace.PrefixedData{*namespace.PrefixedDataFrom(zeroNs, leaf), *namespace.PrefixedDataFrom(onesNS, leaf)}, zeroNs, onesNS, diffNSLeafsRoot},
+		{"Two leaves", 3, []namespace.PrefixedData{*namespace.PrefixedDataFrom(zeroNs, leaf), *namespace.PrefixedDataFrom(zeroNs, leaf)}, zeroNs, zeroNs, twoZeroLeafsRoot},
+		{"Two leaves diff namespaces", 3, []namespace.PrefixedData{*namespace.PrefixedDataFrom(zeroNs, leaf), *namespace.PrefixedDataFrom(onesNS, leaf)}, zeroNs, onesNS, diffNSLeafsRoot},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -195,8 +195,11 @@ func TestNamespacedMerkleTree_ProveNamespace_Ranges_And_Verify(t *testing.T) {
 			if gotFound != tt.wantFound {
 				t.Errorf("ProveNamespace() gotFound = %v, wantFound = %v ", gotFound, tt.wantFound)
 			}
-			// Verification
+			if gotFound && len(tt.pushData) > 1 && len(gotProof.Nodes()) == 0 {
+				t.Errorf("Proof.Nodes() returned empty array, want: len(gotProof.Nodes()) > 0, gotProof: %v", gotProof)
+			}
 
+			// Verification round-trip should always pass:
 			gotChecksOut, gotErr := gotProof.VerifyNamespace(defaultHasher, tt.proveNID, n.Get(tt.proveNID), n.Root())
 			if gotErr != nil {
 				t.Errorf("Proof.VerifyNamespace() unexpected error: %v", gotErr)
