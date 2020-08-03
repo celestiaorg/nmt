@@ -4,6 +4,9 @@ import (
 	"bytes"
 	"crypto"
 	_ "crypto/sha256"
+	"encoding/binary"
+	"fmt"
+	"math"
 	"reflect"
 	"testing"
 
@@ -128,37 +131,43 @@ func TestNamespacedMerkleTree_ProveNamespace_Ranges_And_Verify(t *testing.T) {
 		wantFound      bool
 	}{
 		{"found", 1,
-			[]namespace.PrefixedData{*namespace.NewPrefixedData(1, []byte("0_data"))},
-			[]byte("0"),
+			generateLeafData(1, 0, 1, []byte("_data")),
+			[]byte{0},
 			0, 1,
 			true},
 		{"not found", 1,
-			[]namespace.PrefixedData{*namespace.NewPrefixedData(1, []byte("0_data"))},
-			[]byte("1"),
+			generateLeafData(1, 0, 1, []byte("_data")),
+			[]byte{1},
 			0, 0,
 			false},
 		{"two leaves and found", 1,
-			[]namespace.PrefixedData{*namespace.NewPrefixedData(1, []byte("0_data")), *namespace.NewPrefixedData(1, []byte("1_data"))}, []byte("1"),
+			append(generateLeafData(1, 0, 1, []byte("_data")), generateLeafData(1, 1, 2, []byte("_data"))...),
+			[]byte{1},
 			1, 2,
 			true},
-		{"two leaves and found", 1,
-			[]namespace.PrefixedData{*namespace.NewPrefixedData(1, []byte("0_data")), *namespace.NewPrefixedData(1, []byte("0_data"))}, []byte("1"),
+		{"two leaves and found2", 1,
+			repeat(generateLeafData(1, 0, 1, []byte("_data")), 2),
+			[]byte{1},
 			0, 0, false},
 		{"three leaves and found", 1,
-			[]namespace.PrefixedData{*namespace.NewPrefixedData(1, []byte("0_data")), *namespace.NewPrefixedData(1, []byte("0_data")), *namespace.NewPrefixedData(1, []byte("1_data"))}, []byte("1"),
+			append(repeat(generateLeafData(1, 0, 1, []byte("_data")), 2), generateLeafData(1, 1, 2, []byte("_data"))...),
+			[]byte{1},
 			2, 3,
 			true},
 		{"three leaves and not found but with range", 2,
-			[]namespace.PrefixedData{*namespace.NewPrefixedData(2, []byte("00_data")), *namespace.NewPrefixedData(2, []byte("00_data")), *namespace.NewPrefixedData(2, []byte("11_data"))}, []byte("01"),
+			append(repeat(generateLeafData(2, 0, 1, []byte("_data")), 2), makeLeafData([]byte{1, 1}, []byte("_data"))),
+			[]byte{0, 1},
 			2, 3,
 			false},
 		{"three leaves and not found but within range", 2,
-			[]namespace.PrefixedData{*namespace.NewPrefixedData(2, []byte("00_data")), *namespace.NewPrefixedData(2, []byte("00_data")), *namespace.NewPrefixedData(2, []byte("11_data"))}, []byte("01"),
+			append(repeat(generateLeafData(2, 0, 1, []byte("_data")), 2), makeLeafData([]byte{1, 1}, []byte("_data"))),
+			[]byte{0, 1},
 			2, 3,
 			false},
-		{"4 leaves and not found but within range", 2,
-			[]namespace.PrefixedData{*namespace.NewPrefixedData(2, []byte("00_data")), *namespace.NewPrefixedData(2, []byte("00_data")), *namespace.NewPrefixedData(2, []byte("11_data")), *namespace.NewPrefixedData(2, []byte("11_data"))}, []byte("01"),
-			2, 3,
+		{"4 leaves and not found but within range (00, 01, 02, 03, <1,0>, 11)", 2,
+			append(generateLeafData(2, 0, 4, []byte("_data")), makeLeafData([]byte{1, 1}, []byte("_data"))),
+			[]byte{1, 0},
+			4, 5,
 			false},
 		// In the cases (nID < minNID) or (maxNID < nID) we do not generate any proof
 		// and the (minNS, maxNs, root) should be indication enough that nID is not in that range.
@@ -209,6 +218,52 @@ func TestNamespacedMerkleTree_ProveNamespace_Ranges_And_Verify(t *testing.T) {
 			}
 		})
 	}
+}
+
+func makeLeafData(ns []byte, data []byte) namespace.PrefixedData {
+	if len(ns) > math.MaxUint8 {
+		panic("namespace too large")
+	}
+	return *namespace.NewPrefixedData(uint8(len(ns)), append(ns, data...))
+}
+
+// generates leaf data starting from namespace
+// from zero+start till zero+end,
+// where zero := 0*nsLen
+func generateLeafData(nsLen uint8, nsStartIdx, nsEndIdx int, data []byte) []namespace.PrefixedData {
+	if nsEndIdx >= math.MaxUint8*int(nsLen) {
+		panic(fmt.Sprintf("invalid nsEndIdx: %v, has to be < %v", nsEndIdx, 2<<(nsLen-1)))
+	}
+
+	startNS := bytes.Repeat([]byte{0x0}, int(nsLen))
+	res := make([]namespace.PrefixedData, 0, nsEndIdx-nsStartIdx)
+	for i := nsStartIdx; i < nsEndIdx; i++ {
+		curNs := append([]byte(nil), startNS...)
+		curNsUint, err := binary.ReadUvarint(bytes.NewReader(startNS))
+		if err != nil {
+			panic(err)
+		}
+		curNsUint = curNsUint + uint64(i)
+		nsUnpadded := make([]byte, 10)
+		n := binary.PutUvarint(nsUnpadded, curNsUint)
+		copy(curNs[len(startNS)-n:], nsUnpadded[:n])
+		res = append(res, *namespace.NewPrefixedData(nsLen, append(curNs, data...)))
+	}
+	return res
+}
+
+// repeats the given namespace data num times
+func repeat(data []namespace.PrefixedData, num int) []namespace.PrefixedData {
+	res := make([]namespace.PrefixedData, 0, num*len(data))
+	for i := 0; i < num; i++ {
+		res = append(res, data...)
+	}
+	return res
+}
+
+func TestGenerate(t *testing.T) {
+	fmt.Println(generateLeafData(2, 0, 4, []byte("_data")))
+
 }
 
 func sum(hash crypto.Hash, data ...[]byte) []byte {
