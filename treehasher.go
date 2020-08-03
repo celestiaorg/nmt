@@ -6,7 +6,7 @@ import (
 
 // TODO: make all methods "namespaced" too (like EmptyRoot())
 type Hasher interface {
-	// EmptyRoot returns the namespaced root for a no-leafs Namespaced Merkle
+	// EmptyRoot returns the namespaced root for a no-leaves Namespaced Merkle
 	// tree.
 	EmptyRoot() namespace.IntervalDigest
 

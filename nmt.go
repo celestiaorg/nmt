@@ -21,10 +21,10 @@ type NamespacedMerkleTree struct {
 	tree       *merkletree.Tree
 
 	// just cache stuff until we pass in a store and keep all nodes in there
-	leafs      []namespace.PrefixedData
+	leaves     []namespace.PrefixedData
 	leafHashes [][]byte
 	// this can be used to efficiently lookup the range for an
-	// existing namespace without iterating through the leafs
+	// existing namespace without iterating through the leaves
 	namespaceRanges map[string]merkletree.LeafRange
 	minNID          namespace.ID
 	maxNID          namespace.ID
@@ -39,7 +39,7 @@ func New(treeHasher Hasher) *NamespacedMerkleTree {
 		// knows exactly how many leaves will be pushed this will save allocations
 		// In fact, in that case the caller could pass in the whole data at once
 		// and we could even use the passed in slice without allocating space for a copy.
-		leafs:           make([]namespace.PrefixedData, 0, 100),
+		leaves:          make([]namespace.PrefixedData, 0, 100),
 		leafHashes:      make([][]byte, 0, 100),
 		namespaceRanges: make(map[string]merkletree.LeafRange),
 		minNID:          bytes.Repeat([]byte{0xFF}, int(treeHasher.NamespaceSize())),
@@ -116,7 +116,7 @@ func (n NamespacedMerkleTree) ProveNamespace(nID namespace.ID) (Proof, error) {
 // Get returns leaves for the given namespace.ID.
 func (n NamespacedMerkleTree) Get(nID namespace.ID) []namespace.PrefixedData {
 	_, start, end := n.foundInRange(nID)
-	return n.leafs[start:end]
+	return n.leaves[start:end]
 }
 
 // Get is a convenience method returns leaves for the given namespace.ID
@@ -132,7 +132,7 @@ func (n NamespacedMerkleTree) calculateAbsenceRange(nID namespace.ID) (int, int)
 	foundRangeStart := false
 	proofStart, proofEnd := 0, 0
 	var prevLeaf namespace.PrefixedData
-	for index, curLeaf := range n.leafs {
+	for index, curLeaf := range n.leaves {
 		if index == 0 {
 			prevLeaf = curLeaf
 			continue
@@ -141,7 +141,7 @@ func (n NamespacedMerkleTree) calculateAbsenceRange(nID namespace.ID) (int, int)
 		currentNs := curLeaf.NamespaceID()
 		// Note that here we would also care for the case
 		// current < nId < prevNs
-		// but we only allow pushing leafs with ascending namespaces;
+		// but we only allow pushing leaves with ascending namespaces;
 		// i.e. prevNs <= currentNs is always true.
 		// Also we only check for strictly smaller: prev < nid < current
 		// because if we either side was equal, we would have found the
@@ -175,7 +175,7 @@ func (n NamespacedMerkleTree) NamespaceSize() uint8 {
 
 // Push adds data with the corresponding namespace ID to the tree.
 // Returns an error if the namespace ID size of the input
-// does not match the tree's NamespaceSize() or the leafs are not pushed in
+// does not match the tree's NamespaceSize() or the leaves are not pushed in
 // order (i.e. lexicographically sorted by namespace ID).
 func (n *NamespacedMerkleTree) Push(data namespace.PrefixedData) error {
 	got, want := data.NamespaceSize(), n.NamespaceSize()
@@ -183,20 +183,20 @@ func (n *NamespacedMerkleTree) Push(data namespace.PrefixedData) error {
 		return fmt.Errorf("%w: got: %v, want: %v", ErrMismatchedNamespaceSize, got, want)
 	}
 	// ensure pushed data doesn't have a smaller namespace than the previous one:
-	curSize := len(n.leafs)
+	curSize := len(n.leaves)
 	if curSize > 0 {
-		if data.NamespaceID().Less(n.leafs[curSize-1].NamespaceID()) {
+		if data.NamespaceID().Less(n.leaves[curSize-1].NamespaceID()) {
 			return fmt.Errorf(
 				"%w: last namespace: %v, pushed: %v",
 				ErrInvalidPushOrder,
-				n.leafs[curSize-1].NamespaceID(),
+				n.leaves[curSize-1].NamespaceID(),
 				data.NamespaceID(),
 			)
 		}
 	}
 	n.tree.Push(data.Bytes())
 	// update relevant "caches":
-	n.leafs = append(n.leafs, data)
+	n.leaves = append(n.leaves, data)
 	n.leafHashes = append(n.leafHashes, n.treeHasher.HashLeaf(data.Bytes()))
 	n.updateNamespaceRanges()
 	n.updateMinMaxID(data)
@@ -206,16 +206,16 @@ func (n *NamespacedMerkleTree) Push(data namespace.PrefixedData) error {
 // Return the namespaced Merkle Tree's root together with the
 // min. and max. namespace ID.
 func (n *NamespacedMerkleTree) Root() namespace.IntervalDigest {
-	if len(n.leafs) == 0 {
+	if len(n.leaves) == 0 {
 		return n.treeHasher.EmptyRoot()
 	}
 	return namespace.IntervalDigestFromBytes(n.NamespaceSize(), n.tree.Root())
 }
 
 func (n *NamespacedMerkleTree) updateNamespaceRanges() {
-	if len(n.leafs) > 0 {
-		lastIndex := len(n.leafs) - 1
-		lastPushed := n.leafs[lastIndex]
+	if len(n.leaves) > 0 {
+		lastIndex := len(n.leaves) - 1
+		lastPushed := n.leaves[lastIndex]
 		lastNsStr := string(lastPushed.NamespaceID())
 		lastRange, found := n.namespaceRanges[lastNsStr]
 		if !found {
