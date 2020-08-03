@@ -251,6 +251,59 @@ func TestNamespacedMerkleTree_ProveNamespace_Ranges_And_Verify(t *testing.T) {
 	}
 }
 
+func TestNamespacedMerkleTree_ProveErrors(t *testing.T) {
+	tests := []struct {
+		name      string
+		nidLen    uint8
+		index     int
+		pushData  []namespace.PrefixedData
+		wantErr   bool
+		wantPanic bool
+	}{
+		{"negative index", 1, -1, generateLeafData(1, 0, 10, []byte("_data")), false, true},
+		{"too large index", 1, 11, generateLeafData(1, 0, 10, []byte("_data")), true, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			defaultHasher := defaulthasher.New(tt.nidLen, crypto.SHA256)
+			n := nmt.New(defaultHasher)
+			for _, d := range tt.pushData {
+				err := n.Push(d)
+				if err != nil {
+					t.Fatalf("invalid test case: %v, error on Push(): %v", tt.name, err)
+				}
+			}
+			for i := range tt.pushData {
+				_, err := n.Prove(i)
+				if err != nil {
+					t.Fatalf("Prove() failed on valid index: %v, err: %v", i, err)
+				}
+			}
+			if tt.wantPanic {
+				shouldPanic(t, func() {
+					_, err := n.Prove(tt.index)
+					if (err != nil) != tt.wantErr {
+						t.Errorf("Prove() error = %v, wantErr %v", err, tt.wantErr)
+						return
+					}
+				})
+			} else {
+				_, err := n.Prove(tt.index)
+				if (err != nil) != tt.wantErr {
+					t.Errorf("Prove() error = %v, wantErr %v", err, tt.wantErr)
+					return
+				}
+			}
+		})
+	}
+}
+
+func shouldPanic(t *testing.T, f func()) {
+	defer func() { recover() }()
+	f()
+	t.Errorf("should have panicked")
+}
+
 func makeLeafData(ns []byte, data []byte) namespace.PrefixedData {
 	if len(ns) > math.MaxUint8 {
 		panic("namespace too large")
