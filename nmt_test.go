@@ -292,11 +292,6 @@ func repeat(data []namespace.PrefixedData, num int) []namespace.PrefixedData {
 	return res
 }
 
-func TestGenerate(t *testing.T) {
-	fmt.Println(generateLeafData(2, 0, 4, []byte("_data")))
-
-}
-
 func sum(hash crypto.Hash, data ...[]byte) []byte {
 	h := hash.New()
 	for _, d := range data {
