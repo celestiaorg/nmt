@@ -3,6 +3,7 @@ package nmt
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"math"
 	"math/bits"
 
@@ -52,7 +53,7 @@ func (proof Proof) Nodes() [][]byte {
 }
 
 // IsOfAbsence returns true if this proof proves the absence
-// of a namespace in the tree.
+// of leaves of a namespace in the tree.
 func (proof Proof) IsOfAbsence() bool {
 	return len(proof.leafHashes) > 0
 }
@@ -94,8 +95,9 @@ func NewAbsenceProof(proofStart, proofEnd int, proofNodes [][]byte, leafHashes [
 func (proof Proof) VerifyNamespace(nth Hasher, nID namespace.ID, data []namespace.PrefixedData, root namespace.IntervalDigest) (bool, error) {
 	// TODO add more sanity checks
 
-	// empty range, proof and empty data: always checks out
-	if len(data) == 0 && proof.start == proof.end && len(proof.nodes) == 0 {
+	isEmptyRange := proof.start == proof.end
+	// empty range, proof, and data: always checks out
+	if len(data) == 0 && isEmptyRange && len(proof.nodes) == 0 {
 		return true, nil
 	}
 	gotLeafHashes := make([][]byte, 0, len(data))
@@ -116,6 +118,15 @@ func (proof Proof) VerifyNamespace(nth Hasher, nID namespace.ID, data []namespac
 			gotLeafHashes = append(gotLeafHashes, hashLeafFunc(gotLeaf.Bytes()))
 		}
 	}
+	// The code below is almost identical to NebulousLabs'
+	// merkletree.VerifyMultiRangeProof.
+	//
+	// We copy and modify it here for two reasons:
+	// - we have the leaf hashes at hand and don't want to construct a merkletree.LeafHasher
+	// - we can now check completeness directly after iterating
+	//   the leaf hashes within the proof range without looping
+	//   through the sub-trees again
+	// orig: https://gitlab.com/NebulousLabs/merkletree/-/blob/master/range.go#L363-417
 
 	// manually build a tree using the proof hashes
 	tree := merkletree.NewFromTreehasher(nth)
@@ -129,7 +140,7 @@ func (proof Proof) VerifyNamespace(nth Hasher, nID namespace.ID, data []namespac
 				// This *probably* should never happen, but just to guard
 				// against adversarial inputs, return an error instead of
 				// panicking.
-				return err
+				return fmt.Errorf("unexpected error: %w, this should never happen", err)
 			}
 			leftSubtrees = append(leftSubtrees, proof.nodes[0])
 			proof.nodes = proof.nodes[1:]
@@ -146,7 +157,8 @@ func (proof Proof) VerifyNamespace(nth Hasher, nID namespace.ID, data []namespac
 		leafHash := gotLeafHashes[0]
 		gotLeafHashes = gotLeafHashes[1:]
 		if err := tree.PushSubTree(0, leafHash); err != nil {
-			return false, err // TODO wrap error
+			// Return an error instead of panicking although this should never happen:
+			return false, fmt.Errorf("unexpected error: %w, this should never happen", err)
 		}
 	}
 	leafIndex += uint64(proof.End() - proof.Start())
