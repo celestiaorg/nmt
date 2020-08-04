@@ -2,7 +2,6 @@ package nmt
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"math"
 	"math/bits"
@@ -10,11 +9,6 @@ import (
 	"github.com/liamsi/merkletree"
 
 	"github.com/lazyledger/nmt/namespace"
-)
-
-var (
-	ErrConflictingNamespaceIDs = errors.New("conflicting namespace IDs in data")
-	ErrMissingData             = errors.New("not enough leaf data provided")
 )
 
 // Proof represents proof of a namespace.ID in an NMT.
@@ -93,13 +87,13 @@ func NewAbsenceProof(proofStart, proofEnd int, proofNodes [][]byte, leafHash []b
 }
 
 // VerifyNamespace verifies TODO
-func (proof Proof) VerifyNamespace(nth Hasher, nID namespace.ID, data []namespace.PrefixedData, root namespace.IntervalDigest) (bool, error) {
+func (proof Proof) VerifyNamespace(nth Hasher, nID namespace.ID, data []namespace.PrefixedData, root namespace.IntervalDigest) bool {
 	// TODO add more sanity checks
 
 	isEmptyRange := proof.start == proof.end
 	// empty range, proof, and data: always checks out
 	if len(data) == 0 && isEmptyRange && len(proof.nodes) == 0 {
-		return true, nil
+		return true
 	}
 	gotLeafHashes := make([][]byte, 0, len(data))
 	nIDLen := nID.Size()
@@ -111,22 +105,24 @@ func (proof Proof) VerifyNamespace(nth Hasher, nID namespace.ID, data []namespac
 		hashLeafFunc := nth.HashLeaf
 		for _, gotLeaf := range data {
 			if gotLeaf.NamespaceSize() != nIDLen {
-				return false, ErrMismatchedNamespaceSize
+				// conflicting namespace sizes
+				return false
 			}
 			if !gotLeaf.NamespaceID().Equal(nID) {
-				return false, ErrConflictingNamespaceIDs
+				// conflicting namespace IDs in data
+				return false
 			}
 			gotLeafHashes = append(gotLeafHashes, hashLeafFunc(gotLeaf.Bytes()))
 		}
 	}
 	if !proof.IsOfAbsence() && len(gotLeafHashes) != (proof.End()-proof.Start()) {
-		return false, ErrMissingData
+		return false
 	}
 	// with verifyCompleteness set to true:
 	return proof.verifyLeafHashes(nth, true, nID, gotLeafHashes, root)
 }
 
-func (proof Proof) verifyLeafHashes(nth Hasher, verifyCompleteness bool, nID namespace.ID, gotLeafHashes [][]byte, root namespace.IntervalDigest) (bool, error) {
+func (proof Proof) verifyLeafHashes(nth Hasher, verifyCompleteness bool, nID namespace.ID, gotLeafHashes [][]byte, root namespace.IntervalDigest) bool {
 	// The code below is almost identical to NebulousLabs'
 	// merkletree.VerifyMultiRangeProof.
 	//
@@ -149,6 +145,7 @@ func (proof Proof) verifyLeafHashes(nth Hasher, verifyCompleteness bool, nID nam
 				// This *probably* should never happen, but just to guard
 				// against adversarial inputs, return an error instead of
 				// panicking.
+				// Here, we will not bubble up the error but simply return false.
 				return fmt.Errorf("unexpected error: %w, this should never happen", err)
 			}
 			leftSubtrees = append(leftSubtrees, proof.nodes[0])
@@ -159,15 +156,14 @@ func (proof Proof) verifyLeafHashes(nth Hasher, verifyCompleteness bool, nID nam
 	}
 	// add proof hashes from leaves [leafIndex, r.Start)
 	if err := consumeUntil(uint64(proof.Start())); err != nil {
-		return false, err
+		return false
 	}
 	// add leaf hashes within the proof range
 	for i := proof.Start(); i < proof.End(); i++ {
 		leafHash := gotLeafHashes[0]
 		gotLeafHashes = gotLeafHashes[1:]
 		if err := tree.PushSubTree(0, leafHash); err != nil {
-			// Return an error instead of panicking although this should never happen:
-			return false, fmt.Errorf("unexpected error: %w, this should never happen", err)
+			return false
 		}
 	}
 	leafIndex += uint64(proof.End() - proof.Start())
@@ -178,26 +174,26 @@ func (proof Proof) verifyLeafHashes(nth Hasher, verifyCompleteness bool, nID nam
 		for _, subtree := range leftSubtrees {
 			leftSubTreeMax := namespace.IntervalDigestFromBytes(nth.NamespaceSize(), subtree).Max()
 			if nID.LessOrEqual(leftSubTreeMax) {
-				return false, nil
+				return false
 			}
 		}
 		for _, subtree := range rightSubtrees {
 			rightSubTreeMin := namespace.IntervalDigestFromBytes(nth.NamespaceSize(), subtree).Min()
 			if rightSubTreeMin.LessOrEqual(nID) {
-				return false, nil
+				return false
 			}
 		}
 	}
 
 	// add remaining proof hashes after the last range ends
 	if err := consumeUntil(math.MaxUint64); err != nil {
-		return false, err
+		return false
 	}
 
-	return bytes.Equal(tree.Root(), root.Bytes()), nil
+	return bytes.Equal(tree.Root(), root.Bytes())
 }
 
-func (proof Proof) VerifyInclusion(nth Hasher, data namespace.PrefixedData, root namespace.IntervalDigest) (bool, error) {
+func (proof Proof) VerifyInclusion(nth Hasher, data namespace.PrefixedData, root namespace.IntervalDigest) bool {
 	return proof.verifyLeafHashes(nth, false, data.NamespaceID(), [][]byte{nth.HashLeaf(data.Bytes())}, root)
 }
 

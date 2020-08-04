@@ -210,10 +210,7 @@ func TestNamespacedMerkleTree_ProveNamespace_Ranges_And_Verify(t *testing.T) {
 
 			// Verification round-trip should always pass:
 			gotGetLeaves := n.Get(tt.proveNID)
-			gotChecksOut, gotErr := gotProof.VerifyNamespace(defaultHasher, tt.proveNID, gotGetLeaves, n.Root())
-			if gotErr != nil {
-				t.Errorf("Proof.VerifyNamespace() unexpected error: %v", gotErr)
-			}
+			gotChecksOut := gotProof.VerifyNamespace(defaultHasher, tt.proveNID, gotGetLeaves, n.Root())
 			if !gotChecksOut {
 				t.Errorf("Proof.VerifyNamespace() gotChecksOut: %v, want: true", gotChecksOut)
 			}
@@ -225,10 +222,7 @@ func TestNamespacedMerkleTree_ProveNamespace_Ranges_And_Verify(t *testing.T) {
 					if err != nil {
 						t.Fatalf("unexpected error on Prove(): %v", err)
 					}
-					gotChecksOut, gotErr := gotSingleProof.VerifyInclusion(defaultHasher, data, n.Root())
-					if gotErr != nil {
-						t.Errorf("Proof.VerifyInclusion() unexpected error: %v", gotErr)
-					}
+					gotChecksOut := gotSingleProof.VerifyInclusion(defaultHasher, data, n.Root())
 					if !gotChecksOut {
 						t.Errorf("Proof.VerifyInclusion() gotChecksOut: %v, want: true", gotChecksOut)
 					}
