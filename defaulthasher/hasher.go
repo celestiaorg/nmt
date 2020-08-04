@@ -30,9 +30,8 @@ func New(nidLen uint8, baseHasher crypto.Hash) *DefaultHasher {
 
 func (n *DefaultHasher) EmptyRoot() namespace.IntervalDigest {
 	emptyNs := bytes.Repeat([]byte{0}, int(n.NamespaceLen))
-	placeHolderHash := bytes.Repeat([]byte{0}, n.Size())
 
-	return namespace.NewIntervalDigest(emptyNs, emptyNs, placeHolderHash)
+	return namespace.NewIntervalDigest(emptyNs, emptyNs, n.New().Sum(nil))
 }
 
 // HashLeaf hashes leafs to:

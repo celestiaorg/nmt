@@ -80,7 +80,7 @@ func TestNamespacedMerkleTreeRoot(t *testing.T) {
 	oneFlaggedLeaf := append(append(onesNS, onesNS...), leafHash...)
 	twoZeroLeafsRoot := sum(crypto.SHA256, []byte{NodePrefix}, zeroFlaggedLeaf, zeroFlaggedLeaf)
 	diffNSLeafsRoot := sum(crypto.SHA256, []byte{NodePrefix}, zeroFlaggedLeaf, oneFlaggedLeaf)
-	emptyRoot := bytes.Repeat([]byte{0}, crypto.SHA256.Size())
+	emptyRoot := crypto.SHA256.New().Sum(nil)
 
 	tests := []struct {
 		name       string
