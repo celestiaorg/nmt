@@ -1,23 +1,24 @@
-package nmt_test
+package nmt
 
 import (
 	"crypto"
 	"testing"
 
-	"github.com/lazyledger/nmt"
 	"github.com/lazyledger/nmt/defaulthasher"
+	"github.com/lazyledger/nmt/internal"
 	"github.com/lazyledger/nmt/namespace"
+	"github.com/liamsi/merkletree"
 )
 
 func TestProof_VerifyNamespace_False(t *testing.T) {
 	const testNidLen = 3
 	nmthash := defaulthasher.New(testNidLen, crypto.SHA256)
 
-	n := nmt.New(nmthash)
-	data := append([]namespace.PrefixedData{
-		namespace.NewPrefixedData(3, []byte{0, 0, 0, 3, 4, 5})},
+	n := New(nmthash)
+	data := append(append([]namespace.PrefixedData{
+		namespace.PrefixedDataFrom([]byte{0, 0, 0}, []byte("first leaf"))},
 		generateLeafData(testNidLen, 0, 9, []byte("data"))...,
-	)
+	), namespace.PrefixedDataFrom([]byte{0, 0, 8}, []byte("last leaf")))
 	for _, d := range data {
 		err := n.Push(d)
 		if err != nil {
@@ -29,15 +30,18 @@ func TestProof_VerifyNamespace_False(t *testing.T) {
 	if err != nil {
 		t.Fatalf("invalid test setup: error on ProveNamespace(): %v", err)
 	}
+	incompleteFirstNs := NewInclusionProof(0, 1, rangeProof(t, n, 0, 1))
+	incompleteLastRange := rangeProof(t, n, 9, 10)
 	type args struct {
 		nID  namespace.ID
 		data []namespace.PrefixedData
 		root namespace.IntervalDigest
 	}
 	pushedZeroNs := n.Get([]byte{0, 0, 0})
+	pushedLastNs := n.Get([]byte{0, 0, 8})
 	tests := []struct {
 		name  string
-		proof nmt.Proof
+		proof Proof
 		args  args
 		want  bool
 	}{
@@ -53,6 +57,15 @@ func TestProof_VerifyNamespace_False(t *testing.T) {
 		{"remove one leaf, errors", validProof,
 			args{[]byte{0, 0, 0}, pushedZeroNs[:len(pushedZeroNs)-1], n.Root()},
 			false},
+		{"remove one leaf & update proof range, errors", NewInclusionProof(validProof.Start(), validProof.End()-1, validProof.Nodes()),
+			args{[]byte{0, 0, 0}, pushedZeroNs[:len(pushedZeroNs)-1], n.Root()},
+			false},
+		{"valid but incomplete range proof for namespace (right)", incompleteFirstNs,
+			args{[]byte{0, 0, 0}, pushedZeroNs[:len(pushedZeroNs)-1], n.Root()},
+			false},
+		{"valid but incomplete range proof for namespace (right)", NewInclusionProof(9, 10, incompleteLastRange),
+			args{[]byte{0, 0, 8}, pushedLastNs[1:], n.Root()},
+			false},
 		{"remove all leaves, errors", validProof,
 			args{[]byte{0, 0, 0}, pushedZeroNs[:len(pushedZeroNs)-2], n.Root()},
 			false},
@@ -65,4 +78,13 @@ func TestProof_VerifyNamespace_False(t *testing.T) {
 			}
 		})
 	}
+}
+
+func rangeProof(t *testing.T, n *NamespacedMerkleTree, start, end int) [][]byte {
+	subTreeHasher := internal.NewCachedSubtreeHasher(n.leafHashes, n.treeHasher)
+	incompleteRange, err := merkletree.BuildRangeProof(start, end, subTreeHasher)
+	if err != nil {
+		t.Fatalf("Could not create range proof: %v", err)
+	}
+	return incompleteRange
 }

@@ -169,7 +169,7 @@ func (proof Proof) verifyLeafHashes(nth Hasher, verifyCompleteness bool, nID nam
 	leafIndex += uint64(proof.End() - proof.Start())
 
 	// Verify completeness:
-	if verifyCompleteness { // in case of single leaf proves this should be false
+	if verifyCompleteness { // in case of single leaf proofs this should be false
 		rightSubtrees := proof.nodes
 		for _, subtree := range leftSubtrees {
 			leftSubTreeMax := namespace.IntervalDigestFromBytes(nth.NamespaceSize(), subtree).Max()
