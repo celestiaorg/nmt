@@ -72,7 +72,7 @@ The above will create a Namespaced merkle tree with four leafs which looks like 
 
 ![example](imgs/example_4-leaves.png)
  
-Where `nid_0 = nid_1 = 0` and `nid_2 = nid_3 = 1` and `data_i = leaf_i` for `i = 0,...,3`.  
+Where `nid_0 = nid_1 = 0` and `nid_2 = nid_3 = 1` and `data_i = "leaf_i"` for `i = 0,...,3`.  
 ## Related
 
 This implementation (currently) uses NebulousLabs' [merkletree][NebulousLabs'] implementation
