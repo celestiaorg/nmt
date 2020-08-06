@@ -31,7 +31,6 @@ func TestProof_VerifyNamespace_False(t *testing.T) {
 		t.Fatalf("invalid test setup: error on ProveNamespace(): %v", err)
 	}
 	incompleteFirstNs := NewInclusionProof(0, 1, rangeProof(t, n, 0, 1))
-	incompleteLastRange := rangeProof(t, n, 9, 10)
 	type args struct {
 		nID  namespace.ID
 		data []namespace.PrefixedData
@@ -60,10 +59,10 @@ func TestProof_VerifyNamespace_False(t *testing.T) {
 		{"remove one leaf & update proof range, errors", NewInclusionProof(validProof.Start(), validProof.End()-1, validProof.Nodes()),
 			args{[]byte{0, 0, 0}, pushedZeroNs[:len(pushedZeroNs)-1], n.Root()},
 			false},
-		{"valid but incomplete range proof for namespace (right)", incompleteFirstNs,
+		{"incomplete namespace proof (right)", incompleteFirstNs,
 			args{[]byte{0, 0, 0}, pushedZeroNs[:len(pushedZeroNs)-1], n.Root()},
 			false},
-		{"valid but incomplete range proof for namespace (right)", NewInclusionProof(9, 10, incompleteLastRange),
+		{"incomplete namespace proof (left)", NewInclusionProof(10, 11, rangeProof(t, n, 10, 11)),
 			args{[]byte{0, 0, 8}, pushedLastNs[1:], n.Root()},
 			false},
 		{"remove all leaves, errors", validProof,

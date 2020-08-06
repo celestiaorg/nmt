@@ -168,15 +168,17 @@ func (proof Proof) verifyLeafHashes(nth Hasher, verifyCompleteness bool, nID nam
 	}
 	leafIndex += uint64(proof.End() - proof.Start())
 
-	// Verify completeness:
-	if verifyCompleteness { // in case of single leaf proofs this should be false
-		rightSubtrees := proof.nodes
+	// Verify completeness (in case of single leaf proofs we do not need do these checks):
+	if verifyCompleteness {
+		// leftSubtrees contains the subtree roots upto [0, r.Start)
 		for _, subtree := range leftSubtrees {
 			leftSubTreeMax := namespace.IntervalDigestFromBytes(nth.NamespaceSize(), subtree).Max()
 			if nID.LessOrEqual(leftSubTreeMax) {
 				return false
 			}
 		}
+		// rightSubtrees only contains the subtrees after [0, r.Start)
+		rightSubtrees := proof.nodes
 		for _, subtree := range rightSubtrees {
 			rightSubTreeMin := namespace.IntervalDigestFromBytes(nth.NamespaceSize(), subtree).Min()
 			if rightSubTreeMin.LessOrEqual(nID) {
