@@ -2,7 +2,6 @@ package nmt
 
 import (
 	"bytes"
-	"fmt"
 	"math"
 	"math/bits"
 
@@ -137,34 +136,30 @@ func (proof Proof) verifyLeafHashes(nth Hasher, verifyCompleteness bool, nID nam
 	tree := merkletree.NewFromTreehasher(nth)
 	var leafIndex uint64
 	leftSubtrees := make([][]byte, 0, len(proof.nodes))
-	consumeUntil := func(end uint64) error {
+	consumeUntil := func(end uint64) {
 		for leafIndex != end && len(proof.nodes) > 0 {
 			subtreeSize := nextSubtreeSize(leafIndex, end)
 			i := bits.TrailingZeros64(uint64(subtreeSize)) // log2
-			if err := tree.PushSubTree(i, proof.nodes[0]); err != nil {
-				// This *probably* should never happen, but just to guard
-				// against adversarial inputs, return an error instead of
-				// panicking.
-				// Here, we will not bubble up the error but simply return false.
-				return fmt.Errorf("unexpected error: %w, this should never happen", err)
-			}
+			// Note: we do never push the subtrees out of order
+			// and we do not use the proofIndex. Hence,
+			// tree.PushSubTree can not fail here:
+			//nolint:errcheck
+			tree.PushSubTree(i, proof.nodes[0])
 			leftSubtrees = append(leftSubtrees, proof.nodes[0])
 			proof.nodes = proof.nodes[1:]
 			leafIndex += uint64(subtreeSize)
 		}
-		return nil
 	}
 	// add proof hashes from leaves [leafIndex, r.Start)
-	if err := consumeUntil(uint64(proof.Start())); err != nil {
-		return false
-	}
+	consumeUntil(uint64(proof.Start()))
 	// add leaf hashes within the proof range
 	for i := proof.Start(); i < proof.End(); i++ {
 		leafHash := gotLeafHashes[0]
 		gotLeafHashes = gotLeafHashes[1:]
-		if err := tree.PushSubTree(0, leafHash); err != nil {
-			return false
-		}
+		// tree.PushSubTree can not fail here for same reasons
+		// as in consumeUntil:
+		//nolint:errcheck
+		tree.PushSubTree(0, leafHash)
 	}
 	leafIndex += uint64(proof.End() - proof.Start())
 
@@ -188,9 +183,7 @@ func (proof Proof) verifyLeafHashes(nth Hasher, verifyCompleteness bool, nID nam
 	}
 
 	// add remaining proof hashes after the last range ends
-	if err := consumeUntil(math.MaxUint64); err != nil {
-		return false
-	}
+	consumeUntil(math.MaxUint64)
 
 	return bytes.Equal(tree.Root(), root.Bytes())
 }
