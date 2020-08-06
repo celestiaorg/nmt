@@ -1,3 +1,4 @@
+// Package nmt contains an NMT implementation.
 package nmt
 
 import (

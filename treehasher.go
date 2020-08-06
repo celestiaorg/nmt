@@ -4,6 +4,7 @@ import (
 	"github.com/lazyledger/nmt/namespace"
 )
 
+// Hasher provides the functions needed to compute an NMT.
 // TODO: make all methods "namespaced" too (like EmptyRoot())
 type Hasher interface {
 	// EmptyRoot returns the namespaced root for a no-leaves Namespaced Merkle

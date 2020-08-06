@@ -1,3 +1,5 @@
+// Package defaulthasher is the default TreeHasher implementation.
+// You need the pass it the base hash function and a namespace size.
 package defaulthasher
 
 import (

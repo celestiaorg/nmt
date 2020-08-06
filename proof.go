@@ -85,7 +85,9 @@ func NewAbsenceProof(proofStart, proofEnd int, proofNodes [][]byte, leafHash []b
 	return Proof{proofStart, proofEnd, proofNodes, leafHash}
 }
 
-// VerifyNamespace verifies TODO
+// VerifyNamespace verifies a whole namespace, i.e. it verifies inclusion of
+// the provided data in the tree. Additionally, it verifies that the namespace
+// is complete and no leaf of that namespace was left out in the proof.
 func (proof Proof) VerifyNamespace(nth Hasher, nID namespace.ID, data []namespace.PrefixedData, root namespace.IntervalDigest) bool {
 	// TODO add more sanity checks
 
