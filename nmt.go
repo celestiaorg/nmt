@@ -120,7 +120,7 @@ func (n NamespacedMerkleTree) Get(nID namespace.ID) []namespace.PrefixedData {
 	return n.leaves[start:end]
 }
 
-// Get is a convenience method returns leaves for the given namespace.ID
+// GetWithProof is a convenience method returns leaves for the given namespace.ID
 // together with the proof for that namespace. It returns the same result
 // as calling the combination of Get(nid) and ProveNamespace(nid).
 func (n NamespacedMerkleTree) GetWithProof(nID namespace.ID) ([]namespace.PrefixedData, Proof, error) {
