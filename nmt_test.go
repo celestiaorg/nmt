@@ -19,6 +19,48 @@ const (
 	NodePrefix = defaulthasher.NodePrefix
 )
 
+func ExampleNamespacedMerkleTree() {
+	nidSize := uint8(1)
+	data := []namespace.PrefixedData{
+		namespace.PrefixedDataFrom(namespace.ID{0}, []byte("leaf_0")),
+		namespace.PrefixedDataFrom(namespace.ID{0}, []byte("leaf_1")),
+		namespace.PrefixedDataFrom(namespace.ID{1}, []byte("leaf_2")),
+		namespace.PrefixedDataFrom(namespace.ID{1}, []byte("leaf_3"))}
+	nmtHasher := defaulthasher.New(nidSize, crypto.SHA256)
+	tree := New(nmtHasher)
+	for _, d := range data {
+		tree.Push(d)
+	}
+	// compute the root
+	root := tree.Root()
+	if root.Min().Equal(namespace.ID{0}) {
+		fmt.Printf("Min namespace: %x\n", root.Min())
+	}
+	if root.Max().Equal(namespace.ID{1}) {
+		fmt.Printf("Max namespace: %x\n", root.Max())
+	}
+	// compute proof for namespace:
+	proof, err := tree.ProveNamespace(namespace.ID{0})
+	if err != nil {
+		panic("unexpected err")
+	}
+	// verify proof using the root and the leafs of that namespace:
+	leafs := []namespace.PrefixedData{namespace.PrefixedDataFrom(namespace.ID{0}, []byte("leaf_0")),
+		namespace.PrefixedDataFrom(namespace.ID{0}, []byte("leaf_1"))}
+	if proof.VerifyNamespace(nmtHasher, namespace.ID{0}, leafs, root) {
+		fmt.Printf("Successfully verified namespace: %x\n", namespace.ID{0})
+	}
+
+	// this should not pass:
+	if proof.VerifyNamespace(nmtHasher, namespace.ID{2}, leafs, root) {
+		panic(fmt.Sprintf("Proof for namespace %x, passed for namespace: %x\n", namespace.ID{0}, namespace.ID{2}))
+	}
+	// Output:
+	// Min namespace: 00
+	// Max namespace: 01
+	// Successfully verified namespace: 00
+}
+
 func TestFromNamespaceAndData(t *testing.T) {
 	tests := []struct {
 		name      string
