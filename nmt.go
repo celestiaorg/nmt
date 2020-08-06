@@ -150,7 +150,9 @@ func (n NamespacedMerkleTree) calculateAbsenceIndex(nID namespace.ID) int {
 		}
 		prevLeaf = curLeaf
 	}
-	return 0
+	// the case (nID < minNID) or (maxNID < nID) should be handled
+	// before calling this private helper!
+	panic("calculateAbsenceIndex() called although (nID < minNID) or (maxNID < nID) for provided nID")
 }
 
 func (n *NamespacedMerkleTree) foundInRange(nID namespace.ID) (bool, int, int) {

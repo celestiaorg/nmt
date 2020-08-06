@@ -171,11 +171,13 @@ func TestNamespacedMerkleTree_ProveNamespace_Ranges_And_Verify(t *testing.T) {
 		// In the cases (nID < minNID) or (maxNID < nID) we do not generate any proof
 		// and the (minNS, maxNs, root) should be indication enough that nID is not in that range.
 		{"4 leaves, not found and nID < minNID", 2,
-			[]namespace.PrefixedData{namespace.NewPrefixedData(2, []byte("01_data")), namespace.NewPrefixedData(2, []byte("01_data")), namespace.NewPrefixedData(2, []byte("01_data")), namespace.NewPrefixedData(2, []byte("11_data"))}, []byte("00"),
+			[]namespace.PrefixedData{namespace.NewPrefixedData(2, []byte("01_data")), namespace.NewPrefixedData(2, []byte("01_data")), namespace.NewPrefixedData(2, []byte("01_data")), namespace.NewPrefixedData(2, []byte("11_data"))},
+			[]byte("00"),
 			0, 0,
 			false},
 		{"4 leaves, not found and nID > maxNID ", 2,
-			[]namespace.PrefixedData{namespace.NewPrefixedData(2, []byte("00_data")), namespace.NewPrefixedData(2, []byte("00_data")), namespace.NewPrefixedData(2, []byte("01_data")), namespace.NewPrefixedData(2, []byte("01_data"))}, []byte("11"),
+			[]namespace.PrefixedData{namespace.NewPrefixedData(2, []byte("00_data")), namespace.NewPrefixedData(2, []byte("00_data")), namespace.NewPrefixedData(2, []byte("01_data")), namespace.NewPrefixedData(2, []byte("01_data"))},
+			[]byte("11"),
 			0, 0,
 			false},
 	}
@@ -287,6 +289,25 @@ func TestNamespacedMerkleTree_ProveErrors(t *testing.T) {
 					return
 				}
 			}
+		})
+	}
+}
+
+func TestNamespacedMerkleTree_calculateAbsenceIndex_Panic(t *testing.T) {
+	const nidLen = 2
+	tests := []struct {
+		name     string
+		nID      namespace.ID
+		pushData []namespace.PrefixedData
+	}{
+		{"((0,0) == nID < minNID == (0,1))", []byte{0, 0}, generateLeafData(nidLen, 1, 3, []byte{})},
+		{"((0,3) == nID > maxNID == (0,2))", []byte{0, 3}, generateLeafData(nidLen, 1, 3, []byte{})},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			n := New(defaulthasher.New(2, crypto.SHA256))
+			shouldPanic(t,
+				func() { n.calculateAbsenceIndex(tt.nID) })
 		})
 	}
 }
