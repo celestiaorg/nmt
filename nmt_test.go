@@ -29,7 +29,9 @@ func ExampleNamespacedMerkleTree() {
 	nmtHasher := defaulthasher.New(nidSize, crypto.SHA256)
 	tree := New(nmtHasher)
 	for _, d := range data {
-		tree.Push(d)
+		if err := tree.Push(d); err != nil {
+			panic("unexpected error")
+		}
 	}
 	// compute the root
 	root := tree.Root()
@@ -42,9 +44,9 @@ func ExampleNamespacedMerkleTree() {
 	// compute proof for namespace:
 	proof, err := tree.ProveNamespace(namespace.ID{0})
 	if err != nil {
-		panic("unexpected err")
+		panic("unexpected error")
 	}
-	// verify proof using the root and the leafs of that namespace:
+	// verify proof using the root and the leaves of that namespace:
 	leafs := []namespace.PrefixedData{namespace.PrefixedDataFrom(namespace.ID{0}, []byte("leaf_0")),
 		namespace.PrefixedDataFrom(namespace.ID{0}, []byte("leaf_1"))}
 	if proof.VerifyNamespace(nmtHasher, namespace.ID{0}, leafs, root) {
