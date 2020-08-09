@@ -35,13 +35,13 @@ func New(treeHasher Hasher) *NamespacedMerkleTree {
 	return &NamespacedMerkleTree{
 		treeHasher: treeHasher,
 		tree:       merkletree.NewFromTreehasher(treeHasher),
-		// XXX: 100 seems like a good capacity for the leaves slice
+		// XXX: 128 seems like a good capacity for the leaves slice
 		// but maybe this should also be a constructor param: for cases the caller
 		// knows exactly how many leaves will be pushed this will save allocations
 		// In fact, in that case the caller could pass in the whole data at once
 		// and we could even use the passed in slice without allocating space for a copy.
-		leaves:          make([]namespace.PrefixedData, 0, 100),
-		leafHashes:      make([][]byte, 0, 100),
+		leaves:          make([]namespace.PrefixedData, 0, 128),
+		leafHashes:      make([][]byte, 0, 128),
 		namespaceRanges: make(map[string]merkletree.LeafRange),
 		minNID:          bytes.Repeat([]byte{0xFF}, int(treeHasher.NamespaceSize())),
 		maxNID:          bytes.Repeat([]byte{0x00}, int(treeHasher.NamespaceSize())),
