@@ -3,6 +3,7 @@ package nmt
 import (
 	"bytes"
 	"crypto"
+	"crypto/sha256"
 	_ "crypto/sha256"
 	"encoding/binary"
 	"fmt"
@@ -10,18 +11,12 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/lazyledger/nmt/defaulthasher"
 	"github.com/lazyledger/nmt/namespace"
-)
-
-const (
-	LeafPrefix = defaulthasher.LeafPrefix
-	NodePrefix = defaulthasher.NodePrefix
 )
 
 func ExampleNamespacedMerkleTree() {
 	// the tree will use this namespace size
-	nidSize := uint8(1)
+	nidSize := 1
 	// the leaves that will be pushed
 	data := []namespace.PrefixedData{
 		namespace.PrefixedDataFrom(namespace.ID{0}, []byte("leaf_0")),
@@ -30,8 +25,7 @@ func ExampleNamespacedMerkleTree() {
 		namespace.PrefixedDataFrom(namespace.ID{1}, []byte("leaf_3"))}
 	// the hasher to sets the namespace size as well as
 	// the underlying hash function:
-	nmtHasher := defaulthasher.New(nidSize, crypto.SHA256)
-	tree := New(nmtHasher)
+	tree := New(sha256.New(), nidSize)
 	for _, d := range data {
 		if err := tree.Push(d); err != nil {
 			panic("unexpected error")
@@ -57,11 +51,11 @@ func ExampleNamespacedMerkleTree() {
 	leafs := []namespace.PrefixedData{namespace.PrefixedDataFrom(namespace.ID{0}, []byte("leaf_0")),
 		namespace.PrefixedDataFrom(namespace.ID{0}, []byte("leaf_1"))}
 
-	if proof.VerifyNamespace(nmtHasher, namespace.ID{0}, leafs, root) {
+	if proof.VerifyNamespace(sha256.New(), namespace.ID{0}, leafs, root) {
 		fmt.Printf("Successfully verified namespace: %x\n", namespace.ID{0})
 	}
 
-	if proof.VerifyNamespace(nmtHasher, namespace.ID{2}, leafs, root) {
+	if proof.VerifyNamespace(sha256.New(), namespace.ID{2}, leafs, root) {
 		panic(fmt.Sprintf("Proof for namespace %x, passed for namespace: %x\n", namespace.ID{0}, namespace.ID{2}))
 	}
 	// Output:
@@ -109,7 +103,7 @@ func TestNamespacedMerkleTree_Push(t *testing.T) {
 		// note this tests for another kind of error: ErrMismatchedNamespaceSize
 		{"push with wrong namespace size: Err", namespace.PrefixedDataFrom([]byte{1, 1, 0, 0}, []byte("dummy data")), true},
 	}
-	n := New(defaulthasher.New(uint8(3), crypto.SHA256))
+	n := New(sha256.New(), 3)
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if err := n.Push(tt.data); (err != nil) != tt.wantErr {
@@ -149,7 +143,7 @@ func TestNamespacedMerkleTreeRoot(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			n := New(defaulthasher.New(tt.nidLen, crypto.SHA256))
+			n := New(sha256.New(), int(tt.nidLen))
 			for _, d := range tt.pushedData {
 				if err := n.Push(d); err != nil {
 					t.Errorf("Push() error = %v, expected no error", err)
@@ -234,8 +228,7 @@ func TestNamespacedMerkleTree_ProveNamespace_Ranges_And_Verify(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			defaultHasher := defaulthasher.New(tt.nidLen, crypto.SHA256)
-			n := New(defaultHasher)
+			n := New(sha256.New(), int(tt.nidLen))
 			for _, d := range tt.pushData {
 				err := n.Push(d)
 				if err != nil {
@@ -262,7 +255,7 @@ func TestNamespacedMerkleTree_ProveNamespace_Ranges_And_Verify(t *testing.T) {
 
 			// Verification round-trip should always pass:
 			gotGetLeaves := n.Get(tt.proveNID)
-			gotChecksOut := gotProof.VerifyNamespace(defaultHasher, tt.proveNID, gotGetLeaves, n.Root())
+			gotChecksOut := gotProof.VerifyNamespace(sha256.New(), tt.proveNID, gotGetLeaves, n.Root())
 			if !gotChecksOut {
 				t.Errorf("Proof.VerifyNamespace() gotChecksOut: %v, want: true", gotChecksOut)
 			}
@@ -274,7 +267,7 @@ func TestNamespacedMerkleTree_ProveNamespace_Ranges_And_Verify(t *testing.T) {
 					if err != nil {
 						t.Fatalf("unexpected error on Prove(): %v", err)
 					}
-					gotChecksOut := gotSingleProof.VerifyInclusion(defaultHasher, data, n.Root())
+					gotChecksOut := gotSingleProof.VerifyInclusion(sha256.New(), data, n.Root())
 					if !gotChecksOut {
 						t.Errorf("Proof.VerifyInclusion() gotChecksOut: %v, want: true", gotChecksOut)
 					}
@@ -311,8 +304,7 @@ func TestNamespacedMerkleTree_ProveErrors(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			defaultHasher := defaulthasher.New(tt.nidLen, crypto.SHA256)
-			n := New(defaultHasher)
+			n := New(sha256.New(), int(tt.nidLen))
 			for _, d := range tt.pushData {
 				err := n.Push(d)
 				if err != nil {
@@ -356,7 +348,7 @@ func TestNamespacedMerkleTree_calculateAbsenceIndex_Panic(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			n := New(defaulthasher.New(2, crypto.SHA256))
+			n := New(sha256.New(), 2)
 			shouldPanic(t,
 				func() { n.calculateAbsenceIndex(tt.nID) })
 		})

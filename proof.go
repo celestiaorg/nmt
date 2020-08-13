@@ -2,9 +2,11 @@ package nmt
 
 import (
 	"bytes"
+	"hash"
 	"math"
 	"math/bits"
 
+	"github.com/lazyledger/nmt/internal"
 	"github.com/liamsi/merkletree"
 
 	"github.com/lazyledger/nmt/namespace"
@@ -88,8 +90,9 @@ func NewAbsenceProof(proofStart, proofEnd int, proofNodes [][]byte, leafHash []b
 // VerifyNamespace verifies a whole namespace, i.e. it verifies inclusion of
 // the provided data in the tree. Additionally, it verifies that the namespace
 // is complete and no leaf of that namespace was left out in the proof.
-func (proof Proof) VerifyNamespace(nth nmtHasher, nID namespace.ID, data []namespace.PrefixedData, root namespace.IntervalDigest) bool {
+func (proof Proof) VerifyNamespace(h hash.Hash, nID namespace.ID, data []namespace.PrefixedData, root namespace.IntervalDigest) bool {
 	// TODO add more sanity checks
+	nth := internal.New(nID.Size(), h)
 
 	isEmptyRange := proof.start == proof.end
 	// empty range, proof, and data: always checks out
@@ -123,7 +126,7 @@ func (proof Proof) VerifyNamespace(nth nmtHasher, nID namespace.ID, data []names
 	return proof.verifyLeafHashes(nth, true, nID, gotLeafHashes, root)
 }
 
-func (proof Proof) verifyLeafHashes(nth nmtHasher, verifyCompleteness bool, nID namespace.ID, gotLeafHashes [][]byte, root namespace.IntervalDigest) bool {
+func (proof Proof) verifyLeafHashes(nth internal.NmtHasher, verifyCompleteness bool, nID namespace.ID, gotLeafHashes [][]byte, root namespace.IntervalDigest) bool {
 	// The code below is almost identical to NebulousLabs'
 	// merkletree.VerifyMultiRangeProof.
 	//
@@ -190,7 +193,8 @@ func (proof Proof) verifyLeafHashes(nth nmtHasher, verifyCompleteness bool, nID 
 	return bytes.Equal(tree.Root(), root.Bytes())
 }
 
-func (proof Proof) VerifyInclusion(nth nmtHasher, data namespace.PrefixedData, root namespace.IntervalDigest) bool {
+func (proof Proof) VerifyInclusion(h hash.Hash, data namespace.PrefixedData, root namespace.IntervalDigest) bool {
+	nth := internal.New(data.NamespaceSize(), h)
 	return proof.verifyLeafHashes(nth, false, data.NamespaceID(), [][]byte{nth.HashLeaf(data.Bytes())}, root)
 }
 

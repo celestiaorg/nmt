@@ -1,7 +1,8 @@
-package defaulthasher
+package internal
 
 import (
 	"crypto"
+	"crypto/sha256"
 	_ "crypto/sha256"
 	"reflect"
 	"testing"
@@ -35,7 +36,7 @@ func Test_namespacedTreeHasher_HashLeaf(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			n := New(tt.nsLen, crypto.SHA256)
+			n := New(tt.nsLen, sha256.New())
 			if got := n.HashLeaf(tt.leaf); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("HashLeaf() = %v, want %v", got, tt.want)
 			}
@@ -88,7 +89,7 @@ func Test_namespacedTreeHasher_HashNode(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			n := New(tt.nidLen, crypto.SHA256)
+			n := New(tt.nidLen, sha256.New())
 			if got := n.HashNode(tt.children.l, tt.children.r); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("HashNode() = %v, want %v", got, tt.want)
 			}

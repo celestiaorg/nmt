@@ -1,10 +1,8 @@
-// Package defaulthasher is the default TreeHasher implementation.
-// You need the pass it the base hash function and a namespace size.
-package defaulthasher
+package internal
 
 import (
 	"bytes"
-	"crypto"
+	"hash"
 
 	"github.com/lazyledger/nmt/namespace"
 )
@@ -15,7 +13,7 @@ const (
 )
 
 type DefaultHasher struct {
-	crypto.Hash
+	hash.Hash
 	NamespaceLen uint8
 }
 
@@ -23,7 +21,7 @@ func (n *DefaultHasher) NamespaceSize() uint8 {
 	return n.NamespaceLen
 }
 
-func New(nidLen uint8, baseHasher crypto.Hash) *DefaultHasher {
+func New(nidLen uint8, baseHasher hash.Hash) *DefaultHasher {
 	return &DefaultHasher{
 		Hash:         baseHasher,
 		NamespaceLen: nidLen,
@@ -33,7 +31,7 @@ func New(nidLen uint8, baseHasher crypto.Hash) *DefaultHasher {
 func (n *DefaultHasher) EmptyRoot() namespace.IntervalDigest {
 	emptyNs := bytes.Repeat([]byte{0}, int(n.NamespaceLen))
 
-	return namespace.NewIntervalDigest(emptyNs, emptyNs, n.New().Sum(nil))
+	return namespace.NewIntervalDigest(emptyNs, emptyNs, n.Sum(nil))
 }
 
 // HashLeaf hashes leafs to:
@@ -42,7 +40,8 @@ func (n *DefaultHasher) EmptyRoot() namespace.IntervalDigest {
 // Note that here minNs = maxNs = ns(leaf) = leaf[:NamespaceLen].
 //nolint:errcheck
 func (n *DefaultHasher) HashLeaf(leaf []byte) []byte {
-	h := n.New()
+	h := n.Hash
+	h.Reset()
 
 	nID := leaf[:n.NamespaceLen]
 	data := leaf[n.NamespaceLen:]
@@ -57,7 +56,9 @@ func (n *DefaultHasher) HashLeaf(leaf []byte) []byte {
 // left and right child node bytes, including their respective min and max namespace IDs:
 // left = left.Min() || left.Max() || l.Hash().
 func (n *DefaultHasher) HashNode(l, r []byte) []byte {
-	h := n.New()
+	h := n.Hash
+	h.Reset()
+
 	// the actual hash result of the children got extended (or flagged) by their
 	// children's minNs || maxNs; hence the flagLen = 2 * NamespaceLen:
 	flagLen := 2 * n.NamespaceLen

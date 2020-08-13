@@ -5,11 +5,17 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"hash"
 
 	"github.com/liamsi/merkletree"
 
 	"github.com/lazyledger/nmt/internal"
 	"github.com/lazyledger/nmt/namespace"
+)
+
+const (
+	LeafPrefix = 0
+	NodePrefix = 1
 )
 
 var (
@@ -18,7 +24,7 @@ var (
 )
 
 type NamespacedMerkleTree struct {
-	treeHasher nmtHasher
+	treeHasher internal.NmtHasher
 	tree       *merkletree.Tree
 
 	// just cache stuff until we pass in a store and keep all nodes in there
@@ -31,7 +37,8 @@ type NamespacedMerkleTree struct {
 	maxNID          namespace.ID
 }
 
-func New(treeHasher nmtHasher) *NamespacedMerkleTree {
+func New(h hash.Hash, namespaceSize int) *NamespacedMerkleTree {
+	treeHasher := internal.New(uint8(namespaceSize), h)
 	return &NamespacedMerkleTree{
 		treeHasher: treeHasher,
 		tree:       merkletree.NewFromTreehasher(treeHasher),
@@ -43,8 +50,8 @@ func New(treeHasher nmtHasher) *NamespacedMerkleTree {
 		leaves:          make([]namespace.PrefixedData, 0, 128),
 		leafHashes:      make([][]byte, 0, 128),
 		namespaceRanges: make(map[string]merkletree.LeafRange),
-		minNID:          bytes.Repeat([]byte{0xFF}, int(treeHasher.NamespaceSize())),
-		maxNID:          bytes.Repeat([]byte{0x00}, int(treeHasher.NamespaceSize())),
+		minNID:          bytes.Repeat([]byte{0xFF}, namespaceSize),
+		maxNID:          bytes.Repeat([]byte{0x00}, namespaceSize),
 	}
 }
 

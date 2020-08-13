@@ -1,12 +1,9 @@
-package nmt
+package internal
 
-import (
-	"github.com/lazyledger/nmt/namespace"
-)
+import "github.com/lazyledger/nmt/namespace"
 
-// nmtHasher provides the functions needed to compute an NMT.
-// TODO: make all methods "namespaced" too (like EmptyRoot())
-type nmtHasher interface {
+// NmtHasher provides the functions needed to compute an NMT.
+type NmtHasher interface {
 	// EmptyRoot returns the namespaced root for a no-leaves Namespaced Merkle
 	// tree.
 	EmptyRoot() namespace.IntervalDigest

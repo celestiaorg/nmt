@@ -1,10 +1,9 @@
 package nmt
 
 import (
-	"crypto"
+	"crypto/sha256"
 	"testing"
 
-	"github.com/lazyledger/nmt/defaulthasher"
 	"github.com/lazyledger/nmt/internal"
 	"github.com/lazyledger/nmt/namespace"
 	"github.com/liamsi/merkletree"
@@ -12,9 +11,8 @@ import (
 
 func TestProof_VerifyNamespace_False(t *testing.T) {
 	const testNidLen = 3
-	nmthash := defaulthasher.New(testNidLen, crypto.SHA256)
 
-	n := New(nmthash)
+	n := New(sha256.New(), testNidLen)
 	data := append(append([]namespace.PrefixedData{
 		namespace.PrefixedDataFrom([]byte{0, 0, 0}, []byte("first leaf"))},
 		generateLeafData(testNidLen, 0, 9, []byte("data"))...,
@@ -71,7 +69,7 @@ func TestProof_VerifyNamespace_False(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := tt.proof.VerifyNamespace(nmthash, tt.args.nID, tt.args.data, tt.args.root)
+			got := tt.proof.VerifyNamespace(sha256.New(), tt.args.nID, tt.args.data, tt.args.root)
 			if got != tt.want {
 				t.Errorf("VerifyNamespace() got = %v, want %v", got, tt.want)
 			}
