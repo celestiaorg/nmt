@@ -1,5 +1,15 @@
 package namespace
 
+// Data represent namespaced data.
+// Anything that implements this interface can be pushed
+// into an NMT.
+type Data interface {
+	NamespaceID() ID
+	Data() []byte
+	MarshalBinary() ([]byte, error)
+	NamespaceSize() uint8
+}
+
 type PrefixedData struct {
 	namespaceLen uint8
 	prefixedData []byte
@@ -13,8 +23,8 @@ func (n PrefixedData) Data() []byte {
 	return n.prefixedData[n.namespaceLen:]
 }
 
-func (n PrefixedData) Bytes() []byte {
-	return n.prefixedData
+func (n PrefixedData) MarshalBinary() ([]byte, error) {
+	return n.prefixedData, nil
 }
 
 func (n PrefixedData) NamespaceSize() uint8 {

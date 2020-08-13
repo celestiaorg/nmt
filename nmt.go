@@ -203,10 +203,14 @@ func (n *NamespacedMerkleTree) Push(data namespace.PrefixedData) error {
 			)
 		}
 	}
-	n.tree.Push(data.Bytes())
+	leafData, err := data.MarshalBinary()
+	if err != nil {
+		return err
+	}
+	n.tree.Push(leafData)
 	// update relevant "caches":
 	n.leaves = append(n.leaves, data)
-	n.leafHashes = append(n.leafHashes, n.treeHasher.HashLeaf(data.Bytes()))
+	n.leafHashes = append(n.leafHashes, n.treeHasher.HashLeaf(leafData))
 	n.updateNamespaceRanges()
 	n.updateMinMaxID(data)
 	return nil

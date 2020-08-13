@@ -116,7 +116,11 @@ func (proof Proof) VerifyNamespace(h hash.Hash, nID namespace.ID, data []namespa
 				// conflicting namespace IDs in data
 				return false
 			}
-			gotLeafHashes = append(gotLeafHashes, hashLeafFunc(gotLeaf.Bytes()))
+			leafData, err := gotLeaf.MarshalBinary()
+			if err != nil {
+				return false
+			}
+			gotLeafHashes = append(gotLeafHashes, hashLeafFunc(leafData))
 		}
 	}
 	if !proof.IsOfAbsence() && len(gotLeafHashes) != (proof.End()-proof.Start()) {
@@ -195,7 +199,11 @@ func (proof Proof) verifyLeafHashes(nth internal.NmtHasher, verifyCompleteness b
 
 func (proof Proof) VerifyInclusion(h hash.Hash, data namespace.PrefixedData, root namespace.IntervalDigest) bool {
 	nth := internal.NewNmtHasher(data.NamespaceSize(), h)
-	return proof.verifyLeafHashes(nth, false, data.NamespaceID(), [][]byte{nth.HashLeaf(data.Bytes())}, root)
+	leafData, err := data.MarshalBinary()
+	if err != nil {
+		return false
+	}
+	return proof.verifyLeafHashes(nth, false, data.NamespaceID(), [][]byte{nth.HashLeaf(leafData)}, root)
 }
 
 // nextSubtreeSize returns the size of the subtree adjacent to start that does
