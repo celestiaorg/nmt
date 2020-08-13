@@ -34,7 +34,7 @@ func (n *DefaultNmtHasher) EmptyRoot() namespace.IntervalDigest {
 	return namespace.NewIntervalDigest(emptyNs, emptyNs, n.Sum(nil))
 }
 
-// HashLeaf hashes leafs to:
+// HashLeaf hashes leaves to:
 // ns(rawData) || ns(rawData) || hash(leafPrefix || rawData), where raw data is the leaf's
 // data minus the namespaceID (namely leaf[NamespaceLen:]).
 // Note that here minNs = maxNs = ns(leaf) = leaf[:NamespaceLen].

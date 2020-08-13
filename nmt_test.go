@@ -25,7 +25,7 @@ func ExampleNamespacedMerkleTree() {
 		namespace.PrefixedDataFrom(namespace.ID{1}, []byte("leaf_3"))}
 	// the hasher to sets the namespace size as well as
 	// the underlying hash function:
-	tree := New(sha256.New(), nidSize)
+	tree := New(sha256.New(), namespace.Size(nidSize))
 	for _, d := range data {
 		if err := tree.Push(d); err != nil {
 			panic("unexpected error")
@@ -143,7 +143,7 @@ func TestNamespacedMerkleTreeRoot(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			n := New(sha256.New(), int(tt.nidLen))
+			n := New(sha256.New(), namespace.Size(tt.nidLen))
 			for _, d := range tt.pushedData {
 				if err := n.Push(d); err != nil {
 					t.Errorf("Push() error = %v, expected no error", err)
@@ -228,7 +228,7 @@ func TestNamespacedMerkleTree_ProveNamespace_Ranges_And_Verify(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			n := New(sha256.New(), int(tt.nidLen))
+			n := New(sha256.New(), namespace.Size(tt.nidLen))
 			for _, d := range tt.pushData {
 				err := n.Push(d)
 				if err != nil {
@@ -304,7 +304,7 @@ func TestNamespacedMerkleTree_ProveErrors(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			n := New(sha256.New(), int(tt.nidLen))
+			n := New(sha256.New(), namespace.Size(tt.nidLen))
 			for _, d := range tt.pushData {
 				err := n.Push(d)
 				if err != nil {

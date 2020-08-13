@@ -37,7 +37,11 @@ type NamespacedMerkleTree struct {
 	maxNID          namespace.ID
 }
 
-func New(h hash.Hash, namespaceSize int) *NamespacedMerkleTree {
+// New initializes a namespaced Merkle tree using the given base hash function
+// and for the given namespace size (number of bytes).
+// If the namespace size is 0 this corresponds to a regular non-namespaced
+// Merkle tree.
+func New(h hash.Hash, namespaceSize namespace.Size) *NamespacedMerkleTree {
 	treeHasher := internal.NewNmtHasher(uint8(namespaceSize), h)
 	return &NamespacedMerkleTree{
 		treeHasher: treeHasher,
@@ -50,8 +54,8 @@ func New(h hash.Hash, namespaceSize int) *NamespacedMerkleTree {
 		leaves:          make([]namespace.PrefixedData, 0, 128),
 		leafHashes:      make([][]byte, 0, 128),
 		namespaceRanges: make(map[string]merkletree.LeafRange),
-		minNID:          bytes.Repeat([]byte{0xFF}, namespaceSize),
-		maxNID:          bytes.Repeat([]byte{0x00}, namespaceSize),
+		minNID:          bytes.Repeat([]byte{0xFF}, int(namespaceSize)),
+		maxNID:          bytes.Repeat([]byte{0x00}, int(namespaceSize)),
 	}
 }
 
