@@ -13,7 +13,7 @@ func (n PrefixedData) Data() []byte {
 	return n.prefixedData[n.namespaceLen:]
 }
 
-func (n PrefixedData) Bytes() []byte {
+func (n PrefixedData) Marshal() []byte {
 	return n.prefixedData
 }
 
@@ -33,4 +33,11 @@ func PrefixedDataFrom(nID ID, data []byte) PrefixedData {
 		namespaceLen: nID.Size(),
 		prefixedData: append(nID, data...),
 	}
+}
+
+type Data interface {
+	NamespaceID() ID
+	Data() []byte
+	Marshal() []byte
+	NamespaceSize() uint8
 }

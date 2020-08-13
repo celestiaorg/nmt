@@ -54,7 +54,7 @@ func ExampleNamespacedMerkleTree() {
 	}
 
 	// verify proof using the root and the leaves of namespace 0:
-	leafs := []namespace.PrefixedData{namespace.PrefixedDataFrom(namespace.ID{0}, []byte("leaf_0")),
+	leafs := []namespace.Data{namespace.PrefixedDataFrom(namespace.ID{0}, []byte("leaf_0")),
 		namespace.PrefixedDataFrom(namespace.ID{0}, []byte("leaf_1"))}
 
 	if proof.VerifyNamespace(nmtHasher, namespace.ID{0}, leafs, root) {

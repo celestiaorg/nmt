@@ -33,7 +33,7 @@ func TestProof_VerifyNamespace_False(t *testing.T) {
 	incompleteFirstNs := NewInclusionProof(0, 1, rangeProof(t, n, 0, 1))
 	type args struct {
 		nID  namespace.ID
-		data []namespace.PrefixedData
+		data []namespace.Data
 		root namespace.IntervalDigest
 	}
 	pushedZeroNs := n.Get([]byte{0, 0, 0})
@@ -48,10 +48,10 @@ func TestProof_VerifyNamespace_False(t *testing.T) {
 			args{[]byte{0, 0, 0, 0}, pushedZeroNs, n.Root()},
 			false},
 		{"mismatching IDs in data", validProof,
-			args{[]byte{0, 0, 0}, append(append([]namespace.PrefixedData(nil), pushedZeroNs...), namespace.NewPrefixedData(testNidLen, []byte{1, 1, 1})), n.Root()},
+			args{[]byte{0, 0, 0}, append(append([]namespace.Data(nil), pushedZeroNs...), namespace.NewPrefixedData(testNidLen, []byte{1, 1, 1})), n.Root()},
 			false},
 		{"added another leaf", validProof,
-			args{[]byte{0, 0, 0}, append(append([]namespace.PrefixedData(nil), pushedZeroNs...), namespace.NewPrefixedData(testNidLen, []byte{0, 0, 0})), n.Root()},
+			args{[]byte{0, 0, 0}, append(append([]namespace.Data(nil), pushedZeroNs...), namespace.NewPrefixedData(testNidLen, []byte{0, 0, 0})), n.Root()},
 			false},
 		{"remove one leaf, errors", validProof,
 			args{[]byte{0, 0, 0}, pushedZeroNs[:len(pushedZeroNs)-1], n.Root()},

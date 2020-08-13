@@ -88,7 +88,7 @@ func NewAbsenceProof(proofStart, proofEnd int, proofNodes [][]byte, leafHash []b
 // VerifyNamespace verifies a whole namespace, i.e. it verifies inclusion of
 // the provided data in the tree. Additionally, it verifies that the namespace
 // is complete and no leaf of that namespace was left out in the proof.
-func (proof Proof) VerifyNamespace(nth Hasher, nID namespace.ID, data []namespace.PrefixedData, root namespace.IntervalDigest) bool {
+func (proof Proof) VerifyNamespace(nth Hasher, nID namespace.ID, data []namespace.Data, root namespace.IntervalDigest) bool {
 	// TODO add more sanity checks
 
 	isEmptyRange := proof.start == proof.end
@@ -113,7 +113,7 @@ func (proof Proof) VerifyNamespace(nth Hasher, nID namespace.ID, data []namespac
 				// conflicting namespace IDs in data
 				return false
 			}
-			gotLeafHashes = append(gotLeafHashes, hashLeafFunc(gotLeaf.Bytes()))
+			gotLeafHashes = append(gotLeafHashes, hashLeafFunc(gotLeaf.Marshal()))
 		}
 	}
 	if !proof.IsOfAbsence() && len(gotLeafHashes) != (proof.End()-proof.Start()) {
@@ -191,7 +191,7 @@ func (proof Proof) verifyLeafHashes(nth Hasher, verifyCompleteness bool, nID nam
 }
 
 func (proof Proof) VerifyInclusion(nth Hasher, data namespace.PrefixedData, root namespace.IntervalDigest) bool {
-	return proof.verifyLeafHashes(nth, false, data.NamespaceID(), [][]byte{nth.HashLeaf(data.Bytes())}, root)
+	return proof.verifyLeafHashes(nth, false, data.NamespaceID(), [][]byte{nth.HashLeaf(data.Marshal())}, root)
 }
 
 // nextSubtreeSize returns the size of the subtree adjacent to start that does
