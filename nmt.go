@@ -18,7 +18,7 @@ var (
 )
 
 type NamespacedMerkleTree struct {
-	treeHasher Hasher
+	treeHasher nmtHasher
 	tree       *merkletree.Tree
 
 	// just cache stuff until we pass in a store and keep all nodes in there
@@ -31,7 +31,7 @@ type NamespacedMerkleTree struct {
 	maxNID          namespace.ID
 }
 
-func New(treeHasher Hasher) *NamespacedMerkleTree {
+func New(treeHasher nmtHasher) *NamespacedMerkleTree {
 	return &NamespacedMerkleTree{
 		treeHasher: treeHasher,
 		tree:       merkletree.NewFromTreehasher(treeHasher),

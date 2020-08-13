@@ -88,7 +88,7 @@ func NewAbsenceProof(proofStart, proofEnd int, proofNodes [][]byte, leafHash []b
 // VerifyNamespace verifies a whole namespace, i.e. it verifies inclusion of
 // the provided data in the tree. Additionally, it verifies that the namespace
 // is complete and no leaf of that namespace was left out in the proof.
-func (proof Proof) VerifyNamespace(nth Hasher, nID namespace.ID, data []namespace.PrefixedData, root namespace.IntervalDigest) bool {
+func (proof Proof) VerifyNamespace(nth nmtHasher, nID namespace.ID, data []namespace.PrefixedData, root namespace.IntervalDigest) bool {
 	// TODO add more sanity checks
 
 	isEmptyRange := proof.start == proof.end
@@ -123,7 +123,7 @@ func (proof Proof) VerifyNamespace(nth Hasher, nID namespace.ID, data []namespac
 	return proof.verifyLeafHashes(nth, true, nID, gotLeafHashes, root)
 }
 
-func (proof Proof) verifyLeafHashes(nth Hasher, verifyCompleteness bool, nID namespace.ID, gotLeafHashes [][]byte, root namespace.IntervalDigest) bool {
+func (proof Proof) verifyLeafHashes(nth nmtHasher, verifyCompleteness bool, nID namespace.ID, gotLeafHashes [][]byte, root namespace.IntervalDigest) bool {
 	// The code below is almost identical to NebulousLabs'
 	// merkletree.VerifyMultiRangeProof.
 	//
@@ -190,7 +190,7 @@ func (proof Proof) verifyLeafHashes(nth Hasher, verifyCompleteness bool, nID nam
 	return bytes.Equal(tree.Root(), root.Bytes())
 }
 
-func (proof Proof) VerifyInclusion(nth Hasher, data namespace.PrefixedData, root namespace.IntervalDigest) bool {
+func (proof Proof) VerifyInclusion(nth nmtHasher, data namespace.PrefixedData, root namespace.IntervalDigest) bool {
 	return proof.verifyLeafHashes(nth, false, data.NamespaceID(), [][]byte{nth.HashLeaf(data.Bytes())}, root)
 }
 
