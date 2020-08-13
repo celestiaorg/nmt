@@ -12,23 +12,23 @@ const (
 	NodePrefix = 1
 )
 
-type DefaultHasher struct {
+type DefaultNmtHasher struct {
 	hash.Hash
 	NamespaceLen uint8
 }
 
-func (n *DefaultHasher) NamespaceSize() uint8 {
+func (n *DefaultNmtHasher) NamespaceSize() uint8 {
 	return n.NamespaceLen
 }
 
-func New(nidLen uint8, baseHasher hash.Hash) *DefaultHasher {
-	return &DefaultHasher{
+func NewNmtHasher(nidLen uint8, baseHasher hash.Hash) *DefaultNmtHasher {
+	return &DefaultNmtHasher{
 		Hash:         baseHasher,
 		NamespaceLen: nidLen,
 	}
 }
 
-func (n *DefaultHasher) EmptyRoot() namespace.IntervalDigest {
+func (n *DefaultNmtHasher) EmptyRoot() namespace.IntervalDigest {
 	emptyNs := bytes.Repeat([]byte{0}, int(n.NamespaceLen))
 
 	return namespace.NewIntervalDigest(emptyNs, emptyNs, n.Sum(nil))
@@ -39,7 +39,7 @@ func (n *DefaultHasher) EmptyRoot() namespace.IntervalDigest {
 // data minus the namespaceID (namely leaf[NamespaceLen:]).
 // Note that here minNs = maxNs = ns(leaf) = leaf[:NamespaceLen].
 //nolint:errcheck
-func (n *DefaultHasher) HashLeaf(leaf []byte) []byte {
+func (n *DefaultNmtHasher) HashLeaf(leaf []byte) []byte {
 	h := n.Hash
 	h.Reset()
 
@@ -55,7 +55,7 @@ func (n *DefaultHasher) HashLeaf(leaf []byte) []byte {
 // minNID || maxNID || hash(NodePrefix || left || right), where left and right are the full
 // left and right child node bytes, including their respective min and max namespace IDs:
 // left = left.Min() || left.Max() || l.Hash().
-func (n *DefaultHasher) HashNode(l, r []byte) []byte {
+func (n *DefaultNmtHasher) HashNode(l, r []byte) []byte {
 	h := n.Hash
 	h.Reset()
 

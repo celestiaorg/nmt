@@ -38,7 +38,7 @@ type NamespacedMerkleTree struct {
 }
 
 func New(h hash.Hash, namespaceSize int) *NamespacedMerkleTree {
-	treeHasher := internal.New(uint8(namespaceSize), h)
+	treeHasher := internal.NewNmtHasher(uint8(namespaceSize), h)
 	return &NamespacedMerkleTree{
 		treeHasher: treeHasher,
 		tree:       merkletree.NewFromTreehasher(treeHasher),
