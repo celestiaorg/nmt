@@ -8,6 +8,13 @@ type NmtHasher interface {
 	// tree.
 	EmptyRoot() namespace.IntervalDigest
 
+	// ------
+	// TODO the methods below should all be NMT specific
+	// e.g. taking in namespace.Data and namespace.IntervalDigest instead
+	// add a way to transform this to a TreeHasher, or,
+	// remove this abstraction all together: it is not very useful.
+	// ------
+
 	// HashLeaf defines how a leaf is hashed.
 	HashLeaf(leaf []byte) []byte
 

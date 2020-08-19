@@ -23,7 +23,7 @@ func ExampleNamespacedMerkleTree() {
 		namespace.PrefixedDataFrom(namespace.ID{0}, []byte("leaf_1")),
 		namespace.PrefixedDataFrom(namespace.ID{1}, []byte("leaf_2")),
 		namespace.PrefixedDataFrom(namespace.ID{1}, []byte("leaf_3"))}
-	// the hasher to sets the namespace size as well as
+	// Init a tree with the namespace size as well as
 	// the underlying hash function:
 	tree := New(sha256.New(), namespace.Size(nidSize))
 	for _, d := range data {
@@ -48,7 +48,7 @@ func ExampleNamespacedMerkleTree() {
 	}
 
 	// verify proof using the root and the leaves of namespace 0:
-	leafs := []namespace.PrefixedData{namespace.PrefixedDataFrom(namespace.ID{0}, []byte("leaf_0")),
+	leafs := []namespace.Data{namespace.PrefixedDataFrom(namespace.ID{0}, []byte("leaf_0")),
 		namespace.PrefixedDataFrom(namespace.ID{0}, []byte("leaf_1"))}
 
 	if proof.VerifyNamespace(sha256.New(), namespace.ID{0}, leafs, root) {

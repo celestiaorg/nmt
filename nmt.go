@@ -28,7 +28,7 @@ type NamespacedMerkleTree struct {
 	tree       *merkletree.Tree
 
 	// just cache stuff until we pass in a store and keep all nodes in there
-	leaves     []namespace.PrefixedData
+	leaves     []namespace.Data
 	leafHashes [][]byte
 	// this can be used to efficiently lookup the range for an
 	// existing namespace without iterating through the leaves
@@ -51,7 +51,7 @@ func New(h hash.Hash, namespaceSize namespace.Size) *NamespacedMerkleTree {
 		// knows exactly how many leaves will be pushed this will save allocations
 		// In fact, in that case the caller could pass in the whole data at once
 		// and we could even use the passed in slice without allocating space for a copy.
-		leaves:          make([]namespace.PrefixedData, 0, 128),
+		leaves:          make([]namespace.Data, 0, 128),
 		leafHashes:      make([][]byte, 0, 128),
 		namespaceRanges: make(map[string]merkletree.LeafRange),
 		minNID:          bytes.Repeat([]byte{0xFF}, int(namespaceSize)),
@@ -127,7 +127,7 @@ func (n NamespacedMerkleTree) ProveNamespace(nID namespace.ID) (Proof, error) {
 }
 
 // Get returns leaves for the given namespace.ID.
-func (n NamespacedMerkleTree) Get(nID namespace.ID) []namespace.PrefixedData {
+func (n NamespacedMerkleTree) Get(nID namespace.ID) []namespace.Data {
 	_, start, end := n.foundInRange(nID)
 	return n.leaves[start:end]
 }
@@ -135,14 +135,14 @@ func (n NamespacedMerkleTree) Get(nID namespace.ID) []namespace.PrefixedData {
 // GetWithProof is a convenience method returns leaves for the given namespace.ID
 // together with the proof for that namespace. It returns the same result
 // as calling the combination of Get(nid) and ProveNamespace(nid).
-func (n NamespacedMerkleTree) GetWithProof(nID namespace.ID) ([]namespace.PrefixedData, Proof, error) {
+func (n NamespacedMerkleTree) GetWithProof(nID namespace.ID) ([]namespace.Data, Proof, error) {
 	data := n.Get(nID)
 	proof, err := n.ProveNamespace(nID)
 	return data, proof, err
 }
 
 func (n NamespacedMerkleTree) calculateAbsenceIndex(nID namespace.ID) int {
-	var prevLeaf namespace.PrefixedData
+	var prevLeaf namespace.Data
 	for index, curLeaf := range n.leaves {
 		if index == 0 {
 			prevLeaf = curLeaf
@@ -186,7 +186,7 @@ func (n NamespacedMerkleTree) NamespaceSize() uint8 {
 // Returns an error if the namespace ID size of the input
 // does not match the tree's NamespaceSize() or the leaves are not pushed in
 // order (i.e. lexicographically sorted by namespace ID).
-func (n *NamespacedMerkleTree) Push(data namespace.PrefixedData) error {
+func (n *NamespacedMerkleTree) Push(data namespace.Data) error {
 	got, want := data.NamespaceSize(), n.NamespaceSize()
 	if got != want {
 		return fmt.Errorf("%w: got: %v, want: %v", ErrMismatchedNamespaceSize, got, want)
@@ -245,7 +245,7 @@ func (n *NamespacedMerkleTree) updateNamespaceRanges() {
 	}
 }
 
-func (n *NamespacedMerkleTree) updateMinMaxID(data namespace.PrefixedData) {
+func (n *NamespacedMerkleTree) updateMinMaxID(data namespace.Data) {
 	if data.NamespaceID().Less(n.minNID) {
 		n.minNID = data.NamespaceID()
 	}

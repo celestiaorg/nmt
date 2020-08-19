@@ -42,7 +42,13 @@ func (n *DefaultNmtHasher) EmptyRoot() namespace.IntervalDigest {
 func (n *DefaultNmtHasher) HashLeaf(leaf []byte) []byte {
 	h := n.Hash
 	h.Reset()
-
+	// TODO this makes assumptions on how the passed in leaf data looks like
+	// instead, this should use the Data / NamespaceID methods:
+	// nID := leaf.NamespaceID()
+	// data := leaf.Data()
+	// But this will requires further refactoring.
+	// It does not matter too much right now as all this is hidden
+	// in the internal package.
 	nID := leaf[:n.NamespaceLen]
 	data := leaf[n.NamespaceLen:]
 	res := append(append(make([]byte, 0), nID...), nID...)

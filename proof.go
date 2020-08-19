@@ -90,7 +90,7 @@ func NewAbsenceProof(proofStart, proofEnd int, proofNodes [][]byte, leafHash []b
 // VerifyNamespace verifies a whole namespace, i.e. it verifies inclusion of
 // the provided data in the tree. Additionally, it verifies that the namespace
 // is complete and no leaf of that namespace was left out in the proof.
-func (proof Proof) VerifyNamespace(h hash.Hash, nID namespace.ID, data []namespace.PrefixedData, root namespace.IntervalDigest) bool {
+func (proof Proof) VerifyNamespace(h hash.Hash, nID namespace.ID, data []namespace.Data, root namespace.IntervalDigest) bool {
 	// TODO add more sanity checks
 	nth := internal.NewNmtHasher(nID.Size(), h)
 

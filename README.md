@@ -27,30 +27,29 @@ The concept was first introduced by [@musalbas] in the LazyLedger [academic pape
 package main
 
 import (
-    "crypto"
-    _ "crypto/sha256"
+    "crypto/sha256"
     "fmt"
 
     "github.com/lazyledger/nmt"
-    "github.com/lazyledger/nmt/defaulthasher"
     "github.com/lazyledger/nmt/namespace"
 )
 
 func main() {
     // the tree will use this namespace size
-    nidSize := uint8(1)
+	nidSize := 1
     // the leaves that will be pushed
-    data := []namespace.PrefixedData{
+	data := []namespace.PrefixedData{
         namespace.PrefixedDataFrom(namespace.ID{0}, []byte("leaf_0")),
         namespace.PrefixedDataFrom(namespace.ID{0}, []byte("leaf_1")),
         namespace.PrefixedDataFrom(namespace.ID{1}, []byte("leaf_2")),
         namespace.PrefixedDataFrom(namespace.ID{1}, []byte("leaf_3"))}
-    // use the hasher to set the namespace size as well as 
+    // Init a tree with the namespace size as well as
     // the underlying hash function:
-    nmtHasher := defaulthasher.New(nidSize, crypto.SHA256)
-    tree := nmt.New(nmtHasher)
+    tree := New(sha256.New(), namespace.Size(nidSize))
     for _, d := range data {
-        tree.Push(d)
+        if err := tree.Push(d); err != nil {
+            panic("unexpected error")
+        }
     }
     
     // compute the root
