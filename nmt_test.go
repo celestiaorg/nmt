@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"crypto"
 	"crypto/sha256"
-	_ "crypto/sha256"
 	"encoding/binary"
 	"fmt"
 	"math"
