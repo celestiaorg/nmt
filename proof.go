@@ -197,7 +197,7 @@ func (proof Proof) verifyLeafHashes(nth internal.NmtHasher, verifyCompleteness b
 	return bytes.Equal(tree.Root(), root.Bytes())
 }
 
-func (proof Proof) VerifyInclusion(h hash.Hash, data namespace.PrefixedData, root namespace.IntervalDigest) bool {
+func (proof Proof) VerifyInclusion(h hash.Hash, data namespace.Data, root namespace.IntervalDigest) bool {
 	nth := internal.NewNmtHasher(data.NamespaceSize(), h)
 	leafData, err := data.MarshalBinary()
 	if err != nil {
