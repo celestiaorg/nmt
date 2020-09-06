@@ -16,6 +16,9 @@ func NewIntervalDigest(min, max ID, digest []byte) IntervalDigest {
 	}
 }
 
+// IntervalDigestFromBytes is the inverse function to IntervalDigest.Bytes().
+// In other words, it assumes that the passed in digestBytes are of the form
+// d.Min() || d.Max() || d.Hash() for an IntervalDigest d.
 func IntervalDigestFromBytes(nIDLen Size, digestBytes []byte) IntervalDigest {
 	if len(digestBytes) < int(2*nIDLen) {
 		panic(fmt.Sprintf("invalid digest: %x, expected length >= %v, got: %v",
