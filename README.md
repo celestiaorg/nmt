@@ -35,14 +35,15 @@ import (
 )
 
 func main() {
-    // the tree will use this namespace size
+	// the tree will use this namespace size
 	nidSize := 1
-    // the leaves that will be pushed
+	// the leaves that will be pushed
 	data := []namespace.PrefixedData{
-        namespace.PrefixedDataFrom(namespace.ID{0}, []byte("leaf_0")),
-        namespace.PrefixedDataFrom(namespace.ID{0}, []byte("leaf_1")),
-        namespace.PrefixedDataFrom(namespace.ID{1}, []byte("leaf_2")),
-        namespace.PrefixedDataFrom(namespace.ID{1}, []byte("leaf_3"))}
+		namespace.PrefixedDataFrom(namespace.ID{0}, []byte("leaf_0")),
+		namespace.PrefixedDataFrom(namespace.ID{0}, []byte("leaf_1")),
+		namespace.PrefixedDataFrom(namespace.ID{1}, []byte("leaf_2")),
+		namespace.PrefixedDataFrom(namespace.ID{1}, []byte("leaf_3"))}
+
     // Init a tree with the namespace size as well as
     // the underlying hash function:
     tree := New(sha256.New(), namespace.Size(nidSize))
