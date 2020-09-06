@@ -108,7 +108,7 @@ func (proof Proof) VerifyNamespace(h hash.Hash, nID namespace.ID, data []namespa
 		// do some sanity checks:
 		hashLeafFunc := nth.HashLeaf
 		for _, gotLeaf := range data {
-			if gotLeaf.NamespaceSize() != nIDLen {
+			if gotLeaf.NamespaceID().Size() != nIDLen {
 				// conflicting namespace sizes
 				return false
 			}
@@ -195,7 +195,7 @@ func (proof Proof) verifyLeafHashes(nth internal.NmtHasher, verifyCompleteness b
 }
 
 func (proof Proof) VerifyInclusion(h hash.Hash, data namespace.Data, root namespace.IntervalDigest) bool {
-	nth := internal.NewNmtHasher(data.NamespaceSize(), h)
+	nth := internal.NewNmtHasher(data.NamespaceID().Size(), h)
 	leafData := append(data.NamespaceID(), data.Data()...)
 	return proof.verifyLeafHashes(nth, false, data.NamespaceID(), [][]byte{nth.HashLeaf(leafData)}, root)
 }

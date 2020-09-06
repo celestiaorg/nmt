@@ -6,6 +6,8 @@ import (
 	_ "crypto/sha256"
 	"reflect"
 	"testing"
+
+	"github.com/lazyledger/nmt/namespace"
 )
 
 func Test_namespacedTreeHasher_HashLeaf(t *testing.T) {
@@ -24,7 +26,7 @@ func Test_namespacedTreeHasher_HashLeaf(t *testing.T) {
 
 	tests := []struct {
 		name  string
-		nsLen uint8
+		nsLen namespace.Size
 		leaf  []byte
 		want  []byte
 	}{
@@ -53,7 +55,7 @@ func Test_namespacedTreeHasher_HashNode(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		nidLen   uint8
+		nidLen   namespace.Size
 		children children
 		want     []byte
 	}{

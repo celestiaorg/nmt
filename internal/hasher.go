@@ -14,14 +14,14 @@ const (
 
 type DefaultNmtHasher struct {
 	hash.Hash
-	NamespaceLen uint8
+	NamespaceLen namespace.Size
 }
 
-func (n *DefaultNmtHasher) NamespaceSize() uint8 {
+func (n *DefaultNmtHasher) NamespaceSize() namespace.Size {
 	return n.NamespaceLen
 }
 
-func NewNmtHasher(nidLen uint8, baseHasher hash.Hash) *DefaultNmtHasher {
+func NewNmtHasher(nidLen namespace.Size, baseHasher hash.Hash) *DefaultNmtHasher {
 	return &DefaultNmtHasher{
 		Hash:         baseHasher,
 		NamespaceLen: nidLen,

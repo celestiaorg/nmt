@@ -9,8 +9,6 @@ type Data interface {
 	NamespaceID() ID
 	// Data returns the data as bytes (without the namespace)
 	Data() []byte
-	// NamespaceSize returns the number of bytes the namespace of this data encodes to.
-	NamespaceSize() uint8
 }
 
 type PrefixedData32 []byte
@@ -56,7 +54,7 @@ func (d PrefixedData8) NamespaceSize() uint8 {
 }
 
 type PrefixedData struct {
-	namespaceLen uint8
+	namespaceLen Size
 	prefixedData []byte
 }
 
@@ -68,11 +66,7 @@ func (n PrefixedData) Data() []byte {
 	return n.prefixedData[n.namespaceLen:]
 }
 
-func (n PrefixedData) NamespaceSize() uint8 {
-	return n.namespaceLen
-}
-
-func NewPrefixedData(namespaceLen uint8, prefixedData []byte) PrefixedData {
+func NewPrefixedData(namespaceLen Size, prefixedData []byte) PrefixedData {
 	return PrefixedData{
 		namespaceLen: namespaceLen,
 		prefixedData: prefixedData,

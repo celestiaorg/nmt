@@ -7,7 +7,7 @@ import (
 func TestIntervalDigestFromBytesPanic(t *testing.T) {
 	tests := []struct {
 		name        string
-		nIDLen      uint8
+		nIDLen      Size
 		digestBytes []byte
 	}{
 		{"empty digest", 1, []byte(nil)},

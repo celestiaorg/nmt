@@ -365,7 +365,7 @@ func makeLeafData(ns []byte, data []byte) namespace.PrefixedData {
 	if len(ns) > math.MaxUint8 {
 		panic("namespace too large")
 	}
-	return namespace.NewPrefixedData(uint8(len(ns)), append(ns, data...))
+	return namespace.NewPrefixedData(namespace.Size(len(ns)), append(ns, data...))
 }
 
 // generates a consecutive range of leaf data
@@ -388,7 +388,7 @@ func generateLeafData(nsLen uint8, nsStartIdx, nsEndIdx int, data []byte) []name
 		nsUnpadded := make([]byte, 10)
 		n := binary.PutUvarint(nsUnpadded, curNsUint)
 		copy(curNs[len(startNS)-n:], nsUnpadded[:n])
-		res = append(res, namespace.NewPrefixedData(nsLen, append(curNs, data...)))
+		res = append(res, namespace.NewPrefixedData(namespace.Size(nsLen), append(curNs, data...)))
 	}
 	return res
 }

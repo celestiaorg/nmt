@@ -42,7 +42,7 @@ type NamespacedMerkleTree struct {
 // If the namespace size is 0 this corresponds to a regular non-namespaced
 // Merkle tree.
 func New(h hash.Hash, namespaceSize namespace.Size) *NamespacedMerkleTree {
-	treeHasher := internal.NewNmtHasher(uint8(namespaceSize), h)
+	treeHasher := internal.NewNmtHasher(namespaceSize, h)
 	return &NamespacedMerkleTree{
 		treeHasher: treeHasher,
 		tree:       merkletree.NewFromTreehasher(treeHasher),
@@ -178,7 +178,7 @@ func (n *NamespacedMerkleTree) foundInRange(nID namespace.ID) (bool, int, int) {
 
 // NamespaceSize returns the underlying namespace size. Note that
 // all namespaced data is expected to have the same namespace size.
-func (n NamespacedMerkleTree) NamespaceSize() uint8 {
+func (n NamespacedMerkleTree) NamespaceSize() namespace.Size {
 	return n.treeHasher.NamespaceSize()
 }
 
@@ -187,7 +187,7 @@ func (n NamespacedMerkleTree) NamespaceSize() uint8 {
 // does not match the tree's NamespaceSize() or the leaves are not pushed in
 // order (i.e. lexicographically sorted by namespace ID).
 func (n *NamespacedMerkleTree) Push(data namespace.Data) error {
-	got, want := data.NamespaceSize(), n.NamespaceSize()
+	got, want := data.NamespaceID().Size(), n.NamespaceSize()
 	if got != want {
 		return fmt.Errorf("%w: got: %v, want: %v", ErrMismatchedNamespaceSize, got, want)
 	}

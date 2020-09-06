@@ -16,7 +16,7 @@ func NewIntervalDigest(min, max ID, digest []byte) IntervalDigest {
 	}
 }
 
-func IntervalDigestFromBytes(nIDLen uint8, digestBytes []byte) IntervalDigest {
+func IntervalDigestFromBytes(nIDLen Size, digestBytes []byte) IntervalDigest {
 	if len(digestBytes) < int(2*nIDLen) {
 		panic(fmt.Sprintf("invalid digest: %x, expected length >= %v, got: %v",
 			digestBytes, 2*nIDLen, len(digestBytes)))
