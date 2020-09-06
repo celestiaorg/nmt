@@ -203,10 +203,7 @@ func (n *NamespacedMerkleTree) Push(data namespace.Data) error {
 			)
 		}
 	}
-	leafData, err := data.MarshalBinary()
-	if err != nil {
-		return err
-	}
+	leafData := append(data.NamespaceID(), data.Data()...)
 	n.tree.Push(leafData)
 	// update relevant "caches":
 	n.leaves = append(n.leaves, data)

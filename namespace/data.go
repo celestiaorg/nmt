@@ -11,9 +11,6 @@ type Data interface {
 	Data() []byte
 	// NamespaceSize returns the number of bytes the namespace of this data encodes to.
 	NamespaceSize() uint8
-	// MarshalBinary can be used to define any binary encoding for the Data
-	// including it's namespace.ID.
-	MarshalBinary() ([]byte, error)
 }
 
 type PrefixedData32 []byte
@@ -24,9 +21,6 @@ func (d PrefixedData32) NamespaceID() ID {
 
 func (d PrefixedData32) Data() []byte {
 	return d[32:]
-}
-func (d PrefixedData32) MarshalBinary() ([]byte, error) {
-	return d, nil
 }
 
 func (d PrefixedData32) NamespaceSize() uint8 {
@@ -42,9 +36,6 @@ func (d PrefixedData16) NamespaceID() ID {
 func (d PrefixedData16) Data() []byte {
 	return d[16:]
 }
-func (d PrefixedData16) MarshalBinary() ([]byte, error) {
-	return d, nil
-}
 
 func (d PrefixedData16) NamespaceSize() uint8 {
 	return 16
@@ -58,9 +49,6 @@ func (d PrefixedData8) NamespaceID() ID {
 
 func (d PrefixedData8) Data() []byte {
 	return d[8:]
-}
-func (d PrefixedData8) MarshalBinary() ([]byte, error) {
-	return d, nil
 }
 
 func (d PrefixedData8) NamespaceSize() uint8 {
@@ -78,10 +66,6 @@ func (n PrefixedData) NamespaceID() ID {
 
 func (n PrefixedData) Data() []byte {
 	return n.prefixedData[n.namespaceLen:]
-}
-
-func (n PrefixedData) MarshalBinary() ([]byte, error) {
-	return n.prefixedData, nil
 }
 
 func (n PrefixedData) NamespaceSize() uint8 {
