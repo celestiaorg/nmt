@@ -289,6 +289,36 @@ func TestNamespacedMerkleTree_ProveNamespace_Ranges_And_Verify(t *testing.T) {
 	}
 }
 
+func TestIgnoreMaxNamespace(t *testing.T) {
+	var (
+		hash       = sha256.New()
+		nidSize    = 8
+		wantMinNID = []byte{0, 0, 0, 0, 0, 0, 0, 0}
+		wantMaxNID = []byte{0, 0, 0, 0, 0, 0, 0, 1}
+		maxNID     = []byte{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}
+	)
+	data := []namespace.Data{
+		namespace.PrefixedData8(append(wantMinNID, []byte("leaf_1")...)),
+		namespace.PrefixedData8(append(wantMaxNID, []byte("leaf_2")...)),
+		namespace.PrefixedData8(append(maxNID, []byte("leaf_3")...)),
+		namespace.PrefixedData8(append(maxNID, []byte("leaf_4")...)),
+	}
+
+	tree := New(hash, NamespaceIDSize(nidSize), IgnoreMaxNamespace(true))
+	for _, d := range data {
+		if err := tree.Push(d); err != nil {
+			panic("unexpected error")
+		}
+	}
+	gotDigest := tree.Root()
+	if !gotDigest.Min().Equal(wantMinNID) {
+		t.Fatalf("Unexpected root.Min() got: %x, want: %x", gotDigest.Min(), wantMinNID)
+	}
+	if !gotDigest.Max().Equal(wantMaxNID) {
+		t.Fatalf("Unexpected root.Max() got: %x, want: %x", gotDigest.Max(), wantMaxNID)
+	}
+}
+
 func TestNamespacedMerkleTree_ProveErrors(t *testing.T) {
 	tests := []struct {
 		name      string

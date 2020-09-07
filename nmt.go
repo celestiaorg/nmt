@@ -24,8 +24,9 @@ var (
 )
 
 type Options struct {
-	InitialCapacity int
-	NamespaceIDSize namespace.IDSize
+	InitialCapacity    int
+	NamespaceIDSize    namespace.IDSize
+	IgnoreMaxNamespace bool
 }
 
 type Option func(*Options)
@@ -49,6 +50,16 @@ func NamespaceIDSize(size int) Option {
 	}
 	return func(opts *Options) {
 		opts.NamespaceIDSize = namespace.IDSize(size)
+	}
+}
+
+// IgnoreMaxNamespace sets whether the largest possible namespace.ID MAX_NID should be 'ignored'.
+// If set to true, this allows for shorter proofs in particular use-cases.
+// E.g., see: https://github.com/lazyledger/lazyledger-specs/blob/master/specs/data_structures.md#namespace-merkle-tree
+// Defaults to false.
+func IgnoreMaxNamespace(ignore bool) Option {
+	return func(opts *Options) {
+		opts.IgnoreMaxNamespace = ignore
 	}
 }
 
