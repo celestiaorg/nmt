@@ -24,5 +24,5 @@ type NmtHasher interface {
 	// Size returns the size of the underlying hasher.
 	Size() int
 	// Return the size of the namespace
-	NamespaceSize() namespace.Size
+	NamespaceSize() namespace.IDSize
 }

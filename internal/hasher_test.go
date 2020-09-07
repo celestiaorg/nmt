@@ -26,7 +26,7 @@ func Test_namespacedTreeHasher_HashLeaf(t *testing.T) {
 
 	tests := []struct {
 		name  string
-		nsLen namespace.Size
+		nsLen namespace.IDSize
 		leaf  []byte
 		want  []byte
 	}{
@@ -55,7 +55,7 @@ func Test_namespacedTreeHasher_HashNode(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		nidLen   namespace.Size
+		nidLen   namespace.IDSize
 		children children
 		want     []byte
 	}{

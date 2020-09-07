@@ -12,7 +12,7 @@ import (
 func TestProof_VerifyNamespace_False(t *testing.T) {
 	const testNidLen = 3
 
-	n := New(sha256.New(), testNidLen)
+	n := New(sha256.New(), NamespaceIDSize(testNidLen))
 	data := append(append([]namespace.PrefixedData{
 		namespace.PrefixedDataFrom([]byte{0, 0, 0}, []byte("first leaf"))},
 		generateLeafData(testNidLen, 0, 9, []byte("data"))...,

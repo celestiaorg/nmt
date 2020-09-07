@@ -24,10 +24,33 @@ var (
 )
 
 type Options struct {
-	InitialCapacity uint64
+	InitialCapacity int
+	NamespaceIDSize namespace.IDSize
 }
 
 type Option func(*Options)
+
+// InitialCapacity sets the capacity of the internally used slice(s) to
+// the passed in initial value (defaults is 128).
+func InitialCapacity(cap int) Option {
+	if cap < 0 {
+		panic("Got invalid capacity. Expected int greater or equal to 0.")
+	}
+	return func(opts *Options) {
+		opts.InitialCapacity = cap
+	}
+}
+
+// NamespaceIDSize sets the size of namespace IDs (in bytes) used by this tree.
+// Defaults to 32 bytes.
+func NamespaceIDSize(size int) Option {
+	if size < 0 || size > namespace.IDMaxSize {
+		panic("Got invalid namespace.IDSize. Expected 0 <= size <= namespace.IDMaxSize.")
+	}
+	return func(opts *Options) {
+		opts.NamespaceIDSize = namespace.IDSize(size)
+	}
+}
 
 type NamespacedMerkleTree struct {
 	treeHasher internal.NmtHasher
@@ -47,26 +70,25 @@ type NamespacedMerkleTree struct {
 // and for the given namespace size (number of bytes).
 // If the namespace size is 0 this corresponds to a regular non-namespaced
 // Merkle tree.
-func New(h hash.Hash, namespaceSize namespace.Size, setters ...Option) *NamespacedMerkleTree {
-	treeHasher := internal.NewNmtHasher(namespaceSize, h)
-
+func New(h hash.Hash, setters ...Option) *NamespacedMerkleTree {
 	// default options:
 	opts := &Options{
 		InitialCapacity: 128,
+		NamespaceIDSize: 32,
 	}
 
 	for _, setter := range setters {
 		setter(opts)
 	}
-
+	treeHasher := internal.NewNmtHasher(opts.NamespaceIDSize, h)
 	return &NamespacedMerkleTree{
 		treeHasher:      treeHasher,
 		tree:            merkletree.NewFromTreehasher(treeHasher),
 		leaves:          make([]namespace.Data, 0, opts.InitialCapacity),
 		leafHashes:      make([][]byte, 0, opts.InitialCapacity),
 		namespaceRanges: make(map[string]merkletree.LeafRange),
-		minNID:          bytes.Repeat([]byte{0xFF}, int(namespaceSize)),
-		maxNID:          bytes.Repeat([]byte{0x00}, int(namespaceSize)),
+		minNID:          bytes.Repeat([]byte{0xFF}, int(opts.NamespaceIDSize)),
+		maxNID:          bytes.Repeat([]byte{0x00}, int(opts.NamespaceIDSize)),
 	}
 }
 
@@ -189,7 +211,7 @@ func (n *NamespacedMerkleTree) foundInRange(nID namespace.ID) (bool, int, int) {
 
 // NamespaceSize returns the underlying namespace size. Note that
 // all namespaced data is expected to have the same namespace size.
-func (n NamespacedMerkleTree) NamespaceSize() namespace.Size {
+func (n NamespacedMerkleTree) NamespaceSize() namespace.IDSize {
 	return n.treeHasher.NamespaceSize()
 }
 
