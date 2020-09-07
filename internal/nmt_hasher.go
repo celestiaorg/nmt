@@ -25,4 +25,6 @@ type NmtHasher interface {
 	Size() int
 	// Return the size of the namespace
 	NamespaceSize() namespace.IDSize
+	// Returns if the NmtHasher ignores the max namespace.
+	IsMaxNamespaceIDIgnored() bool
 }

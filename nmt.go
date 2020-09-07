@@ -84,14 +84,15 @@ type NamespacedMerkleTree struct {
 func New(h hash.Hash, setters ...Option) *NamespacedMerkleTree {
 	// default options:
 	opts := &Options{
-		InitialCapacity: 128,
-		NamespaceIDSize: 32,
+		InitialCapacity:    128,
+		NamespaceIDSize:    32,
+		IgnoreMaxNamespace: false,
 	}
 
 	for _, setter := range setters {
 		setter(opts)
 	}
-	treeHasher := internal.NewNmtHasher(opts.NamespaceIDSize, h)
+	treeHasher := internal.NewNmtHasher(h, opts.NamespaceIDSize, opts.IgnoreMaxNamespace)
 	return &NamespacedMerkleTree{
 		treeHasher:      treeHasher,
 		tree:            merkletree.NewFromTreehasher(treeHasher),
@@ -107,14 +108,15 @@ func New(h hash.Hash, setters ...Option) *NamespacedMerkleTree {
 // Note this is not really NMT specific but the tree supports inclusions proofs
 // like any vanilla Merkle tree.
 func (n NamespacedMerkleTree) Prove(index int) (Proof, error) {
+	isMaxNsIgnored := n.treeHasher.IsMaxNamespaceIDIgnored()
 	subTreeHasher := internal.NewCachedSubtreeHasher(n.leafHashes, n.treeHasher)
 	// TODO: store nodes and re-use the hashes instead recomputing parts of the tree here
 	proof, err := merkletree.BuildRangeProof(index, index+1, subTreeHasher)
 	if err != nil {
-		return NewEmptyRangeProof(), err
+		return NewEmptyRangeProof(isMaxNsIgnored), err
 	}
 
-	return NewInclusionProof(index, index+1, proof), nil
+	return NewInclusionProof(index, index+1, proof, isMaxNsIgnored), nil
 }
 
 // ProveNamespace returns a range proof for the given NamespaceID.
@@ -132,10 +134,11 @@ func (n NamespacedMerkleTree) Prove(index int) (Proof, error) {
 // generate any proof and we return an empty range (0,0) to
 // indicate that this namespace is not contained in the tree.
 func (n NamespacedMerkleTree) ProveNamespace(nID namespace.ID) (Proof, error) {
+	isMaxNsIgnored := n.treeHasher.IsMaxNamespaceIDIgnored()
 	// In the cases (nID < minNID) or (maxNID < nID),
 	// return empty range and no proof:
 	if nID.Less(n.minNID) || n.maxNID.Less(nID) {
-		return NewEmptyRangeProof(), nil
+		return NewEmptyRangeProof(isMaxNsIgnored), nil
 	}
 
 	found, proofStart, proofEnd := n.foundInRange(nID)
@@ -165,9 +168,9 @@ func (n NamespacedMerkleTree) ProveNamespace(nID namespace.ID) (Proof, error) {
 	}
 
 	if found {
-		return NewInclusionProof(proofStart, proofEnd, proof), nil
+		return NewInclusionProof(proofStart, proofEnd, proof, isMaxNsIgnored), nil
 	}
-	return NewAbsenceProof(proofStart, proofEnd, proof, n.leafHashes[proofStart]), nil
+	return NewAbsenceProof(proofStart, proofEnd, proof, n.leafHashes[proofStart], isMaxNsIgnored), nil
 }
 
 // Get returns leaves for the given namespace.ID.

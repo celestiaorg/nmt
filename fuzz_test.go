@@ -88,7 +88,7 @@ func TestFuzzProveVerifyNameSpace(t *testing.T) {
 			}
 
 			if len(data) != 0 {
-				emptyProof := nmt.NewEmptyRangeProof()
+				emptyProof := nmt.NewEmptyRangeProof(false)
 				if emptyProof.VerifyNamespace(hash, nid, data, treeRoot) {
 					t.Fatalf("empty range proof on non-empty data verified to true")
 				}

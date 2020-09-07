@@ -15,16 +15,25 @@ const (
 type DefaultNmtHasher struct {
 	hash.Hash
 	NamespaceLen namespace.IDSize
+
+	ignoreMaxNs bool
+	cachedMaxNs namespace.ID
+}
+
+func (n *DefaultNmtHasher) IsMaxNamespaceIDIgnored() bool {
+	return n.ignoreMaxNs
 }
 
 func (n *DefaultNmtHasher) NamespaceSize() namespace.IDSize {
 	return n.NamespaceLen
 }
 
-func NewNmtHasher(nidLen namespace.IDSize, baseHasher hash.Hash) *DefaultNmtHasher {
+func NewNmtHasher(baseHasher hash.Hash, nidLen namespace.IDSize, ignoreMaxNamespace bool) *DefaultNmtHasher {
 	return &DefaultNmtHasher{
 		Hash:         baseHasher,
 		NamespaceLen: nidLen,
+		ignoreMaxNs:  ignoreMaxNamespace,
+		cachedMaxNs:  bytes.Repeat([]byte{0xFF}, int(nidLen)),
 	}
 }
 
@@ -72,7 +81,15 @@ func (n *DefaultNmtHasher) HashNode(l, r []byte) []byte {
 	rightMinNs, rightMaxNs := r[:n.NamespaceLen], r[n.NamespaceLen:flagLen]
 
 	minNs := min(leftMinNs, rightMinNs)
-	maxNs := max(leftMaxNs, rightMaxNs)
+	var maxNs []byte
+	if n.ignoreMaxNs && n.cachedMaxNs.Equal(leftMinNs) {
+		maxNs = n.cachedMaxNs
+	} else if n.ignoreMaxNs && n.cachedMaxNs.Equal(rightMinNs) {
+		maxNs = leftMaxNs
+	} else {
+		maxNs = max(leftMaxNs, rightMaxNs)
+	}
+
 	res := append(append(make([]byte, 0), minNs...), maxNs...)
 
 	// Note this seems a little faster than calling several Write()s on the

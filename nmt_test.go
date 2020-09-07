@@ -317,6 +317,24 @@ func TestIgnoreMaxNamespace(t *testing.T) {
 	if !gotDigest.Max().Equal(wantMaxNID) {
 		t.Fatalf("Unexpected root.Max() got: %x, want: %x", gotDigest.Max(), wantMaxNID)
 	}
+	for idx, d := range data {
+		proof, err := tree.ProveNamespace(d.NamespaceID())
+		if err != nil {
+			t.Fatalf("ProveNamespace() unexpected error: %v", err)
+		}
+		data := tree.Get(d.NamespaceID())
+		if !proof.VerifyNamespace(hash, d.NamespaceID(), data, tree.Root()) {
+			t.Errorf("VerifyNamespace() failed on ID: %x", d.NamespaceID())
+		}
+
+		singleProof, err := tree.Prove(idx)
+		if err != nil {
+			t.Fatalf("ProveNamespace() unexpected error: %v", err)
+		}
+		if !singleProof.VerifyInclusion(hash, d, tree.Root()) {
+			t.Errorf("VerifyInclusion() failed on data: %#v with index: %v", d, idx)
+		}
+	}
 }
 
 func TestNamespacedMerkleTree_ProveErrors(t *testing.T) {
