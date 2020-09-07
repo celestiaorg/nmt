@@ -23,6 +23,12 @@ var (
 	ErrInvalidPushOrder        = errors.New("pushed data has to be lexicographically ordered by namespace IDs")
 )
 
+type Options struct {
+	InitialCapacity uint64
+}
+
+type Option func(*Options)
+
 type NamespacedMerkleTree struct {
 	treeHasher internal.NmtHasher
 	tree       *merkletree.Tree
@@ -41,18 +47,23 @@ type NamespacedMerkleTree struct {
 // and for the given namespace size (number of bytes).
 // If the namespace size is 0 this corresponds to a regular non-namespaced
 // Merkle tree.
-func New(h hash.Hash, namespaceSize namespace.Size) *NamespacedMerkleTree {
+func New(h hash.Hash, namespaceSize namespace.Size, setters ...Option) *NamespacedMerkleTree {
 	treeHasher := internal.NewNmtHasher(namespaceSize, h)
+
+	// default options:
+	opts := &Options{
+		InitialCapacity: 128,
+	}
+
+	for _, setter := range setters {
+		setter(opts)
+	}
+
 	return &NamespacedMerkleTree{
-		treeHasher: treeHasher,
-		tree:       merkletree.NewFromTreehasher(treeHasher),
-		// XXX: 128 seems like a good capacity for the leaves slice
-		// but maybe this should also be a constructor param: for cases the caller
-		// knows exactly how many leaves will be pushed this will save allocations
-		// In fact, in that case the caller could pass in the whole data at once
-		// and we could even use the passed in slice without allocating space for a copy.
-		leaves:          make([]namespace.Data, 0, 128),
-		leafHashes:      make([][]byte, 0, 128),
+		treeHasher:      treeHasher,
+		tree:            merkletree.NewFromTreehasher(treeHasher),
+		leaves:          make([]namespace.Data, 0, opts.InitialCapacity),
+		leafHashes:      make([][]byte, 0, opts.InitialCapacity),
 		namespaceRanges: make(map[string]merkletree.LeafRange),
 		minNID:          bytes.Repeat([]byte{0xFF}, int(namespaceSize)),
 		maxNID:          bytes.Repeat([]byte{0x00}, int(namespaceSize)),
