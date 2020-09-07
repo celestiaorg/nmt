@@ -322,6 +322,9 @@ func TestIgnoreMaxNamespace(t *testing.T) {
 		if err != nil {
 			t.Fatalf("ProveNamespace() unexpected error: %v", err)
 		}
+		if !proof.IsMaxNamespaceIDIgnored() {
+			t.Fatalf("Proof.IsMaxNamespaceIDIgnored() got: false, want: true")
+		}
 		data := tree.Get(d.NamespaceID())
 		if !proof.VerifyNamespace(hash, d.NamespaceID(), data, tree.Root()) {
 			t.Errorf("VerifyNamespace() failed on ID: %x", d.NamespaceID())
@@ -333,6 +336,9 @@ func TestIgnoreMaxNamespace(t *testing.T) {
 		}
 		if !singleProof.VerifyInclusion(hash, d, tree.Root()) {
 			t.Errorf("VerifyInclusion() failed on data: %#v with index: %v", d, idx)
+		}
+		if !singleProof.IsMaxNamespaceIDIgnored() {
+			t.Fatalf("Proof.IsMaxNamespaceIDIgnored() got: false, want: true")
 		}
 	}
 }
