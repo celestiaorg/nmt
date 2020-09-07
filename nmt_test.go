@@ -408,6 +408,18 @@ func TestNamespacedMerkleTree_calculateAbsenceIndex_Panic(t *testing.T) {
 	}
 }
 
+func TestInvalidOptions(t *testing.T) {
+	shouldPanic(t, func() {
+		_ = New(sha256.New(), InitialCapacity(-1))
+	})
+	shouldPanic(t, func() {
+		_ = New(sha256.New(), NamespaceIDSize(-1))
+	})
+	shouldPanic(t, func() {
+		_ = New(sha256.New(), NamespaceIDSize(namespace.IDMaxSize+1))
+	})
+}
+
 func shouldPanic(t *testing.T, f func()) {
 	//nolint:errcheck
 	defer func() { recover() }()
