@@ -305,8 +305,12 @@ func TestIgnoreMaxNamespace(t *testing.T) {
 	}
 
 	tree := New(hash, NamespaceIDSize(nidSize), IgnoreMaxNamespace(true))
+	treeNotIgnoredOpt := New(hash, NamespaceIDSize(nidSize), IgnoreMaxNamespace(false))
 	for _, d := range data {
 		if err := tree.Push(d); err != nil {
+			panic("unexpected error")
+		}
+		if err := treeNotIgnoredOpt.Push(d); err != nil {
 			panic("unexpected error")
 		}
 	}
@@ -316,6 +320,11 @@ func TestIgnoreMaxNamespace(t *testing.T) {
 	}
 	if !gotDigest.Max().Equal(wantMaxNID) {
 		t.Fatalf("Unexpected root.Max() got: %x, want: %x", gotDigest.Max(), wantMaxNID)
+	}
+	// if we explicitly do not ignore the max namespace, we expect it to show up in the root:
+	gotDigest2 := treeNotIgnoredOpt.Root()
+	if !gotDigest2.Max().Equal(maxNID) {
+		t.Fatalf("Unexpected root.Max() got: %x, want: %x", gotDigest2.Max(), maxNID)
 	}
 	for idx, d := range data {
 		proof, err := tree.ProveNamespace(d.NamespaceID())
