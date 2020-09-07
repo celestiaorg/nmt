@@ -56,7 +56,7 @@ func NamespaceIDSize(size int) Option {
 // IgnoreMaxNamespace sets whether the largest possible namespace.ID MAX_NID should be 'ignored'.
 // If set to true, this allows for shorter proofs in particular use-cases.
 // E.g., see: https://github.com/lazyledger/lazyledger-specs/blob/master/specs/data_structures.md#namespace-merkle-tree
-// Defaults to false.
+// Defaults to true.
 func IgnoreMaxNamespace(ignore bool) Option {
 	return func(opts *Options) {
 		opts.IgnoreMaxNamespace = ignore
@@ -86,7 +86,7 @@ func New(h hash.Hash, setters ...Option) *NamespacedMerkleTree {
 	opts := &Options{
 		InitialCapacity:    128,
 		NamespaceIDSize:    32,
-		IgnoreMaxNamespace: false,
+		IgnoreMaxNamespace: true,
 	}
 
 	for _, setter := range setters {
