@@ -291,63 +291,176 @@ func TestNamespacedMerkleTree_ProveNamespace_Ranges_And_Verify(t *testing.T) {
 
 func TestIgnoreMaxNamespace(t *testing.T) {
 	var (
-		hash       = sha256.New()
-		nidSize    = 8
-		wantMinNID = []byte{0, 0, 0, 0, 0, 0, 0, 0}
-		wantMaxNID = []byte{0, 0, 0, 0, 0, 0, 0, 1}
-		maxNID     = []byte{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}
+		hash      = sha256.New()
+		nidSize   = 8
+		minNID    = []byte{0, 0, 0, 0, 0, 0, 0, 0}
+		secondNID = []byte{0, 0, 0, 0, 0, 0, 0, 1}
+		thirdNID  = []byte{0, 0, 0, 0, 0, 0, 0, 2}
+		maxNID    = []byte{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}
 	)
-	data := []namespace.Data{
-		namespace.PrefixedData8(append(wantMinNID, []byte("leaf_1")...)),
-		namespace.PrefixedData8(append(wantMaxNID, []byte("leaf_2")...)),
-		namespace.PrefixedData8(append(maxNID, []byte("leaf_3")...)),
-		namespace.PrefixedData8(append(maxNID, []byte("leaf_4")...)),
+
+	tests := []struct {
+		name               string
+		ignoreMaxNamespace bool
+		pushData           []namespace.Data
+		wantRootMaxNID     namespace.ID
+	}{
+		{"single leaf with MaxNID (ignored)",
+			true,
+			[]namespace.Data{namespace.PrefixedData8(append(maxNID, []byte("leaf_1")...))},
+			maxNID,
+		},
+		{"single leaf with MaxNID (not ignored)",
+			false,
+			[]namespace.Data{namespace.PrefixedData8(append(maxNID, []byte("leaf_1")...))},
+			maxNID,
+		},
+		{"two leaves, one with MaxNID (ignored)",
+			true,
+			[]namespace.Data{
+				namespace.PrefixedData8(append(secondNID, []byte("leaf_1")...)),
+				namespace.PrefixedData8(append(maxNID, []byte("leaf_2")...)),
+			},
+			secondNID,
+		},
+		{"two leaves, one with MaxNID (not ignored)",
+			false,
+			[]namespace.Data{
+				namespace.PrefixedData8(append(secondNID, []byte("leaf_1")...)),
+				namespace.PrefixedData8(append(maxNID, []byte("leaf_2")...)),
+			},
+			maxNID,
+		},
+		{"two leaves with MaxNID (ignored)",
+			true,
+			[]namespace.Data{
+				namespace.PrefixedData8(append(maxNID, []byte("leaf_1")...)),
+				namespace.PrefixedData8(append(maxNID, []byte("leaf_2")...)),
+			},
+			maxNID,
+		},
+		{"two leaves with MaxNID (not ignored)",
+			false,
+			[]namespace.Data{
+				namespace.PrefixedData8(append(maxNID, []byte("leaf_1")...)),
+				namespace.PrefixedData8(append(maxNID, []byte("leaf_2")...)),
+			},
+			maxNID,
+		},
+		{"two leaves, none with MaxNID (ignored)",
+			true,
+			[]namespace.Data{
+				namespace.PrefixedData8(append(minNID, []byte("leaf_1")...)),
+				namespace.PrefixedData8(append(secondNID, []byte("leaf_2")...)),
+			},
+			secondNID,
+		},
+		{"two leaves, none with MaxNID (not ignored)",
+			false,
+			[]namespace.Data{
+				namespace.PrefixedData8(append(minNID, []byte("leaf_1")...)),
+				namespace.PrefixedData8(append(secondNID, []byte("leaf_2")...)),
+			},
+			secondNID,
+		},
+		{"three leaves, one with MaxNID (ignored)",
+			true,
+			[]namespace.Data{
+				namespace.PrefixedData8(append(minNID, []byte("leaf_1")...)),
+				namespace.PrefixedData8(append(secondNID, []byte("leaf_2")...)),
+				namespace.PrefixedData8(append(maxNID, []byte("leaf_2")...)),
+			},
+			secondNID,
+		},
+		{"three leaves, one with MaxNID (not ignored)",
+			false,
+			[]namespace.Data{
+				namespace.PrefixedData8(append(minNID, []byte("leaf_1")...)),
+				namespace.PrefixedData8(append(secondNID, []byte("leaf_2")...)),
+				namespace.PrefixedData8(append(maxNID, []byte("leaf_2")...)),
+			},
+			maxNID,
+		},
+
+		{"4 leaves, none maxNID (ignored)", true,
+			[]namespace.Data{
+				namespace.PrefixedData8(append(minNID, []byte("leaf_1")...)),
+				namespace.PrefixedData8(append(minNID, []byte("leaf_2")...)),
+				namespace.PrefixedData8(append(secondNID, []byte("leaf_3")...)),
+				namespace.PrefixedData8(append(thirdNID, []byte("leaf_4")...)),
+			},
+			thirdNID,
+		},
+		{"4 leaves, half maxNID (ignored)",
+			true,
+			[]namespace.Data{
+				namespace.PrefixedData8(append(minNID, []byte("leaf_1")...)),
+				namespace.PrefixedData8(append(secondNID, []byte("leaf_2")...)),
+				namespace.PrefixedData8(append(maxNID, []byte("leaf_3")...)),
+				namespace.PrefixedData8(append(maxNID, []byte("leaf_4")...)),
+			},
+			secondNID,
+		},
+		{"4 leaves, half maxNID (not ignored)",
+			false,
+			[]namespace.Data{
+				namespace.PrefixedData8(append(minNID, []byte("leaf_1")...)),
+				namespace.PrefixedData8(append(secondNID, []byte("leaf_2")...)),
+				namespace.PrefixedData8(append(maxNID, []byte("leaf_3")...)),
+				namespace.PrefixedData8(append(maxNID, []byte("leaf_4")...)),
+			},
+			maxNID,
+		},
+		{"8 leaves, 4 maxNID (ignored)",
+			true,
+			[]namespace.Data{
+				namespace.PrefixedData8(append(minNID, []byte("leaf_1")...)),
+				namespace.PrefixedData8(append(secondNID, []byte("leaf_2")...)),
+				namespace.PrefixedData8(append(thirdNID, []byte("leaf_3")...)),
+				namespace.PrefixedData8(append(thirdNID, []byte("leaf_4")...)),
+				namespace.PrefixedData8(append(maxNID, []byte("leaf_5")...)),
+				namespace.PrefixedData8(append(maxNID, []byte("leaf_6")...)),
+				namespace.PrefixedData8(append(maxNID, []byte("leaf_7")...)),
+				namespace.PrefixedData8(append(maxNID, []byte("leaf_8")...)),
+			},
+			thirdNID,
+		},
 	}
 
-	tree := New(hash, NamespaceIDSize(nidSize), IgnoreMaxNamespace(true))
-	treeNotIgnoredOpt := New(hash, NamespaceIDSize(nidSize), IgnoreMaxNamespace(false))
-	for _, d := range data {
-		if err := tree.Push(d); err != nil {
-			panic("unexpected error")
+	for i, tc := range tests {
+		tree := New(hash, NamespaceIDSize(nidSize), IgnoreMaxNamespace(tc.ignoreMaxNamespace))
+		for _, d := range tc.pushData {
+			if err := tree.Push(d); err != nil {
+				panic("unexpected error")
+			}
 		}
-		if err := treeNotIgnoredOpt.Push(d); err != nil {
-			panic("unexpected error")
+		gotRootMaxNID := tree.Root().Max()
+		if !gotRootMaxNID.Equal(tc.wantRootMaxNID) {
+			t.Fatalf("Case: %v, '%v', root.Max() got: %x, want: %x", i, tc.name, gotRootMaxNID, tc.wantRootMaxNID)
 		}
-	}
-	gotDigest := tree.Root()
-	if !gotDigest.Min().Equal(wantMinNID) {
-		t.Fatalf("Unexpected root.Min() got: %x, want: %x", gotDigest.Min(), wantMinNID)
-	}
-	if !gotDigest.Max().Equal(wantMaxNID) {
-		t.Fatalf("Unexpected root.Max() got: %x, want: %x", gotDigest.Max(), wantMaxNID)
-	}
-	// if we explicitly do not ignore the max namespace, we expect it to show up in the root:
-	gotDigest2 := treeNotIgnoredOpt.Root()
-	if !gotDigest2.Max().Equal(maxNID) {
-		t.Fatalf("Unexpected root.Max() got: %x, want: %x", gotDigest2.Max(), maxNID)
-	}
-	for idx, d := range data {
-		proof, err := tree.ProveNamespace(d.NamespaceID())
-		if err != nil {
-			t.Fatalf("ProveNamespace() unexpected error: %v", err)
-		}
-		if !proof.IsMaxNamespaceIDIgnored() {
-			t.Fatalf("Proof.IsMaxNamespaceIDIgnored() got: false, want: true")
-		}
-		data := tree.Get(d.NamespaceID())
-		if !proof.VerifyNamespace(hash, d.NamespaceID(), data, tree.Root()) {
-			t.Errorf("VerifyNamespace() failed on ID: %x", d.NamespaceID())
-		}
+		for idx, d := range tc.pushData {
+			proof, err := tree.ProveNamespace(d.NamespaceID())
+			if err != nil {
+				t.Fatalf("ProveNamespace() unexpected error: %v", err)
+			}
+			if gotIgnored := proof.IsMaxNamespaceIDIgnored(); gotIgnored != tc.ignoreMaxNamespace {
+				t.Fatalf("Proof.IsMaxNamespaceIDIgnored() got: %v, want: %v", gotIgnored, tc.ignoreMaxNamespace)
+			}
+			data := tree.Get(d.NamespaceID())
+			if !proof.VerifyNamespace(hash, d.NamespaceID(), data, tree.Root()) {
+				t.Errorf("VerifyNamespace() failed on ID: %x", d.NamespaceID())
+			}
 
-		singleProof, err := tree.Prove(idx)
-		if err != nil {
-			t.Fatalf("ProveNamespace() unexpected error: %v", err)
-		}
-		if !singleProof.VerifyInclusion(hash, d, tree.Root()) {
-			t.Errorf("VerifyInclusion() failed on data: %#v with index: %v", d, idx)
-		}
-		if !singleProof.IsMaxNamespaceIDIgnored() {
-			t.Fatalf("Proof.IsMaxNamespaceIDIgnored() got: false, want: true")
+			singleProof, err := tree.Prove(idx)
+			if err != nil {
+				t.Fatalf("ProveNamespace() unexpected error: %v", err)
+			}
+			if !singleProof.VerifyInclusion(hash, d, tree.Root()) {
+				t.Errorf("VerifyInclusion() failed on data: %#v with index: %v", d, idx)
+			}
+			if gotIgnored := singleProof.IsMaxNamespaceIDIgnored(); gotIgnored != tc.ignoreMaxNamespace {
+				t.Fatalf("Proof.IsMaxNamespaceIDIgnored() got: %v, want: %v", gotIgnored, tc.ignoreMaxNamespace)
+			}
 		}
 	}
 }
