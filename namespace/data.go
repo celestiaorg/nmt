@@ -54,7 +54,7 @@ func (d PrefixedData8) NamespaceSize() uint8 {
 }
 
 type PrefixedData struct {
-	namespaceLen Size
+	namespaceLen IDSize
 	prefixedData []byte
 }
 
@@ -66,7 +66,7 @@ func (n PrefixedData) Data() []byte {
 	return n.prefixedData[n.namespaceLen:]
 }
 
-func NewPrefixedData(namespaceLen Size, prefixedData []byte) PrefixedData {
+func NewPrefixedData(namespaceLen IDSize, prefixedData []byte) PrefixedData {
 	return PrefixedData{
 		namespaceLen: namespaceLen,
 		prefixedData: prefixedData,

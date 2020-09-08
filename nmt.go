@@ -23,6 +23,46 @@ var (
 	ErrInvalidPushOrder        = errors.New("pushed data has to be lexicographically ordered by namespace IDs")
 )
 
+type Options struct {
+	InitialCapacity    int
+	NamespaceIDSize    namespace.IDSize
+	IgnoreMaxNamespace bool
+}
+
+type Option func(*Options)
+
+// InitialCapacity sets the capacity of the internally used slice(s) to
+// the passed in initial value (defaults is 128).
+func InitialCapacity(cap int) Option {
+	if cap < 0 {
+		panic("Got invalid capacity. Expected int greater or equal to 0.")
+	}
+	return func(opts *Options) {
+		opts.InitialCapacity = cap
+	}
+}
+
+// NamespaceIDSize sets the size of namespace IDs (in bytes) used by this tree.
+// Defaults to 32 bytes.
+func NamespaceIDSize(size int) Option {
+	if size < 0 || size > namespace.IDMaxSize {
+		panic("Got invalid namespace.IDSize. Expected 0 <= size <= namespace.IDMaxSize.")
+	}
+	return func(opts *Options) {
+		opts.NamespaceIDSize = namespace.IDSize(size)
+	}
+}
+
+// IgnoreMaxNamespace sets whether the largest possible namespace.ID MAX_NID should be 'ignored'.
+// If set to true, this allows for shorter proofs in particular use-cases.
+// E.g., see: https://github.com/lazyledger/lazyledger-specs/blob/master/specs/data_structures.md#namespace-merkle-tree
+// Defaults to true.
+func IgnoreMaxNamespace(ignore bool) Option {
+	return func(opts *Options) {
+		opts.IgnoreMaxNamespace = ignore
+	}
+}
+
 type NamespacedMerkleTree struct {
 	treeHasher internal.NmtHasher
 	tree       *merkletree.Tree
@@ -41,21 +81,26 @@ type NamespacedMerkleTree struct {
 // and for the given namespace size (number of bytes).
 // If the namespace size is 0 this corresponds to a regular non-namespaced
 // Merkle tree.
-func New(h hash.Hash, namespaceSize namespace.Size) *NamespacedMerkleTree {
-	treeHasher := internal.NewNmtHasher(namespaceSize, h)
+func New(h hash.Hash, setters ...Option) *NamespacedMerkleTree {
+	// default options:
+	opts := &Options{
+		InitialCapacity:    128,
+		NamespaceIDSize:    32,
+		IgnoreMaxNamespace: true,
+	}
+
+	for _, setter := range setters {
+		setter(opts)
+	}
+	treeHasher := internal.NewNmtHasher(h, opts.NamespaceIDSize, opts.IgnoreMaxNamespace)
 	return &NamespacedMerkleTree{
-		treeHasher: treeHasher,
-		tree:       merkletree.NewFromTreehasher(treeHasher),
-		// XXX: 128 seems like a good capacity for the leaves slice
-		// but maybe this should also be a constructor param: for cases the caller
-		// knows exactly how many leaves will be pushed this will save allocations
-		// In fact, in that case the caller could pass in the whole data at once
-		// and we could even use the passed in slice without allocating space for a copy.
-		leaves:          make([]namespace.Data, 0, 128),
-		leafHashes:      make([][]byte, 0, 128),
+		treeHasher:      treeHasher,
+		tree:            merkletree.NewFromTreehasher(treeHasher),
+		leaves:          make([]namespace.Data, 0, opts.InitialCapacity),
+		leafHashes:      make([][]byte, 0, opts.InitialCapacity),
 		namespaceRanges: make(map[string]merkletree.LeafRange),
-		minNID:          bytes.Repeat([]byte{0xFF}, int(namespaceSize)),
-		maxNID:          bytes.Repeat([]byte{0x00}, int(namespaceSize)),
+		minNID:          bytes.Repeat([]byte{0xFF}, int(opts.NamespaceIDSize)),
+		maxNID:          bytes.Repeat([]byte{0x00}, int(opts.NamespaceIDSize)),
 	}
 }
 
@@ -63,14 +108,15 @@ func New(h hash.Hash, namespaceSize namespace.Size) *NamespacedMerkleTree {
 // Note this is not really NMT specific but the tree supports inclusions proofs
 // like any vanilla Merkle tree.
 func (n NamespacedMerkleTree) Prove(index int) (Proof, error) {
+	isMaxNsIgnored := n.treeHasher.IsMaxNamespaceIDIgnored()
 	subTreeHasher := internal.NewCachedSubtreeHasher(n.leafHashes, n.treeHasher)
 	// TODO: store nodes and re-use the hashes instead recomputing parts of the tree here
 	proof, err := merkletree.BuildRangeProof(index, index+1, subTreeHasher)
 	if err != nil {
-		return NewEmptyRangeProof(), err
+		return NewEmptyRangeProof(isMaxNsIgnored), err
 	}
 
-	return NewInclusionProof(index, index+1, proof), nil
+	return NewInclusionProof(index, index+1, proof, isMaxNsIgnored), nil
 }
 
 // ProveNamespace returns a range proof for the given NamespaceID.
@@ -88,10 +134,11 @@ func (n NamespacedMerkleTree) Prove(index int) (Proof, error) {
 // generate any proof and we return an empty range (0,0) to
 // indicate that this namespace is not contained in the tree.
 func (n NamespacedMerkleTree) ProveNamespace(nID namespace.ID) (Proof, error) {
+	isMaxNsIgnored := n.treeHasher.IsMaxNamespaceIDIgnored()
 	// In the cases (nID < minNID) or (maxNID < nID),
 	// return empty range and no proof:
 	if nID.Less(n.minNID) || n.maxNID.Less(nID) {
-		return NewEmptyRangeProof(), nil
+		return NewEmptyRangeProof(isMaxNsIgnored), nil
 	}
 
 	found, proofStart, proofEnd := n.foundInRange(nID)
@@ -121,9 +168,9 @@ func (n NamespacedMerkleTree) ProveNamespace(nID namespace.ID) (Proof, error) {
 	}
 
 	if found {
-		return NewInclusionProof(proofStart, proofEnd, proof), nil
+		return NewInclusionProof(proofStart, proofEnd, proof, isMaxNsIgnored), nil
 	}
-	return NewAbsenceProof(proofStart, proofEnd, proof, n.leafHashes[proofStart]), nil
+	return NewAbsenceProof(proofStart, proofEnd, proof, n.leafHashes[proofStart], isMaxNsIgnored), nil
 }
 
 // Get returns leaves for the given namespace.ID.
@@ -178,7 +225,7 @@ func (n *NamespacedMerkleTree) foundInRange(nID namespace.ID) (bool, int, int) {
 
 // NamespaceSize returns the underlying namespace size. Note that
 // all namespaced data is expected to have the same namespace size.
-func (n NamespacedMerkleTree) NamespaceSize() namespace.Size {
+func (n NamespacedMerkleTree) NamespaceSize() namespace.IDSize {
 	return n.treeHasher.NamespaceSize()
 }
 

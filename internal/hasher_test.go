@@ -26,7 +26,7 @@ func Test_namespacedTreeHasher_HashLeaf(t *testing.T) {
 
 	tests := []struct {
 		name  string
-		nsLen namespace.Size
+		nsLen namespace.IDSize
 		leaf  []byte
 		want  []byte
 	}{
@@ -38,7 +38,7 @@ func Test_namespacedTreeHasher_HashLeaf(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			n := NewNmtHasher(tt.nsLen, sha256.New())
+			n := NewNmtHasher(sha256.New(), tt.nsLen, false)
 			if got := n.HashLeaf(tt.leaf); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("HashLeaf() = %v, want %v", got, tt.want)
 			}
@@ -55,7 +55,7 @@ func Test_namespacedTreeHasher_HashNode(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		nidLen   namespace.Size
+		nidLen   namespace.IDSize
 		children children
 		want     []byte
 	}{
@@ -91,7 +91,7 @@ func Test_namespacedTreeHasher_HashNode(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			n := NewNmtHasher(tt.nidLen, sha256.New())
+			n := NewNmtHasher(sha256.New(), tt.nidLen, false)
 			if got := n.HashNode(tt.children.l, tt.children.r); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("HashNode() = %v, want %v", got, tt.want)
 			}

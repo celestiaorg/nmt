@@ -31,7 +31,7 @@ func TestFuzzProveVerifyNameSpace(t *testing.T) {
 		nidDataMap, sortedKeys := makeRandDataAndSortedKeys(size, minNumberOfNamespaces, maxNumberOfNamespaces, minElementsPerNamespace, maxElementsPerNamespace, emptyNamespaceProbability)
 		t.Logf("Generated %v namespaces for size: %v ...", len(nidDataMap), size)
 		hash := sha256.New()
-		tree := nmt.New(hash, namespace.Size(size))
+		tree := nmt.New(hash, nmt.NamespaceIDSize(int(size)))
 
 		// push data in order:
 		for _, ns := range sortedKeys {
@@ -88,7 +88,7 @@ func TestFuzzProveVerifyNameSpace(t *testing.T) {
 			}
 
 			if len(data) != 0 {
-				emptyProof := nmt.NewEmptyRangeProof()
+				emptyProof := nmt.NewEmptyRangeProof(false)
 				if emptyProof.VerifyNamespace(hash, nid, data, treeRoot) {
 					t.Fatalf("empty range proof on non-empty data verified to true")
 				}
