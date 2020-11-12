@@ -46,7 +46,7 @@ func main() {
 
     // Init a tree with the namespace size as well as
     // the underlying hash function:
-    tree := New(sha256.New(), namespace.Size(nidSize))
+    tree := nmt.New(sha256.New(), nmt.NamespaceIDSize(nidSize))
     for _, d := range data {
         if err := tree.Push(d); err != nil {
             panic("unexpected error")
@@ -69,15 +69,15 @@ func main() {
     }
     
     // verify proof using the root and the leaves of namespace 0:
-    leafs := []namespace.PrefixedData{
+    leafs := []namespace.Data{
         namespace.PrefixedDataFrom(namespace.ID{0}, []byte("leaf_0")),
         namespace.PrefixedDataFrom(namespace.ID{0}, []byte("leaf_1"))}
     
-    if proof.VerifyNamespace(nmtHasher, namespace.ID{0}, leafs, root) {
+    if proof.VerifyNamespace(sha256.New(), namespace.ID{0}, leafs, root) {
         fmt.Printf("Successfully verified namespace: %x\n", namespace.ID{0})
     }
     
-    if proof.VerifyNamespace(nmtHasher, namespace.ID{2}, leafs, root) {
+    if proof.VerifyNamespace(sha256.New(), namespace.ID{2}, leafs, root) {
         panic(fmt.Sprintf("Proof for namespace %x, passed for namespace: %x\n", namespace.ID{0}, namespace.ID{2}))
     }
 }
