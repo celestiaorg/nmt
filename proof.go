@@ -6,9 +6,9 @@ import (
 	"math"
 	"math/bits"
 
-	"github.com/lazyledger/nmt/internal"
-	"github.com/liamsi/merkletree"
+	"github.com/lazyledger/merkletree"
 
+	"github.com/lazyledger/nmt/internal"
 	"github.com/lazyledger/nmt/namespace"
 )
 

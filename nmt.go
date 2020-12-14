@@ -7,8 +7,7 @@ import (
 	"fmt"
 	"hash"
 
-	"github.com/liamsi/merkletree"
-
+	"github.com/lazyledger/merkletree"
 	"github.com/lazyledger/nmt/internal"
 	"github.com/lazyledger/nmt/namespace"
 )

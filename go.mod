@@ -4,5 +4,5 @@ go 1.14
 
 require (
 	github.com/google/gofuzz v1.2.0
-	github.com/liamsi/merkletree v0.0.0-20200727192605-adec41500de3
+	github.com/lazyledger/merkletree v0.0.0-20201214195110-6901c4c3c75f
 )
