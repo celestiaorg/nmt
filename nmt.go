@@ -260,6 +260,16 @@ func (n *NamespacedMerkleTree) Push(data namespace.Data) error {
 	return nil
 }
 
+// PushRaw extracts namespace.PrefixedData from the passed in raw data
+// and Push on on th
+// Returns an error if the namespace ID size of the input
+// does not match the tree's NamespaceSize() or the leaves are not pushed in
+// order (i.e. lexicographically sorted by namespace ID).
+func (n *NamespacedMerkleTree) PushRaw(rawData []byte) error {
+	data := namespace.NewPrefixedData(n.NamespaceSize(), rawData)
+	return n.Push(data)
+}
+
 // Return the namespaced Merkle Tree's root together with the
 // min. and max. namespace ID.
 func (n *NamespacedMerkleTree) Root() namespace.IntervalDigest {
