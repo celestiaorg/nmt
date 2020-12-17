@@ -10,11 +10,12 @@ import (
 	"github.com/lazyledger/merkletree"
 	"github.com/lazyledger/nmt/internal"
 	"github.com/lazyledger/nmt/namespace"
+	"github.com/lazyledger/nmt/storage"
 )
 
 const (
-	LeafPrefix = 0
-	NodePrefix = 1
+	LeafPrefix = internal.LeafPrefix
+	NodePrefix = internal.NodePrefix
 )
 
 var (
@@ -26,6 +27,7 @@ type Options struct {
 	InitialCapacity    int
 	NamespaceIDSize    namespace.IDSize
 	IgnoreMaxNamespace bool
+	NodeStore          storage.NodeStorer
 }
 
 type Option func(*Options)
@@ -62,6 +64,12 @@ func IgnoreMaxNamespace(ignore bool) Option {
 	}
 }
 
+func NodeStore(store storage.NodeStorer) Option {
+	return func(opts *Options) {
+		opts.NodeStore = store
+	}
+}
+
 type NamespacedMerkleTree struct {
 	treeHasher internal.NmtHasher
 	tree       *merkletree.Tree
@@ -69,6 +77,7 @@ type NamespacedMerkleTree struct {
 	// just cache stuff until we pass in a store and keep all nodes in there
 	leaves     []namespace.Data
 	leafHashes [][]byte
+	store      storage.NodeStorer
 	// this can be used to efficiently lookup the range for an
 	// existing namespace without iterating through the leaves
 	namespaceRanges map[string]merkletree.LeafRange
@@ -84,18 +93,22 @@ func New(h hash.Hash, setters ...Option) *NamespacedMerkleTree {
 	// default options:
 	opts := &Options{
 		InitialCapacity:    128,
-		NamespaceIDSize:    32,
+		NamespaceIDSize:    8,
 		IgnoreMaxNamespace: true,
 	}
 
 	for _, setter := range setters {
 		setter(opts)
 	}
-	treeHasher := internal.NewNmtHasher(h, opts.NamespaceIDSize, opts.IgnoreMaxNamespace)
+	if opts.NodeStore == nil {
+		opts.NodeStore = storage.NewInMemoryNodeStore(opts.NamespaceIDSize)
+	}
+	treeHasher := internal.NewNmtHasher(h, opts.NamespaceIDSize, opts.IgnoreMaxNamespace, opts.NodeStore)
 	return &NamespacedMerkleTree{
 		treeHasher:      treeHasher,
 		tree:            merkletree.NewFromTreehasher(treeHasher),
 		leaves:          make([]namespace.Data, 0, opts.InitialCapacity),
+		store:           opts.NodeStore,
 		leafHashes:      make([][]byte, 0, opts.InitialCapacity),
 		namespaceRanges: make(map[string]merkletree.LeafRange),
 		minNID:          bytes.Repeat([]byte{0xFF}, int(opts.NamespaceIDSize)),

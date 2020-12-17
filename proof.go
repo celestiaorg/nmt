@@ -100,7 +100,7 @@ func NewAbsenceProof(proofStart, proofEnd int, proofNodes [][]byte, leafHash []b
 // is complete and no leaf of that namespace was left out in the proof.
 func (proof Proof) VerifyNamespace(h hash.Hash, nID namespace.ID, data []namespace.Data, root namespace.IntervalDigest) bool {
 	// TODO add more sanity checks
-	nth := internal.NewNmtHasher(h, nID.Size(), proof.isMaxNamespaceIDIgnored)
+	nth := internal.NewNmtHasher(h, nID.Size(), proof.isMaxNamespaceIDIgnored, nil)
 
 	isEmptyRange := proof.start == proof.end
 	// empty range, proof, and data: always checks out
@@ -203,7 +203,7 @@ func (proof Proof) verifyLeafHashes(nth internal.NmtHasher, verifyCompleteness b
 }
 
 func (proof Proof) VerifyInclusion(h hash.Hash, data namespace.Data, root namespace.IntervalDigest) bool {
-	nth := internal.NewNmtHasher(h, data.NamespaceID().Size(), proof.isMaxNamespaceIDIgnored)
+	nth := internal.NewNmtHasher(h, data.NamespaceID().Size(), proof.isMaxNamespaceIDIgnored, nil)
 	leafData := append(data.NamespaceID(), data.Data()...)
 	return proof.verifyLeafHashes(nth, false, data.NamespaceID(), [][]byte{nth.HashLeaf(leafData)}, root)
 }

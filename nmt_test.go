@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/lazyledger/nmt/namespace"
+	"github.com/lazyledger/nmt/storage"
 )
 
 func ExampleNamespacedMerkleTree() {
@@ -526,6 +527,76 @@ func TestNamespacedMerkleTree_calculateAbsenceIndex_Panic(t *testing.T) {
 			n := New(sha256.New(), NamespaceIDSize(2))
 			shouldPanic(t,
 				func() { n.calculateAbsenceIndex(tt.nID) })
+		})
+	}
+}
+
+func TestNodeStoreOption(t *testing.T) {
+	var (
+		namespaceSize = namespace.IDSize(2)
+		minNID        = []byte{0, 0}
+		secondNID     = []byte{0, 1}
+		thirdNID      = []byte{0, 2}
+	)
+	tests := []struct {
+		name      string
+		pushData  []namespace.Data
+		wantNodes int
+	}{
+		{"2 leaves -> 3 nodes",
+			[]namespace.Data{
+				namespace.NewPrefixedData(namespaceSize, append(minNID, []byte("leaf_1")...)),
+				namespace.NewPrefixedData(namespaceSize, append(minNID, []byte("leaf_2")...)),
+			},
+			3,
+		},
+		{"3 leaves -> 5 nodes",
+			[]namespace.Data{
+				namespace.NewPrefixedData(namespaceSize, append(minNID, []byte("leaf_1")...)),
+				namespace.NewPrefixedData(namespaceSize, append(minNID, []byte("leaf_2")...)),
+				namespace.NewPrefixedData(namespaceSize, append(minNID, []byte("leaf_3")...)),
+			},
+			5,
+		},
+		{"4 leaves -> 7 nodes",
+			[]namespace.Data{
+				namespace.NewPrefixedData(namespaceSize, append(minNID, []byte("leaf_1")...)),
+				namespace.NewPrefixedData(namespaceSize, append(minNID, []byte("leaf_2")...)),
+				namespace.NewPrefixedData(namespaceSize, append(secondNID, []byte("leaf_3")...)),
+				namespace.NewPrefixedData(namespaceSize, append(thirdNID, []byte("leaf_4")...)),
+			},
+			7,
+		},
+		{"8 leaves -> 15 nodes",
+			[]namespace.Data{
+				namespace.NewPrefixedData(namespaceSize, append(minNID, []byte("leaf_1")...)),
+				namespace.NewPrefixedData(namespaceSize, append(minNID, []byte("leaf_2")...)),
+				namespace.NewPrefixedData(namespaceSize, append(minNID, []byte("leaf_3")...)),
+				namespace.NewPrefixedData(namespaceSize, append(minNID, []byte("leaf_4")...)),
+				namespace.NewPrefixedData(namespaceSize, append(secondNID, []byte("leaf_5")...)),
+				namespace.NewPrefixedData(namespaceSize, append(secondNID, []byte("leaf_6")...)),
+				namespace.NewPrefixedData(namespaceSize, append(thirdNID, []byte("leaf_7")...)),
+				namespace.NewPrefixedData(namespaceSize, append(thirdNID, []byte("leaf_8")...)),
+			},
+			15,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			store := storage.NewInMemoryNodeStore(namespaceSize)
+			n := New(sha256.New(), NamespaceIDSize(int(namespaceSize)), NodeStore(store))
+			for _, d := range tt.pushData {
+				err := n.Push(d)
+				if err != nil {
+					t.Fatalf("invalid test case: %v, error on Push(): %v", tt.name, err)
+				}
+			}
+			n.Root()
+			ndCount := store.Count()
+			if got, want := ndCount, tt.wantNodes; got != want {
+				t.Errorf("store.Count() got: %v, want: %v", got, want)
+			}
+
 		})
 	}
 }

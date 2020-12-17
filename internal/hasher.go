@@ -5,6 +5,7 @@ import (
 	"hash"
 
 	"github.com/lazyledger/nmt/namespace"
+	"github.com/lazyledger/nmt/storage"
 )
 
 const (
@@ -16,6 +17,7 @@ type DefaultNmtHasher struct {
 	hash.Hash
 	NamespaceLen namespace.IDSize
 
+	store       storage.NodeStorer
 	ignoreMaxNs bool
 	cachedMaxNs namespace.ID
 }
@@ -28,10 +30,11 @@ func (n *DefaultNmtHasher) NamespaceSize() namespace.IDSize {
 	return n.NamespaceLen
 }
 
-func NewNmtHasher(baseHasher hash.Hash, nidLen namespace.IDSize, ignoreMaxNamespace bool) *DefaultNmtHasher {
+func NewNmtHasher(baseHasher hash.Hash, nidLen namespace.IDSize, ignoreMaxNamespace bool, store storage.NodeStorer) *DefaultNmtHasher {
 	return &DefaultNmtHasher{
 		Hash:         baseHasher,
 		NamespaceLen: nidLen,
+		store:        store,
 		ignoreMaxNs:  ignoreMaxNamespace,
 		cachedMaxNs:  bytes.Repeat([]byte{0xFF}, int(nidLen)),
 	}
@@ -39,8 +42,12 @@ func NewNmtHasher(baseHasher hash.Hash, nidLen namespace.IDSize, ignoreMaxNamesp
 
 func (n *DefaultNmtHasher) EmptyRoot() namespace.IntervalDigest {
 	emptyNs := bytes.Repeat([]byte{0}, int(n.NamespaceLen))
-
-	return namespace.NewIntervalDigest(emptyNs, emptyNs, n.Sum(nil))
+	h := n.Sum(nil)
+	intervalDigest := namespace.NewIntervalDigest(emptyNs, emptyNs, h)
+	if n.store != nil {
+		n.store.Put(intervalDigest.Bytes(), nil)
+	}
+	return intervalDigest
 }
 
 // HashLeaf hashes leaves to:
@@ -61,8 +68,12 @@ func (n *DefaultNmtHasher) HashLeaf(leaf []byte) []byte {
 	nID := leaf[:n.NamespaceLen]
 	data := leaf[n.NamespaceLen:]
 	res := append(append(make([]byte, 0), nID...), nID...)
-	h.Write([]byte{LeafPrefix})
+	data = append([]byte{LeafPrefix}, data...)
 	h.Write(data)
+	hash := h.Sum(res)
+	if n.store != nil {
+		n.store.Put(hash, data)
+	}
 	return h.Sum(res)
 }
 
@@ -101,7 +112,11 @@ func (n *DefaultNmtHasher) HashNode(l, r []byte) []byte {
 		r...)
 	//nolint:errcheck
 	h.Write(b)
-	return h.Sum(res)
+	hash := h.Sum(res)
+	if n.store != nil {
+		n.store.Put(hash, b)
+	}
+	return hash
 }
 
 func max(ns []byte, ns2 []byte) []byte {
