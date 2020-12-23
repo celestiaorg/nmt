@@ -2,9 +2,9 @@ package simple
 
 import (
 	"bytes"
-	"crypto/sha256"
 	"errors"
 	"fmt"
+	"hash"
 	"math/bits"
 
 	"github.com/lazyledger/nmt/namespace"
@@ -16,23 +16,88 @@ var (
 	ErrInvalidPushOrder        = errors.New("pushed data has to be lexicographically ordered by namespace IDs")
 )
 
-var cachedMaxNs = namespace.ID(bytes.Repeat([]byte{0xFF}, 8))
-
-type NMTree struct {
-	nidSize int
-	leaves  [][]byte
-	store   storage.NodeStorer
+type Options struct {
+	InitialCapacity    int
+	NamespaceIDSize    namespace.IDSize
+	IgnoreMaxNamespace bool
+	NodeStore          storage.NodeStorer
 }
 
-func NewNMTree(nidSize namespace.IDSize) *NMTree {
-	return &NMTree{
-		nidSize: int(nidSize),
-		leaves:  make([][]byte, 0),
-		store:   storage.NewInMemoryNodeStore(nidSize),
+type Option func(*Options)
+
+// InitialCapacity sets the capacity of the internally used slice(s) to
+// the passed in initial value (defaults is 128).
+func InitialCapacity(cap int) Option {
+	if cap < 0 {
+		panic("Got invalid capacity. Expected int greater or equal to 0.")
+	}
+	return func(opts *Options) {
+		opts.InitialCapacity = cap
 	}
 }
 
-func (n *NMTree) Push(id namespace.ID, data []byte) error {
+// NamespaceIDSize sets the size of namespace IDs (in bytes) used by this tree.
+// Defaults to 32 bytes.
+func NamespaceIDSize(size int) Option {
+	if size < 0 || size > namespace.IDMaxSize {
+		panic("Got invalid namespace.IDSize. Expected 0 <= size <= namespace.IDMaxSize.")
+	}
+	return func(opts *Options) {
+		opts.NamespaceIDSize = namespace.IDSize(size)
+	}
+}
+
+// IgnoreMaxNamespace sets whether the largest possible namespace.ID MAX_NID should be 'ignored'.
+// If set to true, this allows for shorter proofs in particular use-cases.
+// E.g., see: https://github.com/lazyledger/lazyledger-specs/blob/master/specs/data_structures.md#namespace-merkle-tree
+// Defaults to true.
+func IgnoreMaxNamespace(ignore bool) Option {
+	return func(opts *Options) {
+		opts.IgnoreMaxNamespace = ignore
+	}
+}
+
+func NodeStore(store storage.NodeStorer) Option {
+	return func(opts *Options) {
+		opts.NodeStore = store
+	}
+}
+
+type NamespacedMerkleTree struct {
+	treeHasher      NmtHasher
+	namespaceRanges map[string]leafRange
+	// TODO: consolidate leaves with store:
+	leaves [][]byte
+	store  storage.NodeStorer
+
+	minNID namespace.ID
+	maxNID namespace.ID
+}
+
+func New(h hash.Hash, setters ...Option) *NamespacedMerkleTree {
+	// default options:
+	opts := &Options{
+		InitialCapacity:    128,
+		NamespaceIDSize:    8,
+		IgnoreMaxNamespace: true,
+	}
+	for _, setter := range setters {
+		setter(opts)
+	}
+	if opts.NodeStore == nil {
+		opts.NodeStore = storage.NewInMemoryNodeStore(opts.NamespaceIDSize)
+	}
+	return &NamespacedMerkleTree{
+		treeHasher:      NewNmtHasher(h, opts.NamespaceIDSize, opts.IgnoreMaxNamespace),
+		namespaceRanges: make(map[string]leafRange),
+		leaves:          make([][]byte, 0),
+		store:           storage.NewInMemoryNodeStore(opts.NamespaceIDSize),
+		minNID:          bytes.Repeat([]byte{0xFF}, int(opts.NamespaceIDSize)),
+		maxNID:          bytes.Repeat([]byte{0x00}, int(opts.NamespaceIDSize)),
+	}
+}
+
+func (n *NamespacedMerkleTree) Push(id namespace.ID, data []byte) error {
 	err := n.validateNamespace(id)
 	if err != nil {
 		return err
@@ -42,24 +107,25 @@ func (n *NMTree) Push(id namespace.ID, data []byte) error {
 	return nil
 }
 
-func (n *NMTree) Root() []byte {
-	return computeRoot(n.leaves, n.nidSize, n.store)
+func (n *NamespacedMerkleTree) Root() []byte {
+	return n.computeRoot(n.leaves)
 }
 
-func (n *NMTree) validateNamespace(id namespace.ID) error {
+func (n *NamespacedMerkleTree) validateNamespace(id namespace.ID) error {
 	if id == nil {
 		return errors.New("namespace.ID can not be empty")
 	}
-	if id.Size() != namespace.IDSize(n.nidSize) {
-		return fmt.Errorf("%w: got: %v, want: %v", ErrMismatchedNamespaceSize, id.Size(), n.nidSize)
+	nidSize := n.treeHasher.NamespaceSize()
+	if id.Size() != nidSize {
+		return fmt.Errorf("%w: got: %v, want: %v", ErrMismatchedNamespaceSize, id.Size(), nidSize)
 	}
 	curSize := len(n.leaves)
 	if curSize > 0 {
-		if id.Less(n.leaves[curSize-1][:n.nidSize]) {
+		if id.Less(n.leaves[curSize-1][:nidSize]) {
 			return fmt.Errorf(
 				"%w: last namespace: %x, pushed: %x",
 				ErrInvalidPushOrder,
-				n.leaves[curSize-1][:n.nidSize],
+				n.leaves[curSize-1][:nidSize],
 				id,
 			)
 		}
@@ -67,22 +133,46 @@ func (n *NMTree) validateNamespace(id namespace.ID) error {
 	return nil
 }
 
-func computeRoot(items [][]byte, nidSize int, store storage.NodeStorer) []byte {
+func (n *NamespacedMerkleTree) updateNamespaceRanges() {
+	if len(n.leaves) > 0 {
+		lastIndex := len(n.leaves) - 1
+		lastPushed := n.leaves[lastIndex]
+		lastNsStr := string(lastPushed[:n.treeHasher.NamespaceSize()])
+		lastRange, found := n.namespaceRanges[lastNsStr]
+		if !found {
+			n.namespaceRanges[lastNsStr] = leafRange{
+				start: uint64(lastIndex),
+				end:   uint64(lastIndex + 1),
+			}
+		} else {
+			n.namespaceRanges[lastNsStr] = leafRange{
+				start: lastRange.start,
+				end:   lastRange.end + 1,
+			}
+		}
+	}
+}
+
+type leafRange struct {
+	start, end uint64
+}
+
+func (n *NamespacedMerkleTree) computeRoot(items [][]byte) []byte {
 	switch len(items) {
 	case 0:
-		emptyHash, val := emptyHash(nidSize)
-		store.Put(emptyHash, val)
+		emptyHash, val := n.treeHasher.EmptyRoot()
+		n.store.Put(emptyHash, val)
 		return emptyHash
 	case 1:
-		hash, val := leafHash(items[0], nidSize)
-		store.Put(hash, val)
+		hash, val := n.treeHasher.HashLeaf(items[0])
+		n.store.Put(hash, val)
 		return hash
 	default:
 		k := getSplitPoint(int64(len(items)))
-		left := computeRoot(items[:k], nidSize, store)
-		right := computeRoot(items[k:], nidSize, store)
-		parentHash, val := innerHash(left, right, nidSize)
-		store.Put(parentHash, val)
+		left := n.computeRoot(items[:k])
+		right := n.computeRoot(items[k:])
+		parentHash, val := n.treeHasher.HashNode(left, right)
+		n.store.Put(parentHash, val)
 
 		return parentHash
 	}
@@ -99,77 +189,4 @@ func getSplitPoint(length int64) int64 {
 		k >>= 1
 	}
 	return k
-}
-
-var (
-	leafPrefix  = []byte{0}
-	innerPrefix = []byte{1}
-)
-
-func emptyHash(nidSize int) ([]byte, []byte) {
-	emptyNs := bytes.Repeat([]byte{0}, nidSize)
-	h := sha256.New().Sum(nil)
-	digest := append(append(emptyNs, emptyNs...), h...)
-
-	return digest, nil
-}
-
-func leafHash(leaf []byte, nidSize int) ([]byte, []byte) {
-	h := sha256.New()
-	nID := leaf[:nidSize]
-	data := leaf[nidSize:]
-	res := append(append(make([]byte, 0), nID...), nID...)
-	data = append(leafPrefix, data...)
-	h.Write(data)
-	hash := h.Sum(res)
-
-	return hash, data
-}
-
-func innerHash(l []byte, r []byte, nidSize int) ([]byte, []byte) {
-
-	h := sha256.New()
-
-	flagLen := 2 * nidSize
-	leftMinNs, leftMaxNs := l[:nidSize], l[nidSize:flagLen]
-	rightMinNs, rightMaxNs := r[:nidSize], r[nidSize:flagLen]
-
-	minNs := min(leftMinNs, rightMinNs)
-	var maxNs []byte
-	if cachedMaxNs.Equal(leftMinNs) {
-		maxNs = cachedMaxNs
-	} else if cachedMaxNs.Equal(rightMinNs) {
-		maxNs = leftMaxNs
-	} else {
-		maxNs = max(leftMaxNs, rightMaxNs)
-	}
-
-	res := append(append(make([]byte, 0), minNs...), maxNs...)
-
-	// Note this seems a little faster than calling several Write()s on the
-	// underlying Hash function (see: https://github.com/google/trillian/pull/1503):
-	b := append(append(append(
-		make([]byte, 0, 1+len(l)+len(r)),
-		innerPrefix...),
-		l...),
-		r...)
-	//nolint:errcheck
-	h.Write(b)
-	hash := h.Sum(res)
-
-	return hash, b
-}
-
-func max(ns []byte, ns2 []byte) []byte {
-	if bytes.Compare(ns, ns2) >= 0 {
-		return ns
-	}
-	return ns2
-}
-
-func min(ns []byte, ns2 []byte) []byte {
-	if bytes.Compare(ns, ns2) <= 0 {
-		return ns
-	}
-	return ns2
 }

@@ -43,7 +43,7 @@ func TestNMTreeImplementationsEquivalent(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			n1 := NewNMTree(namespace.IDSize(nidSize))
+			n1 := New(hash, NamespaceIDSize(nidSize))
 			n2 := nmt.New(hash, nmt.NamespaceIDSize(nidSize))
 			for _, d := range tt.pushedData {
 				if err := n1.Push(d.NamespaceID(), d.Data()); err != nil {
@@ -73,7 +73,7 @@ func BenchmarkCompareImpls(b *testing.B) {
 	b.ResetTimer()
 	b.Run("simple", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			n := NewNMTree(namespace.IDSize(nidSize))
+			n := New(sha256.New())
 			for j := 0; j < total; j++ {
 				if err := n.Push(data[j][:nidSize], data[j][nidSize:]); err != nil {
 					b.Errorf("err: %v", err)
