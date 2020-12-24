@@ -7,11 +7,12 @@ import (
 	"encoding/binary"
 	"fmt"
 	"math"
+	"math/rand"
 	"reflect"
+	"sort"
 	"testing"
 
 	"github.com/lazyledger/nmt/namespace"
-	"github.com/lazyledger/nmt/storage"
 )
 
 func ExampleNamespacedMerkleTree() {
@@ -27,7 +28,7 @@ func ExampleNamespacedMerkleTree() {
 	// the underlying hash function:
 	tree := New(sha256.New(), NamespaceIDSize(nidSize))
 	for _, d := range data {
-		if err := tree.Push(d); err != nil {
+		if err := tree.Push(d.NamespaceID(), d.Data()); err != nil {
 			panic("unexpected error")
 		}
 	}
@@ -48,8 +49,8 @@ func ExampleNamespacedMerkleTree() {
 	}
 
 	// verify proof using the root and the leaves of namespace 0:
-	leafs := []namespace.Data{namespace.PrefixedDataFrom(namespace.ID{0}, []byte("leaf_0")),
-		namespace.PrefixedDataFrom(namespace.ID{0}, []byte("leaf_1"))}
+	leafs := [][]byte{append(namespace.ID{0}, []byte("leaf_0")...),
+		append(namespace.ID{0}, []byte("leaf_1")...)}
 
 	if proof.VerifyNamespace(sha256.New(), namespace.ID{0}, leafs, root) {
 		fmt.Printf("Successfully verified namespace: %x\n", namespace.ID{0})
@@ -106,7 +107,7 @@ func TestNamespacedMerkleTree_Push(t *testing.T) {
 	n := New(sha256.New(), NamespaceIDSize(3))
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := n.Push(tt.data); (err != nil) != tt.wantErr {
+			if err := n.Push(tt.data.NamespaceID(), tt.data.Data()); (err != nil) != tt.wantErr {
 				t.Errorf("Push() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -145,7 +146,7 @@ func TestNamespacedMerkleTreeRoot(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			n := New(sha256.New(), NamespaceIDSize(tt.nidLen))
 			for _, d := range tt.pushedData {
-				if err := n.Push(d); err != nil {
+				if err := n.Push(d.NamespaceID(), d.Data()); err != nil {
 					t.Errorf("Push() error = %v, expected no error", err)
 				}
 			}
@@ -208,7 +209,7 @@ func TestNamespacedMerkleTree_ProveNamespace_Ranges_And_Verify(t *testing.T) {
 			[]byte{0, 1},
 			2, 3,
 			false},
-		{"5 leaves and not found but within range (00, 01, 02, 03, <1,0>, 11)", 2,
+		{"5 leaves and not found but within range", 2,
 			append(generateLeafData(2, 0, 4, []byte("_data")), makeLeafData([]byte{1, 1}, []byte("_data"))),
 			[]byte{1, 0},
 			4, 5,
@@ -230,7 +231,7 @@ func TestNamespacedMerkleTree_ProveNamespace_Ranges_And_Verify(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			n := New(sha256.New(), NamespaceIDSize(tt.nidLen))
 			for _, d := range tt.pushData {
-				err := n.Push(d)
+				err := n.Push(d.NamespaceID(), d.Data())
 				if err != nil {
 					t.Fatalf("invalid test case: %v, error on Push(): %v", tt.name, err)
 				}
@@ -267,7 +268,7 @@ func TestNamespacedMerkleTree_ProveNamespace_Ranges_And_Verify(t *testing.T) {
 					if err != nil {
 						t.Fatalf("unexpected error on Prove(): %v", err)
 					}
-					gotChecksOut := gotSingleProof.VerifyInclusion(sha256.New(), data, n.Root())
+					gotChecksOut := gotSingleProof.VerifyInclusion(sha256.New(), data.NamespaceID(), data.Data(), n.Root())
 					if !gotChecksOut {
 						t.Errorf("Proof.VerifyInclusion() gotChecksOut: %v, want: true", gotChecksOut)
 					}
@@ -303,22 +304,22 @@ func TestIgnoreMaxNamespace(t *testing.T) {
 	tests := []struct {
 		name               string
 		ignoreMaxNamespace bool
-		pushData           []namespace.Data
+		pushData           []namespace.PrefixedData8
 		wantRootMaxNID     namespace.ID
 	}{
 		{"single leaf with MaxNID (ignored)",
 			true,
-			[]namespace.Data{namespace.PrefixedData8(append(maxNID, []byte("leaf_1")...))},
+			[]namespace.PrefixedData8{namespace.PrefixedData8(append(maxNID, []byte("leaf_1")...))},
 			maxNID,
 		},
 		{"single leaf with MaxNID (not ignored)",
 			false,
-			[]namespace.Data{namespace.PrefixedData8(append(maxNID, []byte("leaf_1")...))},
+			[]namespace.PrefixedData8{namespace.PrefixedData8(append(maxNID, []byte("leaf_1")...))},
 			maxNID,
 		},
 		{"two leaves, one with MaxNID (ignored)",
 			true,
-			[]namespace.Data{
+			[]namespace.PrefixedData8{
 				namespace.PrefixedData8(append(secondNID, []byte("leaf_1")...)),
 				namespace.PrefixedData8(append(maxNID, []byte("leaf_2")...)),
 			},
@@ -326,7 +327,7 @@ func TestIgnoreMaxNamespace(t *testing.T) {
 		},
 		{"two leaves, one with MaxNID (not ignored)",
 			false,
-			[]namespace.Data{
+			[]namespace.PrefixedData8{
 				namespace.PrefixedData8(append(secondNID, []byte("leaf_1")...)),
 				namespace.PrefixedData8(append(maxNID, []byte("leaf_2")...)),
 			},
@@ -334,7 +335,7 @@ func TestIgnoreMaxNamespace(t *testing.T) {
 		},
 		{"two leaves with MaxNID (ignored)",
 			true,
-			[]namespace.Data{
+			[]namespace.PrefixedData8{
 				namespace.PrefixedData8(append(maxNID, []byte("leaf_1")...)),
 				namespace.PrefixedData8(append(maxNID, []byte("leaf_2")...)),
 			},
@@ -342,7 +343,7 @@ func TestIgnoreMaxNamespace(t *testing.T) {
 		},
 		{"two leaves with MaxNID (not ignored)",
 			false,
-			[]namespace.Data{
+			[]namespace.PrefixedData8{
 				namespace.PrefixedData8(append(maxNID, []byte("leaf_1")...)),
 				namespace.PrefixedData8(append(maxNID, []byte("leaf_2")...)),
 			},
@@ -350,7 +351,7 @@ func TestIgnoreMaxNamespace(t *testing.T) {
 		},
 		{"two leaves, none with MaxNID (ignored)",
 			true,
-			[]namespace.Data{
+			[]namespace.PrefixedData8{
 				namespace.PrefixedData8(append(minNID, []byte("leaf_1")...)),
 				namespace.PrefixedData8(append(secondNID, []byte("leaf_2")...)),
 			},
@@ -358,7 +359,7 @@ func TestIgnoreMaxNamespace(t *testing.T) {
 		},
 		{"two leaves, none with MaxNID (not ignored)",
 			false,
-			[]namespace.Data{
+			[]namespace.PrefixedData8{
 				namespace.PrefixedData8(append(minNID, []byte("leaf_1")...)),
 				namespace.PrefixedData8(append(secondNID, []byte("leaf_2")...)),
 			},
@@ -366,7 +367,7 @@ func TestIgnoreMaxNamespace(t *testing.T) {
 		},
 		{"three leaves, one with MaxNID (ignored)",
 			true,
-			[]namespace.Data{
+			[]namespace.PrefixedData8{
 				namespace.PrefixedData8(append(minNID, []byte("leaf_1")...)),
 				namespace.PrefixedData8(append(secondNID, []byte("leaf_2")...)),
 				namespace.PrefixedData8(append(maxNID, []byte("leaf_2")...)),
@@ -375,7 +376,7 @@ func TestIgnoreMaxNamespace(t *testing.T) {
 		},
 		{"three leaves, one with MaxNID (not ignored)",
 			false,
-			[]namespace.Data{
+			[]namespace.PrefixedData8{
 				namespace.PrefixedData8(append(minNID, []byte("leaf_1")...)),
 				namespace.PrefixedData8(append(secondNID, []byte("leaf_2")...)),
 				namespace.PrefixedData8(append(maxNID, []byte("leaf_2")...)),
@@ -384,7 +385,7 @@ func TestIgnoreMaxNamespace(t *testing.T) {
 		},
 
 		{"4 leaves, none maxNID (ignored)", true,
-			[]namespace.Data{
+			[]namespace.PrefixedData8{
 				namespace.PrefixedData8(append(minNID, []byte("leaf_1")...)),
 				namespace.PrefixedData8(append(minNID, []byte("leaf_2")...)),
 				namespace.PrefixedData8(append(secondNID, []byte("leaf_3")...)),
@@ -394,7 +395,7 @@ func TestIgnoreMaxNamespace(t *testing.T) {
 		},
 		{"4 leaves, half maxNID (ignored)",
 			true,
-			[]namespace.Data{
+			[]namespace.PrefixedData8{
 				namespace.PrefixedData8(append(minNID, []byte("leaf_1")...)),
 				namespace.PrefixedData8(append(secondNID, []byte("leaf_2")...)),
 				namespace.PrefixedData8(append(maxNID, []byte("leaf_3")...)),
@@ -404,7 +405,7 @@ func TestIgnoreMaxNamespace(t *testing.T) {
 		},
 		{"4 leaves, half maxNID (not ignored)",
 			false,
-			[]namespace.Data{
+			[]namespace.PrefixedData8{
 				namespace.PrefixedData8(append(minNID, []byte("leaf_1")...)),
 				namespace.PrefixedData8(append(secondNID, []byte("leaf_2")...)),
 				namespace.PrefixedData8(append(maxNID, []byte("leaf_3")...)),
@@ -414,7 +415,7 @@ func TestIgnoreMaxNamespace(t *testing.T) {
 		},
 		{"8 leaves, 4 maxNID (ignored)",
 			true,
-			[]namespace.Data{
+			[]namespace.PrefixedData8{
 				namespace.PrefixedData8(append(minNID, []byte("leaf_1")...)),
 				namespace.PrefixedData8(append(secondNID, []byte("leaf_2")...)),
 				namespace.PrefixedData8(append(thirdNID, []byte("leaf_3")...)),
@@ -429,40 +430,42 @@ func TestIgnoreMaxNamespace(t *testing.T) {
 	}
 
 	for i, tc := range tests {
-		tree := New(hash, NamespaceIDSize(nidSize), IgnoreMaxNamespace(tc.ignoreMaxNamespace))
-		for _, d := range tc.pushData {
-			if err := tree.Push(d); err != nil {
-				panic("unexpected error")
+		t.Run(tc.name, func(t *testing.T) {
+			tree := New(hash, NamespaceIDSize(nidSize), IgnoreMaxNamespace(tc.ignoreMaxNamespace))
+			for _, d := range tc.pushData {
+				if err := tree.Push(d.NamespaceID(), d.Data()); err != nil {
+					panic("unexpected error")
+				}
 			}
-		}
-		gotRootMaxNID := tree.Root().Max()
-		if !gotRootMaxNID.Equal(tc.wantRootMaxNID) {
-			t.Fatalf("Case: %v, '%v', root.Max() got: %x, want: %x", i, tc.name, gotRootMaxNID, tc.wantRootMaxNID)
-		}
-		for idx, d := range tc.pushData {
-			proof, err := tree.ProveNamespace(d.NamespaceID())
-			if err != nil {
-				t.Fatalf("ProveNamespace() unexpected error: %v", err)
+			gotRootMaxNID := tree.Root().Max()
+			if !gotRootMaxNID.Equal(tc.wantRootMaxNID) {
+				t.Fatalf("Case: %v, '%v', root.Max() got: %x, want: %x", i, tc.name, gotRootMaxNID, tc.wantRootMaxNID)
 			}
-			if gotIgnored := proof.IsMaxNamespaceIDIgnored(); gotIgnored != tc.ignoreMaxNamespace {
-				t.Fatalf("Proof.IsMaxNamespaceIDIgnored() got: %v, want: %v", gotIgnored, tc.ignoreMaxNamespace)
-			}
-			data := tree.Get(d.NamespaceID())
-			if !proof.VerifyNamespace(hash, d.NamespaceID(), data, tree.Root()) {
-				t.Errorf("VerifyNamespace() failed on ID: %x", d.NamespaceID())
-			}
+			for idx, d := range tc.pushData {
+				proof, err := tree.ProveNamespace(d.NamespaceID())
+				if err != nil {
+					t.Fatalf("ProveNamespace() unexpected error: %v", err)
+				}
+				if gotIgnored := proof.IsMaxNamespaceIDIgnored(); gotIgnored != tc.ignoreMaxNamespace {
+					t.Fatalf("Proof.IsMaxNamespaceIDIgnored() got: %v, want: %v", gotIgnored, tc.ignoreMaxNamespace)
+				}
+				data := tree.Get(d.NamespaceID())
+				if !proof.VerifyNamespace(hash, d.NamespaceID(), data, tree.Root()) {
+					t.Errorf("VerifyNamespace() failed on ID: %x", d.NamespaceID())
+				}
 
-			singleProof, err := tree.Prove(idx)
-			if err != nil {
-				t.Fatalf("ProveNamespace() unexpected error: %v", err)
+				singleProof, err := tree.Prove(idx)
+				if err != nil {
+					t.Fatalf("ProveNamespace() unexpected error: %v", err)
+				}
+				if !singleProof.VerifyInclusion(hash, d.NamespaceID(), d.Data(), tree.Root()) {
+					t.Errorf("VerifyInclusion() failed on data: %#v with index: %v", d, idx)
+				}
+				if gotIgnored := singleProof.IsMaxNamespaceIDIgnored(); gotIgnored != tc.ignoreMaxNamespace {
+					t.Fatalf("Proof.IsMaxNamespaceIDIgnored() got: %v, want: %v", gotIgnored, tc.ignoreMaxNamespace)
+				}
 			}
-			if !singleProof.VerifyInclusion(hash, d, tree.Root()) {
-				t.Errorf("VerifyInclusion() failed on data: %#v with index: %v", d, idx)
-			}
-			if gotIgnored := singleProof.IsMaxNamespaceIDIgnored(); gotIgnored != tc.ignoreMaxNamespace {
-				t.Fatalf("Proof.IsMaxNamespaceIDIgnored() got: %v, want: %v", gotIgnored, tc.ignoreMaxNamespace)
-			}
-		}
+		})
 	}
 }
 
@@ -482,7 +485,7 @@ func TestNamespacedMerkleTree_ProveErrors(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			n := New(sha256.New(), NamespaceIDSize(tt.nidLen), InitialCapacity(len(tt.pushData)))
 			for _, d := range tt.pushData {
-				err := n.Push(d)
+				err := n.Push(d.NamespaceID(), d.Data())
 				if err != nil {
 					t.Fatalf("invalid test case: %v, error on Push(): %v", tt.name, err)
 				}
@@ -531,76 +534,6 @@ func TestNamespacedMerkleTree_calculateAbsenceIndex_Panic(t *testing.T) {
 	}
 }
 
-func TestNodeStoreOption(t *testing.T) {
-	var (
-		namespaceSize = namespace.IDSize(2)
-		minNID        = []byte{0, 0}
-		secondNID     = []byte{0, 1}
-		thirdNID      = []byte{0, 2}
-	)
-	tests := []struct {
-		name      string
-		pushData  []namespace.Data
-		wantNodes int
-	}{
-		{"2 leaves -> 3 nodes",
-			[]namespace.Data{
-				namespace.NewPrefixedData(namespaceSize, append(minNID, []byte("leaf_1")...)),
-				namespace.NewPrefixedData(namespaceSize, append(minNID, []byte("leaf_2")...)),
-			},
-			3,
-		},
-		{"3 leaves -> 5 nodes",
-			[]namespace.Data{
-				namespace.NewPrefixedData(namespaceSize, append(minNID, []byte("leaf_1")...)),
-				namespace.NewPrefixedData(namespaceSize, append(minNID, []byte("leaf_2")...)),
-				namespace.NewPrefixedData(namespaceSize, append(minNID, []byte("leaf_3")...)),
-			},
-			5,
-		},
-		{"4 leaves -> 7 nodes",
-			[]namespace.Data{
-				namespace.NewPrefixedData(namespaceSize, append(minNID, []byte("leaf_1")...)),
-				namespace.NewPrefixedData(namespaceSize, append(minNID, []byte("leaf_2")...)),
-				namespace.NewPrefixedData(namespaceSize, append(secondNID, []byte("leaf_3")...)),
-				namespace.NewPrefixedData(namespaceSize, append(thirdNID, []byte("leaf_4")...)),
-			},
-			7,
-		},
-		{"8 leaves -> 15 nodes",
-			[]namespace.Data{
-				namespace.NewPrefixedData(namespaceSize, append(minNID, []byte("leaf_1")...)),
-				namespace.NewPrefixedData(namespaceSize, append(minNID, []byte("leaf_2")...)),
-				namespace.NewPrefixedData(namespaceSize, append(minNID, []byte("leaf_3")...)),
-				namespace.NewPrefixedData(namespaceSize, append(minNID, []byte("leaf_4")...)),
-				namespace.NewPrefixedData(namespaceSize, append(secondNID, []byte("leaf_5")...)),
-				namespace.NewPrefixedData(namespaceSize, append(secondNID, []byte("leaf_6")...)),
-				namespace.NewPrefixedData(namespaceSize, append(thirdNID, []byte("leaf_7")...)),
-				namespace.NewPrefixedData(namespaceSize, append(thirdNID, []byte("leaf_8")...)),
-			},
-			15,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			store := storage.NewInMemoryNodeStore(namespaceSize)
-			n := New(sha256.New(), NamespaceIDSize(int(namespaceSize)), NodeStore(store))
-			for _, d := range tt.pushData {
-				err := n.Push(d)
-				if err != nil {
-					t.Fatalf("invalid test case: %v, error on Push(): %v", tt.name, err)
-				}
-			}
-			n.Root()
-			ndCount := store.Count()
-			if got, want := ndCount, tt.wantNodes; got != want {
-				t.Errorf("store.Count() got: %v, want: %v", got, want)
-			}
-
-		})
-	}
-}
-
 func TestInvalidOptions(t *testing.T) {
 	shouldPanic(t, func() {
 		_ = New(sha256.New(), InitialCapacity(-1))
@@ -610,6 +543,30 @@ func TestInvalidOptions(t *testing.T) {
 	})
 	shouldPanic(t, func() {
 		_ = New(sha256.New(), NamespaceIDSize(namespace.IDMaxSize+1))
+	})
+}
+
+func BenchmarkComputeRoot(b *testing.B) {
+	b.ReportAllocs()
+	var (
+		total    = 256
+		leafSize = 256
+		nidSize  = 8
+	)
+
+	data := generateRandNamespacedRawData(total, nidSize, leafSize)
+
+	b.ResetTimer()
+	b.Run("leaves-256_nidBytes-8_data-8", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			n := New(sha256.New())
+			for j := 0; j < total; j++ {
+				if err := n.Push(data[j][:nidSize], data[j][nidSize:]); err != nil {
+					b.Errorf("err: %v", err)
+				}
+			}
+			_ = n.Root()
+		}
 	})
 }
 
@@ -669,4 +626,25 @@ func sum(hash crypto.Hash, data ...[]byte) []byte {
 	}
 
 	return h.Sum(nil)
+}
+
+func generateRandNamespacedRawData(total int, nidSize int, leafSize int) [][]byte {
+	data := make([][]byte, total)
+	for i := 0; i < total; i++ {
+		nid := make([]byte, nidSize)
+		rand.Read(nid)
+		data[i] = nid
+	}
+	sortByteArrays(data)
+	for i := 0; i < total; i++ {
+		d := make([]byte, leafSize)
+		rand.Read(d)
+		data[i] = append(data[i], d...)
+	}
+
+	return data
+}
+
+func sortByteArrays(src [][]byte) {
+	sort.Slice(src, func(i, j int) bool { return bytes.Compare(src[i], src[j]) < 0 })
 }

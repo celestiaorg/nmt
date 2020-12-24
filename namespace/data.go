@@ -1,16 +1,5 @@
 package namespace
 
-// Data represent namespaced data.
-// Anything that implements this interface can be pushed
-// into an NMT.
-type Data interface {
-	// NamespaceID returns the underlying namespace.ID
-	// associated with this Data.
-	NamespaceID() ID
-	// Data returns the data as bytes (without the namespace)
-	Data() []byte
-}
-
 type PrefixedData32 []byte
 
 func (d PrefixedData32) NamespaceID() ID {

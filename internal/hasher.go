@@ -5,7 +5,6 @@ import (
 	"hash"
 
 	"github.com/lazyledger/nmt/namespace"
-	"github.com/lazyledger/nmt/storage"
 )
 
 const (
@@ -17,7 +16,6 @@ type DefaultNmtHasher struct {
 	hash.Hash
 	NamespaceLen namespace.IDSize
 
-	store       storage.NodeStorer
 	ignoreMaxNs bool
 	cachedMaxNs namespace.ID
 }
@@ -30,24 +28,21 @@ func (n *DefaultNmtHasher) NamespaceSize() namespace.IDSize {
 	return n.NamespaceLen
 }
 
-func NewNmtHasher(baseHasher hash.Hash, nidLen namespace.IDSize, ignoreMaxNamespace bool, store storage.NodeStorer) *DefaultNmtHasher {
+func NewNmtHasher(baseHasher hash.Hash, nidLen namespace.IDSize, ignoreMaxNamespace bool) *DefaultNmtHasher {
 	return &DefaultNmtHasher{
 		Hash:         baseHasher,
 		NamespaceLen: nidLen,
-		store:        store,
 		ignoreMaxNs:  ignoreMaxNamespace,
 		cachedMaxNs:  bytes.Repeat([]byte{0xFF}, int(nidLen)),
 	}
 }
 
-func (n *DefaultNmtHasher) EmptyRoot() namespace.IntervalDigest {
+func (n *DefaultNmtHasher) EmptyRoot() []byte {
 	emptyNs := bytes.Repeat([]byte{0}, int(n.NamespaceLen))
 	h := n.Sum(nil)
-	intervalDigest := namespace.NewIntervalDigest(emptyNs, emptyNs, h)
-	if n.store != nil {
-		n.store.Put(intervalDigest.Bytes(), nil)
-	}
-	return intervalDigest
+	digest := append(append(emptyNs, emptyNs...), h...)
+
+	return digest
 }
 
 // HashLeaf hashes leaves to:
@@ -70,10 +65,6 @@ func (n *DefaultNmtHasher) HashLeaf(leaf []byte) []byte {
 	res := append(append(make([]byte, 0), nID...), nID...)
 	data = append([]byte{LeafPrefix}, data...)
 	h.Write(data)
-	hash := h.Sum(res)
-	if n.store != nil {
-		n.store.Put(hash, data)
-	}
 	return h.Sum(res)
 }
 
@@ -105,18 +96,14 @@ func (n *DefaultNmtHasher) HashNode(l, r []byte) []byte {
 
 	// Note this seems a little faster than calling several Write()s on the
 	// underlying Hash function (see: https://github.com/google/trillian/pull/1503):
-	b := append(append(append(
+	data := append(append(append(
 		make([]byte, 0, 1+len(l)+len(r)),
 		NodePrefix),
 		l...),
 		r...)
 	//nolint:errcheck
-	h.Write(b)
-	hash := h.Sum(res)
-	if n.store != nil {
-		n.store.Put(hash, b)
-	}
-	return hash
+	h.Write(data)
+	return h.Sum(res)
 }
 
 func max(ns []byte, ns2 []byte) []byte {

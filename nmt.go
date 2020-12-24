@@ -6,11 +6,11 @@ import (
 	"errors"
 	"fmt"
 	"hash"
+	"math/bits"
 
 	"github.com/lazyledger/merkletree"
 	"github.com/lazyledger/nmt/internal"
 	"github.com/lazyledger/nmt/namespace"
-	"github.com/lazyledger/nmt/storage"
 )
 
 const (
@@ -27,7 +27,6 @@ type Options struct {
 	InitialCapacity    int
 	NamespaceIDSize    namespace.IDSize
 	IgnoreMaxNamespace bool
-	NodeStore          storage.NodeStorer
 }
 
 type Option func(*Options)
@@ -64,23 +63,18 @@ func IgnoreMaxNamespace(ignore bool) Option {
 	}
 }
 
-func NodeStore(store storage.NodeStorer) Option {
-	return func(opts *Options) {
-		opts.NodeStore = store
-	}
-}
-
 type NamespacedMerkleTree struct {
 	treeHasher internal.NmtHasher
-	tree       *merkletree.Tree
 
 	// just cache stuff until we pass in a store and keep all nodes in there
-	leaves     []namespace.Data
+	// currently, only leaves and leafHashes are stored:
+	leaves [][]byte
+	// store leaf hashes whenever computed (via Root() or via computeLeafHashesIfNecessary)
 	leafHashes [][]byte
-	store      storage.NodeStorer
+
 	// this can be used to efficiently lookup the range for an
 	// existing namespace without iterating through the leaves
-	namespaceRanges map[string]merkletree.LeafRange
+	namespaceRanges map[string]leafRange
 	minNID          namespace.ID
 	maxNID          namespace.ID
 }
@@ -100,17 +94,12 @@ func New(h hash.Hash, setters ...Option) *NamespacedMerkleTree {
 	for _, setter := range setters {
 		setter(opts)
 	}
-	if opts.NodeStore == nil {
-		opts.NodeStore = storage.NewInMemoryNodeStore(opts.NamespaceIDSize)
-	}
-	treeHasher := internal.NewNmtHasher(h, opts.NamespaceIDSize, opts.IgnoreMaxNamespace, opts.NodeStore)
+	treeHasher := internal.NewNmtHasher(h, opts.NamespaceIDSize, opts.IgnoreMaxNamespace)
 	return &NamespacedMerkleTree{
 		treeHasher:      treeHasher,
-		tree:            merkletree.NewFromTreehasher(treeHasher),
-		leaves:          make([]namespace.Data, 0, opts.InitialCapacity),
-		store:           opts.NodeStore,
+		leaves:          make([][]byte, 0, opts.InitialCapacity),
 		leafHashes:      make([][]byte, 0, opts.InitialCapacity),
-		namespaceRanges: make(map[string]merkletree.LeafRange),
+		namespaceRanges: make(map[string]leafRange),
 		minNID:          bytes.Repeat([]byte{0xFF}, int(opts.NamespaceIDSize)),
 		maxNID:          bytes.Repeat([]byte{0x00}, int(opts.NamespaceIDSize)),
 	}
@@ -121,6 +110,7 @@ func New(h hash.Hash, setters ...Option) *NamespacedMerkleTree {
 // like any vanilla Merkle tree.
 func (n NamespacedMerkleTree) Prove(index int) (Proof, error) {
 	isMaxNsIgnored := n.treeHasher.IsMaxNamespaceIDIgnored()
+	n.computeLeafHashesIfNecessary()
 	subTreeHasher := internal.NewCachedSubtreeHasher(n.leafHashes, n.treeHasher)
 	// TODO: store nodes and re-use the hashes instead recomputing parts of the tree here
 	proof, err := merkletree.BuildRangeProof(index, index+1, subTreeHasher)
@@ -164,6 +154,7 @@ func (n NamespacedMerkleTree) ProveNamespace(nID namespace.ID) (Proof, error) {
 	// At this point we either found the namespace in the tree or calculated
 	// the range it would be in (to generate a proof of absence and to return
 	// the corresponding leaf hashes).
+	n.computeLeafHashesIfNecessary()
 	subTreeHasher := internal.NewCachedSubtreeHasher(n.leafHashes, n.treeHasher)
 	var err error
 	proof, err := merkletree.BuildRangeProof(proofStart, proofEnd, subTreeHasher)
@@ -186,7 +177,7 @@ func (n NamespacedMerkleTree) ProveNamespace(nID namespace.ID) (Proof, error) {
 }
 
 // Get returns leaves for the given namespace.ID.
-func (n NamespacedMerkleTree) Get(nID namespace.ID) []namespace.Data {
+func (n NamespacedMerkleTree) Get(nID namespace.ID) [][]byte {
 	_, start, end := n.foundInRange(nID)
 	return n.leaves[start:end]
 }
@@ -194,21 +185,23 @@ func (n NamespacedMerkleTree) Get(nID namespace.ID) []namespace.Data {
 // GetWithProof is a convenience method returns leaves for the given namespace.ID
 // together with the proof for that namespace. It returns the same result
 // as calling the combination of Get(nid) and ProveNamespace(nid).
-func (n NamespacedMerkleTree) GetWithProof(nID namespace.ID) ([]namespace.Data, Proof, error) {
+func (n NamespacedMerkleTree) GetWithProof(nID namespace.ID) ([][]byte, Proof, error) {
 	data := n.Get(nID)
 	proof, err := n.ProveNamespace(nID)
 	return data, proof, err
 }
 
 func (n NamespacedMerkleTree) calculateAbsenceIndex(nID namespace.ID) int {
-	var prevLeaf namespace.Data
+	nidSize := n.treeHasher.NamespaceSize()
+	var prevLeaf []byte
+
 	for index, curLeaf := range n.leaves {
 		if index == 0 {
 			prevLeaf = curLeaf
 			continue
 		}
-		prevNs := prevLeaf.NamespaceID()
-		currentNs := curLeaf.NamespaceID()
+		prevNs := namespace.ID(prevLeaf[:nidSize])
+		currentNs := curLeaf[:nidSize]
 		// Note that here we would also care for the case
 		// current < nId < prevNs
 		// but we only allow pushing leaves with ascending namespaces;
@@ -232,7 +225,7 @@ func (n *NamespacedMerkleTree) foundInRange(nID namespace.ID) (bool, int, int) {
 	foundRng, found := n.namespaceRanges[string(nID)]
 	// XXX casting from uint64 to int is kinda crappy but nebolousLabs'
 	// range proof api requires int params only to convert them to uint64 ...
-	return found, int(foundRng.Start), int(foundRng.End)
+	return found, int(foundRng.start), int(foundRng.end)
 }
 
 // NamespaceSize returns the underlying namespace size. Note that
@@ -245,67 +238,120 @@ func (n NamespacedMerkleTree) NamespaceSize() namespace.IDSize {
 // Returns an error if the namespace ID size of the input
 // does not match the tree's NamespaceSize() or the leaves are not pushed in
 // order (i.e. lexicographically sorted by namespace ID).
-func (n *NamespacedMerkleTree) Push(data namespace.Data) error {
-	got, want := data.NamespaceID().Size(), n.NamespaceSize()
-	if got != want {
-		return fmt.Errorf("%w: got: %v, want: %v", ErrMismatchedNamespaceSize, got, want)
+func (n *NamespacedMerkleTree) Push(id namespace.ID, data []byte) error {
+	err := n.validateNamespace(id)
+	if err != nil {
+		return err
 	}
-	// ensure pushed data doesn't have a smaller namespace than the previous one:
-	curSize := len(n.leaves)
-	if curSize > 0 {
-		if data.NamespaceID().Less(n.leaves[curSize-1].NamespaceID()) {
-			return fmt.Errorf(
-				"%w: last namespace: %x, pushed: %x",
-				ErrInvalidPushOrder,
-				n.leaves[curSize-1].NamespaceID(),
-				data.NamespaceID(),
-			)
-		}
-	}
-	leafData := append(data.NamespaceID(), data.Data()...)
-	n.tree.Push(leafData)
+	leafData := append(id, data...)
 	// update relevant "caches":
-	n.leaves = append(n.leaves, data)
-	n.leafHashes = append(n.leafHashes, n.treeHasher.HashLeaf(leafData))
+	n.leaves = append(n.leaves, leafData)
 	n.updateNamespaceRanges()
-	n.updateMinMaxID(data)
+	n.updateMinMaxID(id)
 	return nil
 }
 
 // Return the namespaced Merkle Tree's root together with the
 // min. and max. namespace ID.
 func (n *NamespacedMerkleTree) Root() namespace.IntervalDigest {
-	if len(n.leaves) == 0 {
+	return namespace.IntervalDigestFromBytes(n.NamespaceSize(), n.computeRoot(0, len(n.leaves)))
+}
+
+func (n NamespacedMerkleTree) computeRoot(start, end int) []byte {
+	switch end - start {
+	case 0:
 		return n.treeHasher.EmptyRoot()
+	case 1:
+		leafHash := n.treeHasher.HashLeaf(n.leaves[start:end][0])
+		if len(n.leafHashes) < len(n.leaves) {
+			n.leafHashes = append(n.leafHashes, leafHash)
+		}
+		return leafHash
+	default:
+		k := getSplitPoint(end - start)
+		left := n.computeRoot(start, start+k)
+		right := n.computeRoot(start+k, end)
+
+		return n.treeHasher.HashNode(left, right)
 	}
-	return namespace.IntervalDigestFromBytes(n.NamespaceSize(), n.tree.Root())
+}
+
+// getSplitPoint returns the largest power of 2 less than length
+func getSplitPoint(length int) int {
+	if length < 1 {
+		panic("Trying to split a tree with size < 1")
+	}
+	uLength := uint(length)
+	bitlen := bits.Len(uLength)
+	k := 1 << uint(bitlen-1)
+	if k == length {
+		k >>= 1
+	}
+	return k
 }
 
 func (n *NamespacedMerkleTree) updateNamespaceRanges() {
 	if len(n.leaves) > 0 {
 		lastIndex := len(n.leaves) - 1
 		lastPushed := n.leaves[lastIndex]
-		lastNsStr := string(lastPushed.NamespaceID())
+		lastNsStr := string(lastPushed[:n.treeHasher.NamespaceSize()])
 		lastRange, found := n.namespaceRanges[lastNsStr]
 		if !found {
-			n.namespaceRanges[lastNsStr] = merkletree.LeafRange{
-				Start: uint64(lastIndex),
-				End:   uint64(lastIndex + 1),
+			n.namespaceRanges[lastNsStr] = leafRange{
+				start: uint64(lastIndex),
+				end:   uint64(lastIndex + 1),
 			}
 		} else {
-			n.namespaceRanges[lastNsStr] = merkletree.LeafRange{
-				Start: lastRange.Start,
-				End:   lastRange.End + 1,
+			n.namespaceRanges[lastNsStr] = leafRange{
+				start: lastRange.start,
+				end:   lastRange.end + 1,
 			}
 		}
 	}
 }
+func (n *NamespacedMerkleTree) validateNamespace(id namespace.ID) error {
+	if id == nil {
+		return errors.New("namespace.ID can not be empty")
+	}
+	nidSize := n.treeHasher.NamespaceSize()
+	if id.Size() != nidSize {
+		return fmt.Errorf("%w: got: %v, want: %v", ErrMismatchedNamespaceSize, id.Size(), nidSize)
+	}
+	// ensure pushed data doesn't have a smaller namespace than the previous one:
+	curSize := len(n.leaves)
+	if curSize > 0 {
+		if id.Less(n.leaves[curSize-1][:nidSize]) {
+			return fmt.Errorf(
+				"%w: last namespace: %x, pushed: %x",
+				ErrInvalidPushOrder,
+				n.leaves[curSize-1][:nidSize],
+				id,
+			)
+		}
+	}
+	return nil
+}
 
-func (n *NamespacedMerkleTree) updateMinMaxID(data namespace.Data) {
-	if data.NamespaceID().Less(n.minNID) {
-		n.minNID = data.NamespaceID()
+func (n *NamespacedMerkleTree) updateMinMaxID(id namespace.ID) {
+	if id.Less(n.minNID) {
+		n.minNID = id
 	}
-	if n.maxNID.Less(data.NamespaceID()) {
-		n.maxNID = data.NamespaceID()
+	if n.maxNID.Less(id) {
+		n.maxNID = id
 	}
+}
+
+// computes the leaf hashes if not already done in a previously call
+// of NamespacedMerkleTree.Root()
+func (n *NamespacedMerkleTree) computeLeafHashesIfNecessary() {
+	if len(n.leafHashes) < len(n.leaves) {
+		n.leafHashes = make([][]byte, len(n.leaves))
+		for i, leaf := range n.leaves {
+			n.leafHashes[i] = n.treeHasher.HashLeaf(leaf)
+		}
+	}
+}
+
+type leafRange struct {
+	start, end uint64
 }
