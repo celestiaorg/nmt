@@ -1,25 +1,5 @@
 package namespace
 
-type PrefixedData32 []byte
-
-func (d PrefixedData32) NamespaceID() ID {
-	return ID(d[:32])
-}
-
-func (d PrefixedData32) Data() []byte {
-	return d[32:]
-}
-
-type PrefixedData16 []byte
-
-func (d PrefixedData16) NamespaceID() ID {
-	return ID(d[:16])
-}
-
-func (d PrefixedData16) Data() []byte {
-	return d[16:]
-}
-
 type PrefixedData8 []byte
 
 func (d PrefixedData8) NamespaceID() ID {

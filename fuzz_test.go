@@ -132,7 +132,7 @@ func makeFuzzer(size testNamespaceSizes, minNumOfNs, maxNumOfNs, minElemsPerNs, 
 				*s = string(lastNs[:])
 			},
 			func(s *[][]byte, c fuzz.Continue) {
-				var tmp []namespace.PrefixedData8
+				var tmp [][]byte
 				f := fuzz.New().NilChance(emptyNsProb).NumElements(minElemsPerNs, maxElemsPerNs)
 				f.Fuzz(&tmp)
 				*s = make([][]byte, len(tmp))
@@ -150,7 +150,7 @@ func makeFuzzer(size testNamespaceSizes, minNumOfNs, maxNumOfNs, minElemsPerNs, 
 				*s = string(lastNs[:])
 			},
 			func(s *[][]byte, c fuzz.Continue) {
-				var tmp []namespace.PrefixedData16
+				var tmp [][]byte
 				f := fuzz.New().NilChance(emptyNsProb).NumElements(minElemsPerNs, maxElemsPerNs)
 				f.Fuzz(&tmp)
 				*s = make([][]byte, len(tmp))
@@ -168,7 +168,7 @@ func makeFuzzer(size testNamespaceSizes, minNumOfNs, maxNumOfNs, minElemsPerNs, 
 				*s = string(lastNs[:])
 			},
 			func(s *[][]byte, c fuzz.Continue) {
-				var tmp []namespace.PrefixedData32
+				var tmp [][]byte
 				f := fuzz.New().NilChance(emptyNsProb).NumElements(minElemsPerNs, maxElemsPerNs)
 				f.Fuzz(&tmp)
 				*s = make([][]byte, len(tmp))
