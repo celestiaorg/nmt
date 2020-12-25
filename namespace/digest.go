@@ -8,14 +8,6 @@ type IntervalDigest struct {
 	digest []byte
 }
 
-func NewIntervalDigest(min, max ID, digest []byte) IntervalDigest {
-	return IntervalDigest{
-		min:    min,
-		max:    max,
-		digest: digest,
-	}
-}
-
 // IntervalDigestFromBytes is the inverse function to IntervalDigest.Bytes().
 // In other words, it assumes that the passed in digestBytes are of the form
 // d.Min() || d.Max() || d.Hash() for an IntervalDigest d.
