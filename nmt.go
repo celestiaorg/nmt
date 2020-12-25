@@ -310,9 +310,6 @@ func (n *NamespacedMerkleTree) updateNamespaceRanges() {
 	}
 }
 func (n *NamespacedMerkleTree) validateNamespace(id namespace.ID) error {
-	if id == nil {
-		return errors.New("namespace.ID can not be empty")
-	}
 	nidSize := n.treeHasher.NamespaceSize()
 	if id.Size() != nidSize {
 		return fmt.Errorf("%w: got: %v, want: %v", ErrMismatchedNamespaceSize, id.Size(), nidSize)
