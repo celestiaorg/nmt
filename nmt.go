@@ -262,7 +262,7 @@ func (n NamespacedMerkleTree) computeRoot(start, end int) []byte {
 	case 0:
 		return n.treeHasher.EmptyRoot()
 	case 1:
-		leafHash := n.treeHasher.HashLeaf(n.leaves[start:end][0])
+		leafHash := n.treeHasher.HashLeaf(n.leaves[start])
 		if len(n.leafHashes) < len(n.leaves) {
 			n.leafHashes = append(n.leafHashes, leafHash)
 		}

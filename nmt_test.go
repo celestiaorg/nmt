@@ -548,26 +548,33 @@ func TestInvalidOptions(t *testing.T) {
 
 func BenchmarkComputeRoot(b *testing.B) {
 	b.ReportAllocs()
-	var (
-		total    = 256
-		leafSize = 256
-		nidSize  = 8
-	)
+	tests := []struct {
+		name      string
+		numLeaves int
+		nidSize   int
+		dataSize  int
+	}{
+		{"64-leaves", 64, 8, 256},
+		{"128-leaves", 128, 8, 256},
+		{"256-leaves", 256, 8, 256},
+	}
 
-	data := generateRandNamespacedRawData(total, nidSize, leafSize)
-
-	b.ResetTimer()
-	b.Run("leaves-256_nidBytes-8_data-8", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
-			n := New(sha256.New())
-			for j := 0; j < total; j++ {
-				if err := n.Push(data[j][:nidSize], data[j][nidSize:]); err != nil {
-					b.Errorf("err: %v", err)
+	for _, tt := range tests {
+		data := generateRandNamespacedRawData(tt.numLeaves, tt.nidSize, tt.dataSize)
+		b.ResetTimer()
+		b.Run(tt.name, func(b *testing.B) {
+			for i := 0; i < b.N; i++ {
+				n := New(sha256.New())
+				for j := 0; j < tt.numLeaves; j++ {
+					if err := n.Push(data[j][:tt.nidSize], data[j][tt.nidSize:]); err != nil {
+						b.Errorf("err: %v", err)
+					}
 				}
+				_ = n.Root()
 			}
-			_ = n.Root()
-		}
-	})
+		})
+	}
+
 }
 
 func shouldPanic(t *testing.T, f func()) {
