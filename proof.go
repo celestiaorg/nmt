@@ -99,8 +99,11 @@ func NewAbsenceProof(proofStart, proofEnd int, proofNodes [][]byte, leafHash []b
 // the provided data in the tree. Additionally, it verifies that the namespace
 // is complete and no leaf of that namespace was left out in the proof.
 func (proof Proof) VerifyNamespace(h hash.Hash, nID namespace.ID, data [][]byte, root namespace.IntervalDigest) bool {
-	// TODO add more sanity checks
 	nth := internal.NewNmtHasher(h, nID.Size(), proof.isMaxNamespaceIDIgnored)
+	if nID.Size() != root.Min().Size() || nID.Size() != root.Max().Size() {
+		// conflicting namespace sizes
+		return false
+	}
 
 	isEmptyRange := proof.start == proof.end
 	// empty range, proof, and data: always checks out
@@ -116,11 +119,11 @@ func (proof Proof) VerifyNamespace(h hash.Hash, nID namespace.ID, data [][]byte,
 		// do some sanity checks:
 		hashLeafFunc := nth.HashLeaf
 		for _, gotLeaf := range data {
-			gotLeafNid := namespace.ID(gotLeaf[:nIDLen])
-			if gotLeafNid.Size() != nIDLen {
+			if len(gotLeaf) < int(nIDLen) {
 				// conflicting namespace sizes
 				return false
 			}
+			gotLeafNid := namespace.ID(gotLeaf[:nIDLen])
 			if !gotLeafNid.Equal(nID) {
 				// conflicting namespace IDs in data
 				return false
