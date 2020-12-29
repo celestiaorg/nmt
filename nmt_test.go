@@ -49,8 +49,10 @@ func ExampleNamespacedMerkleTree() {
 	}
 
 	// verify proof using the root and the leaves of namespace 0:
-	leafs := [][]byte{append(namespace.ID{0}, []byte("leaf_0")...),
-		append(namespace.ID{0}, []byte("leaf_1")...)}
+	leafs := [][]byte{
+		append(namespace.ID{0}, []byte("leaf_0")...),
+		append(namespace.ID{0}, []byte("leaf_1")...),
+	}
 
 	if proof.VerifyNamespace(sha256.New(), namespace.ID{0}, leafs, root) {
 		fmt.Printf("Successfully verified namespace: %x\n", namespace.ID{0})
