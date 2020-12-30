@@ -42,7 +42,8 @@ func main() {
       namespace.PrefixedDataFrom(namespace.ID{0}, []byte("leaf_0")),
       namespace.PrefixedDataFrom(namespace.ID{0}, []byte("leaf_1")),
       namespace.PrefixedDataFrom(namespace.ID{1}, []byte("leaf_2")),
-      namespace.PrefixedDataFrom(namespace.ID{1}, []byte("leaf_3"))}
+      namespace.PrefixedDataFrom(namespace.ID{1}, []byte("leaf_3")),
+    }
     // Init a tree with the namespace size as well as
     // the underlying hash function:
     tree := New(sha256.New(), NamespaceIDSize(nidSize))
@@ -102,5 +103,4 @@ and was heavily inspired by the initial implementation in the LazyLedger [protot
 [trillian]: https://github.com/google/trillian
 [`LogHasher`]: https://github.com/google/trillian/blob/7502e99bb92ecf0ec8add958889c751f2cfc7f59/merkle/hashers/tree_hasher.go#L23-L34
  
-
 
