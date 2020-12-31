@@ -37,10 +37,12 @@ func NewNmtHasher(baseHasher hash.Hash, nidLen namespace.IDSize, ignoreMaxNamesp
 	}
 }
 
-func (n *DefaultNmtHasher) EmptyRoot() namespace.IntervalDigest {
+func (n *DefaultNmtHasher) EmptyRoot() []byte {
 	emptyNs := bytes.Repeat([]byte{0}, int(n.NamespaceLen))
+	h := n.Sum(nil)
+	digest := append(append(emptyNs, emptyNs...), h...)
 
-	return namespace.NewIntervalDigest(emptyNs, emptyNs, n.Sum(nil))
+	return digest
 }
 
 // HashLeaf hashes leaves to:
@@ -61,7 +63,7 @@ func (n *DefaultNmtHasher) HashLeaf(leaf []byte) []byte {
 	nID := leaf[:n.NamespaceLen]
 	data := leaf[n.NamespaceLen:]
 	res := append(append(make([]byte, 0), nID...), nID...)
-	h.Write([]byte{LeafPrefix})
+	data = append([]byte{LeafPrefix}, data...)
 	h.Write(data)
 	return h.Sum(res)
 }
@@ -94,13 +96,13 @@ func (n *DefaultNmtHasher) HashNode(l, r []byte) []byte {
 
 	// Note this seems a little faster than calling several Write()s on the
 	// underlying Hash function (see: https://github.com/google/trillian/pull/1503):
-	b := append(append(append(
+	data := append(append(append(
 		make([]byte, 0, 1+len(l)+len(r)),
 		NodePrefix),
 		l...),
 		r...)
 	//nolint:errcheck
-	h.Write(b)
+	h.Write(data)
 	return h.Sum(res)
 }
 

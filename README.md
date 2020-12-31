@@ -39,46 +39,47 @@ func main() {
     nidSize := 1
     // the leaves that will be pushed
     data := []namespace.PrefixedData{
-        namespace.PrefixedDataFrom(namespace.ID{0}, []byte("leaf_0")),
-        namespace.PrefixedDataFrom(namespace.ID{0}, []byte("leaf_1")),
-        namespace.PrefixedDataFrom(namespace.ID{1}, []byte("leaf_2")),
-        namespace.PrefixedDataFrom(namespace.ID{1}, []byte("leaf_3"))}
-
+      namespace.PrefixedDataFrom(namespace.ID{0}, []byte("leaf_0")),
+      namespace.PrefixedDataFrom(namespace.ID{0}, []byte("leaf_1")),
+      namespace.PrefixedDataFrom(namespace.ID{1}, []byte("leaf_2")),
+      namespace.PrefixedDataFrom(namespace.ID{1}, []byte("leaf_3")),
+    }
     // Init a tree with the namespace size as well as
     // the underlying hash function:
-    tree := nmt.New(sha256.New(), nmt.NamespaceIDSize(nidSize))
+    tree := New(sha256.New(), NamespaceIDSize(nidSize))
     for _, d := range data {
-        if err := tree.Push(d); err != nil {
-            panic("unexpected error")
-        }
+      if err := tree.Push(d.NamespaceID(), d.Data()); err != nil {
+        panic("unexpected error")
+      }
     }
-    
     // compute the root
     root := tree.Root()
     // the root's min/max namespace is the min and max namespace of all leaves:
     if root.Min().Equal(namespace.ID{0}) {
-        fmt.Printf("Min namespace: %x\n", root.Min())
+      fmt.Printf("Min namespace: %x\n", root.Min())
     }
     if root.Max().Equal(namespace.ID{1}) {
-        fmt.Printf("Max namespace: %x\n", root.Max())
+      fmt.Printf("Max namespace: %x\n", root.Max())
     }
-    
+  
     // compute proof for namespace 0:
-    proof, err := tree.ProveNamespace(namespace.ID{0}); if err != nil {
-        panic("unexpected err")
+    proof, err := tree.ProveNamespace(namespace.ID{0})
+    if err != nil {
+      panic("unexpected error")
     }
-    
+  
     // verify proof using the root and the leaves of namespace 0:
-    leafs := []namespace.Data{
-        namespace.PrefixedDataFrom(namespace.ID{0}, []byte("leaf_0")),
-        namespace.PrefixedDataFrom(namespace.ID{0}, []byte("leaf_1"))}
-    
-    if proof.VerifyNamespace(sha256.New(), namespace.ID{0}, leafs, root) {
-        fmt.Printf("Successfully verified namespace: %x\n", namespace.ID{0})
+    leafs := [][]byte{
+      append(namespace.ID{0}, []byte("leaf_0")...),
+      append(namespace.ID{0}, []byte("leaf_1")...),
     }
-    
+  
+    if proof.VerifyNamespace(sha256.New(), namespace.ID{0}, leafs, root) {
+      fmt.Printf("Successfully verified namespace: %x\n", namespace.ID{0})
+    }
+  
     if proof.VerifyNamespace(sha256.New(), namespace.ID{2}, leafs, root) {
-        panic(fmt.Sprintf("Proof for namespace %x, passed for namespace: %x\n", namespace.ID{0}, namespace.ID{2}))
+      panic(fmt.Sprintf("Proof for namespace %x, passed for namespace: %x\n", namespace.ID{0}, namespace.ID{2}))
     }
 }
 ```
@@ -102,5 +103,4 @@ and was heavily inspired by the initial implementation in the LazyLedger [protot
 [trillian]: https://github.com/google/trillian
 [`LogHasher`]: https://github.com/google/trillian/blob/7502e99bb92ecf0ec8add958889c751f2cfc7f59/merkle/hashers/tree_hasher.go#L23-L34
  
-
 

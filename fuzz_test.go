@@ -35,9 +35,9 @@ func TestFuzzProveVerifyNameSpace(t *testing.T) {
 
 		// push data in order:
 		for _, ns := range sortedKeys {
-			leafData := nidDataMap[ns]
-			for _, d := range leafData {
-				err := tree.Push(d)
+			leafDataList := nidDataMap[ns]
+			for _, d := range leafDataList {
+				err := tree.Push(d[:size], d[size:])
 				if err != nil {
 					t.Fatalf("error on Push(): %v", err)
 				}
@@ -72,7 +72,7 @@ func TestFuzzProveVerifyNameSpace(t *testing.T) {
 				if err != nil {
 					t.Fatalf("error on Prove(%v): %v", i, err)
 				}
-				if ok := singleItemProof.VerifyInclusion(hash, data[i], treeRoot); !ok {
+				if ok := singleItemProof.VerifyInclusion(hash, data[i][:size], data[i][size:], treeRoot); !ok {
 					t.Fatalf("expected VerifyInclusion() == true; data = %#v; proof = %#v", data[i], singleItemProof)
 				}
 				leafIdx++
@@ -99,8 +99,8 @@ func TestFuzzProveVerifyNameSpace(t *testing.T) {
 	}
 }
 
-func makeRandDataAndSortedKeys(size testNamespaceSizes, minNumOfNs, maxNumOfNs, minElemsPerNs, maxElemsPerNs int, emptyNsProb float64) (map[string][]namespace.Data, []string) {
-	nidDataMap := map[string][]namespace.Data{}
+func makeRandDataAndSortedKeys(size testNamespaceSizes, minNumOfNs, maxNumOfNs, minElemsPerNs, maxElemsPerNs int, emptyNsProb float64) (map[string][][]byte, []string) {
+	nidDataMap := make(map[string][][]byte)
 	f := makeFuzzer(size, minNumOfNs, maxNumOfNs, minElemsPerNs, maxElemsPerNs, emptyNsProb)
 	f.Fuzz(&nidDataMap)
 	keys := make([]string, len(nidDataMap))
@@ -131,11 +131,11 @@ func makeFuzzer(size testNamespaceSizes, minNumOfNs, maxNumOfNs, minElemsPerNs, 
 				c.Fuzz(&lastNs)
 				*s = string(lastNs[:])
 			},
-			func(s *[]namespace.Data, c fuzz.Continue) {
-				var tmp []namespace.PrefixedData8
+			func(s *[][]byte, c fuzz.Continue) {
+				var tmp [][]byte
 				f := fuzz.New().NilChance(emptyNsProb).NumElements(minElemsPerNs, maxElemsPerNs)
 				f.Fuzz(&tmp)
-				*s = make([]namespace.Data, len(tmp))
+				*s = make([][]byte, len(tmp))
 				for i, d := range tmp {
 					d = append(d[:0], lastNs[:]...)
 					(*s)[i] = d
@@ -149,11 +149,11 @@ func makeFuzzer(size testNamespaceSizes, minNumOfNs, maxNumOfNs, minElemsPerNs, 
 				c.Fuzz(&lastNs)
 				*s = string(lastNs[:])
 			},
-			func(s *[]namespace.Data, c fuzz.Continue) {
-				var tmp []namespace.PrefixedData16
+			func(s *[][]byte, c fuzz.Continue) {
+				var tmp [][]byte
 				f := fuzz.New().NilChance(emptyNsProb).NumElements(minElemsPerNs, maxElemsPerNs)
 				f.Fuzz(&tmp)
-				*s = make([]namespace.Data, len(tmp))
+				*s = make([][]byte, len(tmp))
 				for i, d := range tmp {
 					d = append(d[:0], lastNs[:]...)
 					(*s)[i] = d
@@ -167,11 +167,11 @@ func makeFuzzer(size testNamespaceSizes, minNumOfNs, maxNumOfNs, minElemsPerNs, 
 				c.Fuzz(&lastNs)
 				*s = string(lastNs[:])
 			},
-			func(s *[]namespace.Data, c fuzz.Continue) {
-				var tmp []namespace.PrefixedData32
+			func(s *[][]byte, c fuzz.Continue) {
+				var tmp [][]byte
 				f := fuzz.New().NilChance(emptyNsProb).NumElements(minElemsPerNs, maxElemsPerNs)
 				f.Fuzz(&tmp)
-				*s = make([]namespace.Data, len(tmp))
+				*s = make([][]byte, len(tmp))
 				for i, d := range tmp {
 					d = append(d[:0], lastNs[:]...)
 					(*s)[i] = d

@@ -19,7 +19,7 @@ func TestProof_VerifyNamespace_False(t *testing.T) {
 		generateLeafData(testNidLen, 0, 9, []byte("data"))...,
 	), namespace.PrefixedDataFrom([]byte{0, 0, 8}, []byte("last leaf")))
 	for _, d := range data {
-		err := n.Push(d)
+		err := n.Push(d.NamespaceID(), d.Data())
 		if err != nil {
 			t.Fatalf("invalid test setup: error on Push(): %v", err)
 		}
@@ -32,7 +32,7 @@ func TestProof_VerifyNamespace_False(t *testing.T) {
 	incompleteFirstNs := NewInclusionProof(0, 1, rangeProof(t, n, 0, 1), false)
 	type args struct {
 		nID  namespace.ID
-		data []namespace.Data
+		data [][]byte
 		root namespace.IntervalDigest
 	}
 	pushedZeroNs := n.Get([]byte{0, 0, 0})
@@ -46,11 +46,14 @@ func TestProof_VerifyNamespace_False(t *testing.T) {
 		{"invalid nid (too long)", validProof,
 			args{[]byte{0, 0, 0, 0}, pushedZeroNs, n.Root()},
 			false},
+		{"invalid leaf data (too short)", validProof,
+			args{[]byte{0, 0, 0}, [][]byte{{0, 1}}, n.Root()},
+			false},
 		{"mismatching IDs in data", validProof,
-			args{[]byte{0, 0, 0}, append(append([]namespace.Data(nil), pushedZeroNs...), namespace.NewPrefixedData(testNidLen, []byte{1, 1, 1})), n.Root()},
+			args{[]byte{0, 0, 0}, append(append([][]byte(nil), pushedZeroNs...), []byte{1, 1, 1}), n.Root()},
 			false},
 		{"added another leaf", validProof,
-			args{[]byte{0, 0, 0}, append(append([]namespace.Data(nil), pushedZeroNs...), namespace.NewPrefixedData(testNidLen, []byte{0, 0, 0})), n.Root()},
+			args{[]byte{0, 0, 0}, append(append([][]byte(nil), pushedZeroNs...), []byte{0, 0, 0}), n.Root()},
 			false},
 		{"remove one leaf, errors", validProof,
 			args{[]byte{0, 0, 0}, pushedZeroNs[:len(pushedZeroNs)-1], n.Root()},
@@ -79,6 +82,7 @@ func TestProof_VerifyNamespace_False(t *testing.T) {
 }
 
 func rangeProof(t *testing.T, n *NamespacedMerkleTree, start, end int) [][]byte {
+	n.computeLeafHashesIfNecessary()
 	subTreeHasher := internal.NewCachedSubtreeHasher(n.leafHashes, n.treeHasher)
 	incompleteRange, err := merkletree.BuildRangeProof(start, end, subTreeHasher)
 	if err != nil {
