@@ -21,12 +21,16 @@ const (
 var (
 	ErrMismatchedNamespaceSize = errors.New("mismatching namespace sizes")
 	ErrInvalidPushOrder        = errors.New("pushed data has to be lexicographically ordered by namespace IDs")
+	noOp                       = func(hash []byte, children ...[]byte) {}
 )
+
+type NodeVisitorFn = func(hash []byte, children ...[]byte)
 
 type Options struct {
 	InitialCapacity    int
 	NamespaceIDSize    namespace.IDSize
 	IgnoreMaxNamespace bool
+	NodeVisitor        NodeVisitorFn
 }
 
 type Option func(*Options)
@@ -63,8 +67,15 @@ func IgnoreMaxNamespace(ignore bool) Option {
 	}
 }
 
+func NodeVisitor(nodeVisitorFn NodeVisitorFn) Option {
+	return func(opts *Options) {
+		opts.NodeVisitor = nodeVisitorFn
+	}
+}
+
 type NamespacedMerkleTree struct {
 	treeHasher internal.NmtHasher
+	visit      NodeVisitorFn
 
 	// just cache stuff until we pass in a store and keep all nodes in there
 	// currently, only leaves and leafHashes are stored:
@@ -89,6 +100,7 @@ func New(h hash.Hash, setters ...Option) *NamespacedMerkleTree {
 		InitialCapacity:    128,
 		NamespaceIDSize:    8,
 		IgnoreMaxNamespace: true,
+		NodeVisitor:        noOp,
 	}
 
 	for _, setter := range setters {
@@ -97,6 +109,7 @@ func New(h hash.Hash, setters ...Option) *NamespacedMerkleTree {
 	treeHasher := internal.NewNmtHasher(h, opts.NamespaceIDSize, opts.IgnoreMaxNamespace)
 	return &NamespacedMerkleTree{
 		treeHasher:      treeHasher,
+		visit:           opts.NodeVisitor,
 		leaves:          make([][]byte, 0, opts.InitialCapacity),
 		leafHashes:      make([][]byte, 0, opts.InitialCapacity),
 		namespaceRanges: make(map[string]leafRange),
@@ -260,19 +273,23 @@ func (n *NamespacedMerkleTree) Root() namespace.IntervalDigest {
 func (n NamespacedMerkleTree) computeRoot(start, end int) []byte {
 	switch end - start {
 	case 0:
-		return n.treeHasher.EmptyRoot()
+		rootHash := n.treeHasher.EmptyRoot()
+		n.visit(rootHash)
+		return rootHash
 	case 1:
 		leafHash := n.treeHasher.HashLeaf(n.leaves[start])
 		if len(n.leafHashes) < len(n.leaves) {
 			n.leafHashes = append(n.leafHashes, leafHash)
 		}
+		n.visit(leafHash, n.leaves[start])
 		return leafHash
 	default:
 		k := getSplitPoint(end - start)
 		left := n.computeRoot(start, start+k)
 		right := n.computeRoot(start+k, end)
-
-		return n.treeHasher.HashNode(left, right)
+		hash := n.treeHasher.HashNode(left, right)
+		n.visit(hash, left, right)
+		return hash
 	}
 }
 
@@ -283,7 +300,7 @@ func getSplitPoint(length int) int {
 	}
 	uLength := uint(length)
 	bitlen := bits.Len(uLength)
-	k := 1 << uint(bitlen-1)
+	k := 1 << (bitlen - 1)
 	if k == length {
 		k >>= 1
 	}
