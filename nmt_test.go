@@ -471,6 +471,41 @@ func TestIgnoreMaxNamespace(t *testing.T) {
 	}
 }
 
+func TestNodeVisitor(t *testing.T) {
+	const (
+		numLeaves = 4
+		nidSize   = 2
+		leafSize  = 6
+	)
+	nodeHashes := make([][]byte, 0)
+	collectNodeHashes := func(hash []byte, _children ...[]byte) {
+		nodeHashes = append(nodeHashes, hash)
+	}
+
+	data := generateRandNamespacedRawData(numLeaves, nidSize, leafSize)
+	n := New(sha256.New(), NamespaceIDSize(nidSize), NodeVisitor(collectNodeHashes))
+	for j := 0; j < numLeaves; j++ {
+		if err := n.Push(data[j][:nidSize], data[j][nidSize:]); err != nil {
+			t.Errorf("err: %v", err)
+		}
+	}
+	root := n.Root()
+	last := nodeHashes[len(nodeHashes)-1]
+	if !bytes.Equal(root.Hash(), last[nidSize*2:]) {
+		t.Fatalf("last visited node's digest does not match the tree root's.")
+	}
+	if !bytes.Equal(root.Min(), last[:nidSize]) {
+		t.Fatalf("last visited node's min namespace does not match the tree root's.")
+	}
+	if !bytes.Equal(root.Max(), last[nidSize:nidSize*2]) {
+		t.Fatalf("last visited node's max namespace does not match the tree root's.")
+	}
+	t.Log("printing nodes in visiting order") // postorder DFS
+	for _, nodeHash := range nodeHashes {
+		t.Logf("|min: %x, max: %x, digest: %x...|\n", nodeHash[:nidSize], nodeHash[nidSize:nidSize*2], nodeHash[nidSize*2:nidSize*2+3])
+	}
+}
+
 func TestNamespacedMerkleTree_ProveErrors(t *testing.T) {
 	tests := []struct {
 		name      string
