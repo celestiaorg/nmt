@@ -7,8 +7,6 @@ import (
 	"math/bits"
 
 	"github.com/lazyledger/merkletree"
-
-	"github.com/lazyledger/nmt/internal"
 	"github.com/lazyledger/nmt/namespace"
 )
 
@@ -99,7 +97,7 @@ func NewAbsenceProof(proofStart, proofEnd int, proofNodes [][]byte, leafHash []b
 // the provided data in the tree. Additionally, it verifies that the namespace
 // is complete and no leaf of that namespace was left out in the proof.
 func (proof Proof) VerifyNamespace(h hash.Hash, nID namespace.ID, data [][]byte, root namespace.IntervalDigest) bool {
-	nth := internal.NewNmtHasher(h, nID.Size(), proof.isMaxNamespaceIDIgnored)
+	nth := NewNmtHasher(h, nID.Size(), proof.isMaxNamespaceIDIgnored)
 	if nID.Size() != root.Min().Size() || nID.Size() != root.Max().Size() {
 		// conflicting namespace sizes
 		return false
@@ -139,7 +137,7 @@ func (proof Proof) VerifyNamespace(h hash.Hash, nID namespace.ID, data [][]byte,
 	return proof.verifyLeafHashes(nth, true, nID, gotLeafHashes, root)
 }
 
-func (proof Proof) verifyLeafHashes(nth internal.NmtHasher, verifyCompleteness bool, nID namespace.ID, gotLeafHashes [][]byte, root namespace.IntervalDigest) bool {
+func (proof Proof) verifyLeafHashes(nth *Hasher, verifyCompleteness bool, nID namespace.ID, gotLeafHashes [][]byte, root namespace.IntervalDigest) bool {
 	// The code below is almost identical to NebulousLabs'
 	// merkletree.VerifyMultiRangeProof.
 	//
@@ -207,7 +205,7 @@ func (proof Proof) verifyLeafHashes(nth internal.NmtHasher, verifyCompleteness b
 }
 
 func (proof Proof) VerifyInclusion(h hash.Hash, nid namespace.ID, data []byte, root namespace.IntervalDigest) bool {
-	nth := internal.NewNmtHasher(h, nid.Size(), proof.isMaxNamespaceIDIgnored)
+	nth := NewNmtHasher(h, nid.Size(), proof.isMaxNamespaceIDIgnored)
 	leafData := append(nid, data...)
 	return proof.verifyLeafHashes(nth, false, nid, [][]byte{nth.HashLeaf(leafData)}, root)
 }

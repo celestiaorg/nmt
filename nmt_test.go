@@ -662,16 +662,6 @@ func repeat(data []namespace.PrefixedData, num int) []namespace.PrefixedData {
 	return res
 }
 
-func sum(hash crypto.Hash, data ...[]byte) []byte {
-	h := hash.New()
-	for _, d := range data {
-		//nolint:errcheck
-		h.Write(d)
-	}
-
-	return h.Sum(nil)
-}
-
 func generateRandNamespacedRawData(total int, nidSize int, leafSize int) [][]byte {
 	data := make([][]byte, total)
 	for i := 0; i < total; i++ {
