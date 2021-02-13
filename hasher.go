@@ -27,7 +27,10 @@ var defaultHasher = NewNmtHasher(sha256.New(), DefaultNamespaceIDLen, true)
 // where rawData is the leaf's data minus the namespace.ID prefix
 // (namely namespacedData[NamespaceLen:]).
 //
-// Note that for the input len(namespacedData) >= DefaultNamespaceIDLen has to hold.
+// Note that different from other cryptographic hash functions, this here
+// makes assumptions on the input:
+// len(namespacedData) >= DefaultNamespaceIDLen has to hold,
+// as the first DefaultNamespaceIDLen bytes are interpreted as the namespace ID).
 // If the input does not fulfil this, we will panic.
 // The output will be of length 2*DefaultNamespaceIDLen+sha256.Size = 48 bytes.
 func Sha256Namespace8FlaggedLeaf(namespacedData []byte) []byte {
@@ -44,7 +47,7 @@ func Sha256Namespace8FlaggedLeaf(namespacedData []byte) []byte {
 func Sha256Namespace8FlaggedInner(leftRight []byte) []byte {
 	const flagLen = DefaultNamespaceIDLen * 2
 	sha256Len := defaultHasher.Size()
-	left := leftRight[flagLen:+sha256Len]
+	left := leftRight[:flagLen+sha256Len]
 	right := leftRight[flagLen+sha256Len:]
 
 	return defaultHasher.HashNode(left, right)
