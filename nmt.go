@@ -13,11 +13,6 @@ import (
 	"github.com/lazyledger/nmt/namespace"
 )
 
-const (
-	LeafPrefix = internal.LeafPrefix
-	NodePrefix = internal.NodePrefix
-)
-
 var (
 	ErrMismatchedNamespaceSize = errors.New("mismatching namespace sizes")
 	ErrInvalidPushOrder        = errors.New("pushed data has to be lexicographically ordered by namespace IDs")
@@ -74,7 +69,7 @@ func NodeVisitor(nodeVisitorFn NodeVisitorFn) Option {
 }
 
 type NamespacedMerkleTree struct {
-	treeHasher internal.NmtHasher
+	treeHasher *Hasher
 	visit      NodeVisitorFn
 
 	// just cache stuff until we pass in a store and keep all nodes in there
@@ -106,7 +101,7 @@ func New(h hash.Hash, setters ...Option) *NamespacedMerkleTree {
 	for _, setter := range setters {
 		setter(opts)
 	}
-	treeHasher := internal.NewNmtHasher(h, opts.NamespaceIDSize, opts.IgnoreMaxNamespace)
+	treeHasher := NewNmtHasher(h, opts.NamespaceIDSize, opts.IgnoreMaxNamespace)
 	return &NamespacedMerkleTree{
 		treeHasher:      treeHasher,
 		visit:           opts.NodeVisitor,
