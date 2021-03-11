@@ -17,10 +17,10 @@ func TestIntervalDigestFromBytesPanic(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			func() {
-				//nolint:errcheck
-				defer func() { recover() }()
-				IntervalDigestFromBytes(tt.nIDLen, tt.digestBytes)
-				t.Errorf("should have panicked")
+				_, err := IntervalDigestFromBytes(tt.nIDLen, tt.digestBytes)
+				if err == nil {
+					t.Errorf("should have errored")
+				}
 			}()
 		})
 	}

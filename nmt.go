@@ -262,7 +262,7 @@ func (n *NamespacedMerkleTree) Push(id namespace.ID, data []byte) error {
 // Return the namespaced Merkle Tree's root together with the
 // min. and max. namespace ID.
 func (n *NamespacedMerkleTree) Root() namespace.IntervalDigest {
-	return namespace.IntervalDigestFromBytes(n.NamespaceSize(), n.computeRoot(0, len(n.leaves)))
+	return mustIntervalDigestFromBytes(n.NamespaceSize(), n.computeRoot(0, len(n.leaves)))
 }
 
 func (n NamespacedMerkleTree) computeRoot(start, end int) []byte {

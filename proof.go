@@ -183,7 +183,7 @@ func (proof Proof) verifyLeafHashes(nth *Hasher, verifyCompleteness bool, nID na
 	if verifyCompleteness {
 		// leftSubtrees contains the subtree roots upto [0, r.Start)
 		for _, subtree := range leftSubtrees {
-			leftSubTreeMax := namespace.IntervalDigestFromBytes(nth.NamespaceSize(), subtree).Max()
+			leftSubTreeMax := mustIntervalDigestFromBytes(nth.NamespaceSize(), subtree).Max()
 			if nID.LessOrEqual(leftSubTreeMax) {
 				return false
 			}
@@ -191,7 +191,7 @@ func (proof Proof) verifyLeafHashes(nth *Hasher, verifyCompleteness bool, nID na
 		// rightSubtrees only contains the subtrees after [0, r.Start)
 		rightSubtrees := proof.nodes
 		for _, subtree := range rightSubtrees {
-			rightSubTreeMin := namespace.IntervalDigestFromBytes(nth.NamespaceSize(), subtree).Min()
+			rightSubTreeMin := mustIntervalDigestFromBytes(nth.NamespaceSize(), subtree).Min()
 			if rightSubTreeMin.LessOrEqual(nID) {
 				return false
 			}
@@ -219,4 +219,14 @@ func nextSubtreeSize(start, end uint64) int {
 		return 1 << uint(max)
 	}
 	return 1 << uint(ideal)
+}
+
+// mustIntervalDigestFromBytes optimistially converts bytes to IntervalDigest or panics
+func mustIntervalDigestFromBytes(idlen namespace.IDSize, bytes []byte) namespace.IntervalDigest {
+	id, err := namespace.IntervalDigestFromBytes(idlen, bytes)
+	if err != nil {
+		panic(err)
+	}
+
+	return id
 }
