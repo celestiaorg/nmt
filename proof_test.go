@@ -14,12 +14,12 @@ func TestProof_VerifyNamespace_False(t *testing.T) {
 	const testNidLen = 3
 
 	n := New(sha256.New(), NamespaceIDSize(testNidLen))
-	data := append(append([]namespace.PrefixedData{
-		namespace.PrefixedDataFrom([]byte{0, 0, 0}, []byte("first leaf"))},
+	data := append(append([]namespaceDataPair{
+		newNamespaceDataPair([]byte{0, 0, 0}, []byte("first leaf"))},
 		generateLeafData(testNidLen, 0, 9, []byte("data"))...,
-	), namespace.PrefixedDataFrom([]byte{0, 0, 8}, []byte("last leaf")))
+	), newNamespaceDataPair([]byte{0, 0, 8}, []byte("last leaf")))
 	for _, d := range data {
-		err := n.Push(d.NamespaceID(), d.Data())
+		err := n.Push(d.ID, d.Data)
 		if err != nil {
 			t.Fatalf("invalid test setup: error on Push(): %v", err)
 		}
