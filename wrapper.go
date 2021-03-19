@@ -68,7 +68,6 @@ func (w *ErasuredNamespacedMerkleTree) Push(data []byte) {
 	}
 
 	w.pushCount++
-	return
 }
 
 // Root fulfills the rsmt.Tree interface by generating and returning a single
