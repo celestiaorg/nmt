@@ -246,16 +246,16 @@ func (n NamespacedMerkleTree) NamespaceSize() namespace.IDSize {
 // Returns an error if the namespace ID size of the input
 // does not match the tree's NamespaceSize() or the leaves are not pushed in
 // order (i.e. lexicographically sorted by namespace ID).
-func (n *NamespacedMerkleTree) Push(id namespace.ID, data []byte) error {
-	err := n.validateNamespace(id)
+func (n *NamespacedMerkleTree) Push(namespacedData namespace.PrefixedData) error {
+	nID, err := n.validateAndExtractNamespace(namespacedData)
 	if err != nil {
 		return err
 	}
-	leafData := append(id, data...)
+
 	// update relevant "caches":
-	n.leaves = append(n.leaves, leafData)
+	n.leaves = append(n.leaves, namespacedData)
 	n.updateNamespaceRanges()
-	n.updateMinMaxID(id)
+	n.updateMinMaxID(nID)
 	return nil
 }
 
@@ -321,24 +321,25 @@ func (n *NamespacedMerkleTree) updateNamespaceRanges() {
 		}
 	}
 }
-func (n *NamespacedMerkleTree) validateNamespace(id namespace.ID) error {
-	nidSize := n.treeHasher.NamespaceSize()
-	if id.Size() != nidSize {
-		return fmt.Errorf("%w: got: %v, want: %v", ErrMismatchedNamespaceSize, id.Size(), nidSize)
+func (n *NamespacedMerkleTree) validateAndExtractNamespace(ndata namespace.PrefixedData) (namespace.ID, error) {
+	nidSize := int(n.NamespaceSize())
+	if len(ndata) < nidSize {
+		return nil, fmt.Errorf("%w: got: %v, want >= %v", ErrMismatchedNamespaceSize, len(ndata), nidSize)
 	}
+	nID := namespace.ID(ndata[:n.NamespaceSize()])
 	// ensure pushed data doesn't have a smaller namespace than the previous one:
 	curSize := len(n.leaves)
 	if curSize > 0 {
-		if id.Less(n.leaves[curSize-1][:nidSize]) {
-			return fmt.Errorf(
+		if nID.Less(n.leaves[curSize-1][:nidSize]) {
+			return nil, fmt.Errorf(
 				"%w: last namespace: %x, pushed: %x",
 				ErrInvalidPushOrder,
 				n.leaves[curSize-1][:nidSize],
-				id,
+				nID,
 			)
 		}
 	}
-	return nil
+	return nID, nil
 }
 
 func (n *NamespacedMerkleTree) updateMinMaxID(id namespace.ID) {

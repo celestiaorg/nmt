@@ -38,16 +38,16 @@ func ExampleNamespacedMerkleTree() {
 	// the tree will use this namespace size
 	nidSize := 1
 	// the leaves that will be pushed
-	data := []namespaceDataPair{
-		newNamespaceDataPair(namespace.ID{0}, []byte("leaf_0")),
-		newNamespaceDataPair(namespace.ID{0}, []byte("leaf_1")),
-		newNamespaceDataPair(namespace.ID{1}, []byte("leaf_2")),
-		newNamespaceDataPair(namespace.ID{1}, []byte("leaf_3"))}
+	data := [][]byte{
+		append(namespace.ID{0}, []byte("leaf_0")...),
+		append(namespace.ID{0}, []byte("leaf_1")...),
+		append(namespace.ID{1}, []byte("leaf_2")...),
+		append(namespace.ID{1}, []byte("leaf_3")...)}
 	// Init a tree with the namespace size as well as
 	// the underlying hash function:
 	tree := New(sha256.New(), NamespaceIDSize(nidSize))
 	for _, d := range data {
-		if err := tree.Push(d.ID, d.Data); err != nil {
+		if err := tree.Push(d); err != nil {
 			panic("unexpected error")
 		}
 	}
@@ -89,27 +89,28 @@ func ExampleNamespacedMerkleTree() {
 func TestNamespacedMerkleTree_Push(t *testing.T) {
 	tests := []struct {
 		name    string
-		data    namespaceDataPair
+		data    namespace.PrefixedData
 		wantErr bool
 	}{
-		{"1st push: always OK", newNamespaceDataPair([]byte{0, 0, 0}, []byte("dummy data")), false},
-		{"push with same namespace: OK", newNamespaceDataPair([]byte{0, 0, 0}, []byte("dummy data")), false},
-		{"push with greater namespace: OK", newNamespaceDataPair([]byte{0, 0, 1}, []byte("dummy data")), false},
-		{"push with smaller namespace: Err", newNamespaceDataPair([]byte{0, 0, 0}, []byte("dummy data")), true},
-		{"push with same namespace: Ok", newNamespaceDataPair([]byte{0, 0, 1}, []byte("dummy data")), false},
-		{"push with greater namespace: Ok", newNamespaceDataPair([]byte{1, 0, 0}, []byte("dummy data")), false},
-		{"push with smaller namespace: Err", newNamespaceDataPair([]byte{0, 0, 1}, []byte("dummy data")), true},
-		{"push with smaller namespace: Err", newNamespaceDataPair([]byte{0, 0, 0}, []byte("dummy data")), true},
-		{"push with smaller namespace: Err", newNamespaceDataPair([]byte{0, 1, 0}, []byte("dummy data")), true},
-		{"push with same as last namespace: OK", newNamespaceDataPair([]byte{1, 0, 0}, []byte("dummy data")), false},
-		{"push with greater as last namespace: OK", newNamespaceDataPair([]byte{1, 1, 0}, []byte("dummy data")), false},
-		// note this tests for another kind of error: ErrMismatchedNamespaceSize
-		{"push with wrong namespace size: Err", newNamespaceDataPair([]byte{1, 1, 0, 0}, []byte("dummy data")), true},
+		{"1st push: always OK", append([]byte{0, 0, 0}, []byte("dummy data")...), false},
+		{"push with same namespace: OK", append([]byte{0, 0, 0}, []byte("dummy data")...), false},
+		{"push with greater namespace: OK", append([]byte{0, 0, 1}, []byte("dummy data")...), false},
+		{"push with smaller namespace: Err", append([]byte{0, 0, 0}, []byte("dummy data")...), true},
+		{"push with same namespace: Ok", append([]byte{0, 0, 1}, []byte("dummy data")...), false},
+		{"push with greater namespace: Ok", append([]byte{1, 0, 0}, []byte("dummy data")...), false},
+		{"push with smaller namespace: Err", append([]byte{0, 0, 1}, []byte("dummy data")...), true},
+		{"push with smaller namespace: Err", append([]byte{0, 0, 0}, []byte("dummy data")...), true},
+		{"push with smaller namespace: Err", append([]byte{0, 1, 0}, []byte("dummy data")...), true},
+		{"push with same as last namespace: OK", append([]byte{1, 0, 0}, []byte("dummy data")...), false},
+		{"push with greater as last namespace: OK", append([]byte{1, 1, 0}, []byte("dummy data")...), false},
+		// This will error, as the NMT will treat the first bytes as the namespace. If the passed data is
+		// too short though, it can't extract the namespace and hence will complain:
+		{"push with wrong namespace size: Err", []byte{1, 1}, true},
 	}
 	n := New(sha256.New(), NamespaceIDSize(3))
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := n.Push(tt.data.ID, tt.data.Data); (err != nil) != tt.wantErr {
+			if err := n.Push(tt.data); (err != nil) != tt.wantErr {
 				t.Errorf("Push() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -148,7 +149,7 @@ func TestNamespacedMerkleTreeRoot(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			n := New(sha256.New(), NamespaceIDSize(tt.nidLen))
 			for _, d := range tt.pushedData {
-				if err := n.Push(d.ID, d.Data); err != nil {
+				if err := n.Push(namespace.PrefixedData(append(d.ID, d.Data...))); err != nil {
 					t.Errorf("Push() error = %v, expected no error", err)
 				}
 			}
@@ -202,17 +203,17 @@ func TestNamespacedMerkleTree_ProveNamespace_Ranges_And_Verify(t *testing.T) {
 			2, 3,
 			true},
 		{"three leaves and not found but with range", 2,
-			append(repeat(generateLeafData(2, 0, 1, []byte("_data")), 2), makeLeafData([]byte{1, 1}, []byte("_data"))),
+			append(repeat(generateLeafData(2, 0, 1, []byte("_data")), 2), newNamespaceDataPair([]byte{1, 1}, []byte("_data"))),
 			[]byte{0, 1},
 			2, 3,
 			false},
 		{"three leaves and not found but within range", 2,
-			append(repeat(generateLeafData(2, 0, 1, []byte("_data")), 2), makeLeafData([]byte{1, 1}, []byte("_data"))),
+			append(repeat(generateLeafData(2, 0, 1, []byte("_data")), 2), newNamespaceDataPair([]byte{1, 1}, []byte("_data"))),
 			[]byte{0, 1},
 			2, 3,
 			false},
 		{"5 leaves and not found but within range", 2,
-			append(generateLeafData(2, 0, 4, []byte("_data")), makeLeafData([]byte{1, 1}, []byte("_data"))),
+			append(generateLeafData(2, 0, 4, []byte("_data")), newNamespaceDataPair([]byte{1, 1}, []byte("_data"))),
 			[]byte{1, 0},
 			4, 5,
 			false},
@@ -233,7 +234,7 @@ func TestNamespacedMerkleTree_ProveNamespace_Ranges_And_Verify(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			n := New(sha256.New(), NamespaceIDSize(tt.nidLen))
 			for _, d := range tt.pushData {
-				err := n.Push(d.ID, d.Data)
+				err := n.Push(namespace.PrefixedData(append(d.ID, d.Data...)))
 				if err != nil {
 					t.Fatalf("invalid test case: %v, error on Push(): %v", tt.name, err)
 				}
@@ -435,7 +436,7 @@ func TestIgnoreMaxNamespace(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			tree := New(hash, NamespaceIDSize(nidSize), IgnoreMaxNamespace(tc.ignoreMaxNamespace))
 			for _, d := range tc.pushData {
-				if err := tree.Push(d.NamespaceID(), d.Data()); err != nil {
+				if err := tree.Push(namespace.PrefixedData(d)); err != nil {
 					panic("unexpected error")
 				}
 			}
@@ -485,7 +486,7 @@ func TestNodeVisitor(t *testing.T) {
 	data := generateRandNamespacedRawData(numLeaves, nidSize, leafSize)
 	n := New(sha256.New(), NamespaceIDSize(nidSize), NodeVisitor(collectNodeHashes))
 	for j := 0; j < numLeaves; j++ {
-		if err := n.Push(data[j][:nidSize], data[j][nidSize:]); err != nil {
+		if err := n.Push(data[j][:nidSize]); err != nil {
 			t.Errorf("err: %v", err)
 		}
 	}
@@ -522,7 +523,7 @@ func TestNamespacedMerkleTree_ProveErrors(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			n := New(sha256.New(), NamespaceIDSize(tt.nidLen), InitialCapacity(len(tt.pushData)))
 			for _, d := range tt.pushData {
-				err := n.Push(d.ID, d.Data)
+				err := n.Push(namespace.PrefixedData(append(d.ID, d.Data...)))
 				if err != nil {
 					t.Fatalf("invalid test case: %v, error on Push(): %v", tt.name, err)
 				}
@@ -603,7 +604,7 @@ func BenchmarkComputeRoot(b *testing.B) {
 			for i := 0; i < b.N; i++ {
 				n := New(sha256.New())
 				for j := 0; j < tt.numLeaves; j++ {
-					if err := n.Push(data[j][:tt.nidSize], data[j][tt.nidSize:]); err != nil {
+					if err := n.Push(data[j][:tt.nidSize]); err != nil {
 						b.Errorf("err: %v", err)
 					}
 				}
@@ -619,14 +620,6 @@ func shouldPanic(t *testing.T, f func()) {
 	defer func() { recover() }()
 	f()
 	t.Errorf("should have panicked")
-}
-
-// TODO remove
-func makeLeafData(ns []byte, data []byte) namespaceDataPair {
-	if len(ns) > math.MaxUint8 {
-		panic("namespace too large")
-	}
-	return newNamespaceDataPair(ns, data)
 }
 
 // generates a consecutive range of leaf data
