@@ -1,6 +1,9 @@
 package namespace
 
-import "fmt"
+import (
+	"bytes"
+	"fmt"
+)
 
 type IntervalDigest struct {
 	min    ID
@@ -38,6 +41,10 @@ func (d IntervalDigest) Hash() []byte {
 
 func (d IntervalDigest) Bytes() []byte {
 	return append(append(d.min, d.max...), d.digest...)
+}
+
+func (d *IntervalDigest) Equal(to *IntervalDigest) bool {
+	return d.max.Equal(to.max) && d.min.Equal(to.min) && bytes.Equal(d.digest, to.digest)
 }
 
 func (d IntervalDigest) String() string {
