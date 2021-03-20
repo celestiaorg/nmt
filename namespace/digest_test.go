@@ -54,3 +54,31 @@ func TestIntervalDigest_String(t *testing.T) {
 		})
 	}
 }
+
+func TestIntervalDigest_Equal(t *testing.T) {
+	tests := []struct {
+		name     string
+		one, two *IntervalDigest
+		want     bool
+	}{
+		{
+			"equal",
+			&IntervalDigest{[]byte{0}, []byte{1}, []byte{}},
+			&IntervalDigest{[]byte{0}, []byte{1}, []byte{}},
+			true,
+		},
+		{
+			"unequal",
+			&IntervalDigest{[]byte{0}, []byte{1}, []byte{1, 0, 0}},
+			&IntervalDigest{[]byte{0}, []byte{1}, []byte{1, 1, 1}},
+			false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.one.Equal(tt.two); got != tt.want {
+				t.Errorf("Equal() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
