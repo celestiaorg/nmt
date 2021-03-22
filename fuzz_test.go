@@ -37,7 +37,7 @@ func TestFuzzProveVerifyNameSpace(t *testing.T) {
 		for _, ns := range sortedKeys {
 			leafDataList := nidDataMap[ns]
 			for _, d := range leafDataList {
-				err := tree.Push(d[:size], d[size:])
+				err := tree.Push(d)
 				if err != nil {
 					t.Fatalf("error on Push(): %v", err)
 				}

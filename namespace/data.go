@@ -1,5 +1,16 @@
 package namespace
 
+// PrefixedData simply represents a slice of bytes which consists of
+// a namespace.ID and raw data.
+// The user has to guarantee that the bytes are valid namespace prefixed data.
+// Go's type system does not allow enforcing the structure we want:
+// [namespaceID, rawData ...], especially as this type does not expect any
+// particular size for the namespace.
+type PrefixedData []byte
+
+// PrefixedData8 like PrefixedData is just a slice of bytes.
+// It assumes that the slice it represents is at least 8 bytes.
+// This assumption is not enforced by the type system though.
 type PrefixedData8 []byte
 
 func (d PrefixedData8) NamespaceID() ID {
@@ -8,31 +19,4 @@ func (d PrefixedData8) NamespaceID() ID {
 
 func (d PrefixedData8) Data() []byte {
 	return d[8:]
-}
-
-type PrefixedData struct {
-	namespaceLen IDSize
-	prefixedData []byte
-}
-
-func (n PrefixedData) NamespaceID() ID {
-	return n.prefixedData[:n.namespaceLen]
-}
-
-func (n PrefixedData) Data() []byte {
-	return n.prefixedData[n.namespaceLen:]
-}
-
-func NewPrefixedData(namespaceLen IDSize, prefixedData []byte) PrefixedData {
-	return PrefixedData{
-		namespaceLen: namespaceLen,
-		prefixedData: prefixedData,
-	}
-}
-
-func PrefixedDataFrom(nID ID, data []byte) PrefixedData {
-	return PrefixedData{
-		namespaceLen: nID.Size(),
-		prefixedData: append(nID, data...),
-	}
 }

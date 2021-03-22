@@ -15,20 +15,39 @@ import (
 	"github.com/lazyledger/nmt/namespace"
 )
 
+type namespaceDataPair struct {
+	ID   namespace.ID
+	Data []byte
+}
+
+func newNamespaceDataPair(id namespace.ID, data []byte) namespaceDataPair {
+	return namespaceDataPair{
+		ID:   id,
+		Data: data,
+	}
+}
+
+func newNamespaceDataPairRaw(nidSize int, data []byte) namespaceDataPair {
+	return namespaceDataPair{
+		ID:   data[:nidSize],
+		Data: data[nidSize:],
+	}
+}
+
 func ExampleNamespacedMerkleTree() {
 	// the tree will use this namespace size
 	nidSize := 1
 	// the leaves that will be pushed
-	data := []namespace.PrefixedData{
-		namespace.PrefixedDataFrom(namespace.ID{0}, []byte("leaf_0")),
-		namespace.PrefixedDataFrom(namespace.ID{0}, []byte("leaf_1")),
-		namespace.PrefixedDataFrom(namespace.ID{1}, []byte("leaf_2")),
-		namespace.PrefixedDataFrom(namespace.ID{1}, []byte("leaf_3"))}
+	data := [][]byte{
+		append(namespace.ID{0}, []byte("leaf_0")...),
+		append(namespace.ID{0}, []byte("leaf_1")...),
+		append(namespace.ID{1}, []byte("leaf_2")...),
+		append(namespace.ID{1}, []byte("leaf_3")...)}
 	// Init a tree with the namespace size as well as
 	// the underlying hash function:
 	tree := New(sha256.New(), NamespaceIDSize(nidSize))
 	for _, d := range data {
-		if err := tree.Push(d.NamespaceID(), d.Data()); err != nil {
+		if err := tree.Push(d); err != nil {
 			panic("unexpected error")
 		}
 	}
@@ -67,49 +86,31 @@ func ExampleNamespacedMerkleTree() {
 	// Successfully verified namespace: 00
 }
 
-func TestFromNamespaceAndData(t *testing.T) {
-	tests := []struct {
-		name      string
-		namespace []byte
-		data      []byte
-		want      namespace.PrefixedData
-	}{
-		0: {"simple case", []byte("namespace1"), []byte("data1"), namespace.NewPrefixedData(10, append([]byte("namespace1"), []byte("data1")...))},
-		1: {"simpler case", []byte("1"), []byte("d"), namespace.NewPrefixedData(1, append([]byte("1"), []byte("d")...))},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := namespace.PrefixedDataFrom(tt.namespace, tt.data); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("PrefixedDataFrom() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
 func TestNamespacedMerkleTree_Push(t *testing.T) {
 	tests := []struct {
 		name    string
 		data    namespace.PrefixedData
 		wantErr bool
 	}{
-		{"1st push: always OK", namespace.PrefixedDataFrom([]byte{0, 0, 0}, []byte("dummy data")), false},
-		{"push with same namespace: OK", namespace.PrefixedDataFrom([]byte{0, 0, 0}, []byte("dummy data")), false},
-		{"push with greater namespace: OK", namespace.PrefixedDataFrom([]byte{0, 0, 1}, []byte("dummy data")), false},
-		{"push with smaller namespace: Err", namespace.PrefixedDataFrom([]byte{0, 0, 0}, []byte("dummy data")), true},
-		{"push with same namespace: Ok", namespace.PrefixedDataFrom([]byte{0, 0, 1}, []byte("dummy data")), false},
-		{"push with greater namespace: Ok", namespace.PrefixedDataFrom([]byte{1, 0, 0}, []byte("dummy data")), false},
-		{"push with smaller namespace: Err", namespace.PrefixedDataFrom([]byte{0, 0, 1}, []byte("dummy data")), true},
-		{"push with smaller namespace: Err", namespace.PrefixedDataFrom([]byte{0, 0, 0}, []byte("dummy data")), true},
-		{"push with smaller namespace: Err", namespace.PrefixedDataFrom([]byte{0, 1, 0}, []byte("dummy data")), true},
-		{"push with same as last namespace: OK", namespace.PrefixedDataFrom([]byte{1, 0, 0}, []byte("dummy data")), false},
-		{"push with greater as last namespace: OK", namespace.PrefixedDataFrom([]byte{1, 1, 0}, []byte("dummy data")), false},
-		// note this tests for another kind of error: ErrMismatchedNamespaceSize
-		{"push with wrong namespace size: Err", namespace.PrefixedDataFrom([]byte{1, 1, 0, 0}, []byte("dummy data")), true},
+		{"1st push: always OK", append([]byte{0, 0, 0}, []byte("dummy data")...), false},
+		{"push with same namespace: OK", append([]byte{0, 0, 0}, []byte("dummy data")...), false},
+		{"push with greater namespace: OK", append([]byte{0, 0, 1}, []byte("dummy data")...), false},
+		{"push with smaller namespace: Err", append([]byte{0, 0, 0}, []byte("dummy data")...), true},
+		{"push with same namespace: Ok", append([]byte{0, 0, 1}, []byte("dummy data")...), false},
+		{"push with greater namespace: Ok", append([]byte{1, 0, 0}, []byte("dummy data")...), false},
+		{"push with smaller namespace: Err", append([]byte{0, 0, 1}, []byte("dummy data")...), true},
+		{"push with smaller namespace: Err", append([]byte{0, 0, 0}, []byte("dummy data")...), true},
+		{"push with smaller namespace: Err", append([]byte{0, 1, 0}, []byte("dummy data")...), true},
+		{"push with same as last namespace: OK", append([]byte{1, 0, 0}, []byte("dummy data")...), false},
+		{"push with greater as last namespace: OK", append([]byte{1, 1, 0}, []byte("dummy data")...), false},
+		// This will error, as the NMT will treat the first bytes as the namespace. If the passed data is
+		// too short though, it can't extract the namespace and hence will complain:
+		{"push with wrong namespace size: Err", []byte{1, 1}, true},
 	}
 	n := New(sha256.New(), NamespaceIDSize(3))
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := n.Push(tt.data.NamespaceID(), tt.data.Data()); (err != nil) != tt.wantErr {
+			if err := n.Push(tt.data); (err != nil) != tt.wantErr {
 				t.Errorf("Push() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -132,7 +133,7 @@ func TestNamespacedMerkleTreeRoot(t *testing.T) {
 	tests := []struct {
 		name       string
 		nidLen     int
-		pushedData []namespace.PrefixedData
+		pushedData []namespaceDataPair
 		wantMinNs  namespace.ID
 		wantMaxNs  namespace.ID
 		wantRoot   []byte
@@ -140,15 +141,15 @@ func TestNamespacedMerkleTreeRoot(t *testing.T) {
 		// default empty root according to base case:
 		// https://github.com/lazyledger/lazyledger-specs/blob/master/specs/data_structures.md#namespace-merkle-tree
 		{"Empty", 3, nil, zeroNs, zeroNs, emptyRoot},
-		{"One leaf", 3, []namespace.PrefixedData{namespace.PrefixedDataFrom(zeroNs, leaf)}, zeroNs, zeroNs, leafHash},
-		{"Two leaves", 3, []namespace.PrefixedData{namespace.PrefixedDataFrom(zeroNs, leaf), namespace.PrefixedDataFrom(zeroNs, leaf)}, zeroNs, zeroNs, twoZeroLeafsRoot},
-		{"Two leaves diff namespaces", 3, []namespace.PrefixedData{namespace.PrefixedDataFrom(zeroNs, leaf), namespace.PrefixedDataFrom(onesNS, leaf)}, zeroNs, onesNS, diffNSLeafsRoot},
+		{"One leaf", 3, []namespaceDataPair{newNamespaceDataPair(zeroNs, leaf)}, zeroNs, zeroNs, leafHash},
+		{"Two leaves", 3, []namespaceDataPair{newNamespaceDataPair(zeroNs, leaf), newNamespaceDataPair(zeroNs, leaf)}, zeroNs, zeroNs, twoZeroLeafsRoot},
+		{"Two leaves diff namespaces", 3, []namespaceDataPair{newNamespaceDataPair(zeroNs, leaf), newNamespaceDataPair(onesNS, leaf)}, zeroNs, onesNS, diffNSLeafsRoot},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			n := New(sha256.New(), NamespaceIDSize(tt.nidLen))
 			for _, d := range tt.pushedData {
-				if err := n.Push(d.NamespaceID(), d.Data()); err != nil {
+				if err := n.Push(namespace.PrefixedData(append(d.ID, d.Data...))); err != nil {
 					t.Errorf("Push() error = %v, expected no error", err)
 				}
 			}
@@ -171,7 +172,7 @@ func TestNamespacedMerkleTree_ProveNamespace_Ranges_And_Verify(t *testing.T) {
 	tests := []struct {
 		name           string
 		nidLen         int
-		pushData       []namespace.PrefixedData
+		pushData       []namespaceDataPair
 		proveNID       namespace.ID
 		wantProofStart int
 		wantProofEnd   int
@@ -202,29 +203,29 @@ func TestNamespacedMerkleTree_ProveNamespace_Ranges_And_Verify(t *testing.T) {
 			2, 3,
 			true},
 		{"three leaves and not found but with range", 2,
-			append(repeat(generateLeafData(2, 0, 1, []byte("_data")), 2), makeLeafData([]byte{1, 1}, []byte("_data"))),
+			append(repeat(generateLeafData(2, 0, 1, []byte("_data")), 2), newNamespaceDataPair([]byte{1, 1}, []byte("_data"))),
 			[]byte{0, 1},
 			2, 3,
 			false},
 		{"three leaves and not found but within range", 2,
-			append(repeat(generateLeafData(2, 0, 1, []byte("_data")), 2), makeLeafData([]byte{1, 1}, []byte("_data"))),
+			append(repeat(generateLeafData(2, 0, 1, []byte("_data")), 2), newNamespaceDataPair([]byte{1, 1}, []byte("_data"))),
 			[]byte{0, 1},
 			2, 3,
 			false},
 		{"5 leaves and not found but within range", 2,
-			append(generateLeafData(2, 0, 4, []byte("_data")), makeLeafData([]byte{1, 1}, []byte("_data"))),
+			append(generateLeafData(2, 0, 4, []byte("_data")), newNamespaceDataPair([]byte{1, 1}, []byte("_data"))),
 			[]byte{1, 0},
 			4, 5,
 			false},
 		// In the cases (nID < minNID) or (maxNID < nID) we do not generate any proof
 		// and the (minNS, maxNs, root) should be indication enough that nID is not in that range.
 		{"4 leaves, not found and nID < minNID", 2,
-			[]namespace.PrefixedData{namespace.NewPrefixedData(2, []byte("01_data")), namespace.NewPrefixedData(2, []byte("01_data")), namespace.NewPrefixedData(2, []byte("01_data")), namespace.NewPrefixedData(2, []byte("11_data"))},
+			[]namespaceDataPair{newNamespaceDataPairRaw(2, []byte("01_data")), newNamespaceDataPairRaw(2, []byte("01_data")), newNamespaceDataPairRaw(2, []byte("01_data")), newNamespaceDataPairRaw(2, []byte("11_data"))},
 			[]byte("00"),
 			0, 0,
 			false},
 		{"4 leaves, not found and nID > maxNID ", 2,
-			[]namespace.PrefixedData{namespace.NewPrefixedData(2, []byte("00_data")), namespace.NewPrefixedData(2, []byte("00_data")), namespace.NewPrefixedData(2, []byte("01_data")), namespace.NewPrefixedData(2, []byte("01_data"))},
+			[]namespaceDataPair{newNamespaceDataPairRaw(2, []byte("00_data")), newNamespaceDataPairRaw(2, []byte("00_data")), newNamespaceDataPairRaw(2, []byte("01_data")), newNamespaceDataPairRaw(2, []byte("01_data"))},
 			[]byte("11"),
 			0, 0,
 			false},
@@ -233,7 +234,7 @@ func TestNamespacedMerkleTree_ProveNamespace_Ranges_And_Verify(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			n := New(sha256.New(), NamespaceIDSize(tt.nidLen))
 			for _, d := range tt.pushData {
-				err := n.Push(d.NamespaceID(), d.Data())
+				err := n.Push(namespace.PrefixedData(append(d.ID, d.Data...)))
 				if err != nil {
 					t.Fatalf("invalid test case: %v, error on Push(): %v", tt.name, err)
 				}
@@ -270,7 +271,7 @@ func TestNamespacedMerkleTree_ProveNamespace_Ranges_And_Verify(t *testing.T) {
 					if err != nil {
 						t.Fatalf("unexpected error on Prove(): %v", err)
 					}
-					gotChecksOut := gotSingleProof.VerifyInclusion(sha256.New(), data.NamespaceID(), data.Data(), n.Root())
+					gotChecksOut := gotSingleProof.VerifyInclusion(sha256.New(), data.ID, data.Data, n.Root())
 					if !gotChecksOut {
 						t.Errorf("Proof.VerifyInclusion() gotChecksOut: %v, want: true", gotChecksOut)
 					}
@@ -435,7 +436,7 @@ func TestIgnoreMaxNamespace(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			tree := New(hash, NamespaceIDSize(nidSize), IgnoreMaxNamespace(tc.ignoreMaxNamespace))
 			for _, d := range tc.pushData {
-				if err := tree.Push(d.NamespaceID(), d.Data()); err != nil {
+				if err := tree.Push(namespace.PrefixedData(d)); err != nil {
 					panic("unexpected error")
 				}
 			}
@@ -485,7 +486,7 @@ func TestNodeVisitor(t *testing.T) {
 	data := generateRandNamespacedRawData(numLeaves, nidSize, leafSize)
 	n := New(sha256.New(), NamespaceIDSize(nidSize), NodeVisitor(collectNodeHashes))
 	for j := 0; j < numLeaves; j++ {
-		if err := n.Push(data[j][:nidSize], data[j][nidSize:]); err != nil {
+		if err := n.Push(data[j][:nidSize]); err != nil {
 			t.Errorf("err: %v", err)
 		}
 	}
@@ -511,7 +512,7 @@ func TestNamespacedMerkleTree_ProveErrors(t *testing.T) {
 		name      string
 		nidLen    int
 		index     int
-		pushData  []namespace.PrefixedData
+		pushData  []namespaceDataPair
 		wantErr   bool
 		wantPanic bool
 	}{
@@ -522,7 +523,7 @@ func TestNamespacedMerkleTree_ProveErrors(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			n := New(sha256.New(), NamespaceIDSize(tt.nidLen), InitialCapacity(len(tt.pushData)))
 			for _, d := range tt.pushData {
-				err := n.Push(d.NamespaceID(), d.Data())
+				err := n.Push(namespace.PrefixedData(append(d.ID, d.Data...)))
 				if err != nil {
 					t.Fatalf("invalid test case: %v, error on Push(): %v", tt.name, err)
 				}
@@ -557,7 +558,7 @@ func TestNamespacedMerkleTree_calculateAbsenceIndex_Panic(t *testing.T) {
 	tests := []struct {
 		name     string
 		nID      namespace.ID
-		pushData []namespace.PrefixedData
+		pushData []namespaceDataPair
 	}{
 		{"((0,0) == nID < minNID == (0,1))", []byte{0, 0}, generateLeafData(nidLen, 1, 3, []byte{})},
 		{"((0,3) == nID > maxNID == (0,2))", []byte{0, 3}, generateLeafData(nidLen, 1, 3, []byte{})},
@@ -603,7 +604,7 @@ func BenchmarkComputeRoot(b *testing.B) {
 			for i := 0; i < b.N; i++ {
 				n := New(sha256.New())
 				for j := 0; j < tt.numLeaves; j++ {
-					if err := n.Push(data[j][:tt.nidSize], data[j][tt.nidSize:]); err != nil {
+					if err := n.Push(data[j][:tt.nidSize]); err != nil {
 						b.Errorf("err: %v", err)
 					}
 				}
@@ -621,23 +622,16 @@ func shouldPanic(t *testing.T, f func()) {
 	t.Errorf("should have panicked")
 }
 
-func makeLeafData(ns []byte, data []byte) namespace.PrefixedData {
-	if len(ns) > math.MaxUint8 {
-		panic("namespace too large")
-	}
-	return namespace.NewPrefixedData(namespace.IDSize(len(ns)), append(ns, data...))
-}
-
 // generates a consecutive range of leaf data
 // starting from namespace zero+start till zero+end,
 // where zero := 0*nsLen interpreted Uvarint
-func generateLeafData(nsLen uint8, nsStartIdx, nsEndIdx int, data []byte) []namespace.PrefixedData {
+func generateLeafData(nsLen uint8, nsStartIdx, nsEndIdx int, data []byte) []namespaceDataPair {
 	if nsEndIdx >= math.MaxUint8*int(nsLen) {
 		panic(fmt.Sprintf("invalid nsEndIdx: %v, has to be < %v", nsEndIdx, 2<<(nsLen-1)))
 	}
 
 	startNS := bytes.Repeat([]byte{0x0}, int(nsLen))
-	res := make([]namespace.PrefixedData, 0, nsEndIdx-nsStartIdx)
+	res := make([]namespaceDataPair, 0, nsEndIdx-nsStartIdx)
 	for i := nsStartIdx; i < nsEndIdx; i++ {
 		curNs := append([]byte(nil), startNS...)
 		curNsUint, err := binary.ReadUvarint(bytes.NewReader(startNS))
@@ -648,14 +642,14 @@ func generateLeafData(nsLen uint8, nsStartIdx, nsEndIdx int, data []byte) []name
 		nsUnpadded := make([]byte, 10)
 		n := binary.PutUvarint(nsUnpadded, curNsUint)
 		copy(curNs[len(startNS)-n:], nsUnpadded[:n])
-		res = append(res, namespace.NewPrefixedData(namespace.IDSize(nsLen), append(curNs, data...)))
+		res = append(res, newNamespaceDataPair(curNs, data))
 	}
 	return res
 }
 
 // repeats the given namespace data num times
-func repeat(data []namespace.PrefixedData, num int) []namespace.PrefixedData {
-	res := make([]namespace.PrefixedData, 0, num*len(data))
+func repeat(data []namespaceDataPair, num int) []namespaceDataPair {
+	res := make([]namespaceDataPair, 0, num*len(data))
 	for i := 0; i < num; i++ {
 		res = append(res, data...)
 	}
