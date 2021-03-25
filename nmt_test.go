@@ -486,7 +486,7 @@ func TestNodeVisitor(t *testing.T) {
 	data := generateRandNamespacedRawData(numLeaves, nidSize, leafSize)
 	n := New(sha256.New(), NamespaceIDSize(nidSize), NodeVisitor(collectNodeHashes))
 	for j := 0; j < numLeaves; j++ {
-		if err := n.Push(data[j][:nidSize]); err != nil {
+		if err := n.Push(data[j]); err != nil {
 			t.Errorf("err: %v", err)
 		}
 	}
@@ -604,7 +604,7 @@ func BenchmarkComputeRoot(b *testing.B) {
 			for i := 0; i < b.N; i++ {
 				n := New(sha256.New())
 				for j := 0; j < tt.numLeaves; j++ {
-					if err := n.Push(data[j][:tt.nidSize]); err != nil {
+					if err := n.Push(data[j]); err != nil {
 						b.Errorf("err: %v", err)
 					}
 				}
