@@ -40,7 +40,11 @@ func (d IntervalDigest) Hash() []byte {
 }
 
 func (d IntervalDigest) Bytes() []byte {
-	return append(append(d.min, d.max...), d.digest...)
+	return append(append(append(
+		make([]byte, 0, len(d.min)*2+len(d.digest)),
+		d.min...),
+		d.max...),
+		d.digest...)
 }
 
 func (d *IntervalDigest) Equal(to *IntervalDigest) bool {
