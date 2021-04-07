@@ -2,10 +2,11 @@ package nmt
 
 import (
 	"bytes"
-	"crypto/sha256"
 	"hash"
 
 	"github.com/lazyledger/nmt/namespace"
+
+	"github.com/minio/sha256-simd"
 )
 
 const (
