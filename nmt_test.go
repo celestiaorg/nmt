@@ -48,7 +48,7 @@ func ExampleNamespacedMerkleTree() {
 	tree := New(sha256.New(), NamespaceIDSize(nidSize))
 	for _, d := range data {
 		if err := tree.Push(d); err != nil {
-			panic("unexpected error")
+			panic(fmt.Sprintf("unexpected error: %v", err))
 		}
 	}
 	// compute the root
