@@ -1,1 +1,6 @@
+# Specific to JetBrains IDEs
 .idea
+
+# Specific to Golang
+*.test
+*.out
