@@ -6,8 +6,8 @@ import (
 )
 
 type IntervalDigest struct {
-	Min    ID     `json:"max"`
-	Max    ID     `json:"min"`
+	Min    ID     `json:"min"`
+	Max    ID     `json:"max"`
 	Digest []byte `json:"digest"`
 }
 
