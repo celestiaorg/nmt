@@ -6,9 +6,9 @@ import (
 )
 
 type IntervalDigest struct {
-	min    ID
-	max    ID
-	digest []byte
+	Min    ID     `json:"max"`
+	Max    ID     `json:"min"`
+	Digest []byte `json:"digest"`
 }
 
 // IntervalDigestFromBytes is the inverse function to IntervalDigest.Bytes().
@@ -21,34 +21,26 @@ func IntervalDigestFromBytes(nIDLen IDSize, digestBytes []byte) (IntervalDigest,
 	}
 
 	return IntervalDigest{
-		min:    digestBytes[:nIDLen],
-		max:    digestBytes[nIDLen : 2*nIDLen],
-		digest: digestBytes[2*nIDLen:],
+		Min:    digestBytes[:nIDLen],
+		Max:    digestBytes[nIDLen : 2*nIDLen],
+		Digest: digestBytes[2*nIDLen:],
 	}, nil
 }
 
-func (d IntervalDigest) Min() ID {
-	return d.min
-}
-
-func (d IntervalDigest) Max() ID {
-	return d.max
-}
-
 func (d IntervalDigest) Hash() []byte {
-	return d.digest
+	return d.Digest
 }
 
 func (d IntervalDigest) Bytes() []byte {
 	return append(append(append(
-		make([]byte, 0, len(d.min)*2+len(d.digest)),
-		d.min...),
-		d.max...),
-		d.digest...)
+		make([]byte, 0, len(d.Min)*2+len(d.Digest)),
+		d.Min...),
+		d.Max...),
+		d.Digest...)
 }
 
 func (d *IntervalDigest) Equal(to *IntervalDigest) bool {
-	return d.max.Equal(to.max) && d.min.Equal(to.min) && bytes.Equal(d.digest, to.digest)
+	return d.Max.Equal(to.Max) && d.Min.Equal(to.Min) && bytes.Equal(d.Digest, to.Digest)
 }
 
 func (d IntervalDigest) String() string {
@@ -57,5 +49,5 @@ func (d IntervalDigest) String() string {
   min: %x
   max: %x
   digest: %x
-}`, d.min, d.max, d.digest)
+}`, d.Min, d.Max, d.Digest)
 }

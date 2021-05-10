@@ -44,9 +44,9 @@ func TestIntervalDigest_String(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			d := IntervalDigest{
-				min:    tt.fields.min,
-				max:    tt.fields.max,
-				digest: tt.fields.digest,
+				Min:    tt.fields.min,
+				Max:    tt.fields.max,
+				Digest: tt.fields.digest,
 			}
 			if got := d.String(); got != tt.want {
 				t.Errorf("String() = %v, want %v", got, tt.want)

@@ -54,11 +54,11 @@ func ExampleNamespacedMerkleTree() {
 	// compute the root
 	root := tree.Root()
 	// the root's min/max namespace is the min and max namespace of all leaves:
-	if root.Min().Equal(namespace.ID{0}) {
-		fmt.Printf("Min namespace: %x\n", root.Min())
+	if root.Min.Equal(namespace.ID{0}) {
+		fmt.Printf("Min namespace: %x\n", root.Min)
 	}
-	if root.Max().Equal(namespace.ID{1}) {
-		fmt.Printf("Max namespace: %x\n", root.Max())
+	if root.Max.Equal(namespace.ID{1}) {
+		fmt.Printf("Max namespace: %x\n", root.Max)
 	}
 
 	// compute proof for namespace 0:
@@ -154,7 +154,7 @@ func TestNamespacedMerkleTreeRoot(t *testing.T) {
 				}
 			}
 			root := n.Root()
-			gotMinNs, gotMaxNs, gotRoot := root.Min(), root.Max(), root.Hash()
+			gotMinNs, gotMaxNs, gotRoot := root.Min, root.Max, root.Hash()
 			if !reflect.DeepEqual(gotMinNs, tt.wantMinNs) {
 				t.Errorf("Root() gotMinNs = %v, want %v", gotMinNs, tt.wantMinNs)
 			}
@@ -440,7 +440,7 @@ func TestIgnoreMaxNamespace(t *testing.T) {
 					panic("unexpected error")
 				}
 			}
-			gotRootMaxNID := tree.Root().Max()
+			gotRootMaxNID := tree.Root().Max
 			if !gotRootMaxNID.Equal(tc.wantRootMaxNID) {
 				t.Fatalf("Case: %v, '%v', root.Max() got: %x, want: %x", i, tc.name, gotRootMaxNID, tc.wantRootMaxNID)
 			}
@@ -495,10 +495,10 @@ func TestNodeVisitor(t *testing.T) {
 	if !bytes.Equal(root.Hash(), last[nidSize*2:]) {
 		t.Fatalf("last visited node's digest does not match the tree root's.")
 	}
-	if !bytes.Equal(root.Min(), last[:nidSize]) {
+	if !bytes.Equal(root.Min, last[:nidSize]) {
 		t.Fatalf("last visited node's min namespace does not match the tree root's.")
 	}
-	if !bytes.Equal(root.Max(), last[nidSize:nidSize*2]) {
+	if !bytes.Equal(root.Max, last[nidSize:nidSize*2]) {
 		t.Fatalf("last visited node's max namespace does not match the tree root's.")
 	}
 	t.Log("printing nodes in visiting order") // postorder DFS
