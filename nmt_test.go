@@ -10,6 +10,7 @@ import (
 	"math/rand"
 	"reflect"
 	"sort"
+	"sync"
 	"testing"
 
 	"github.com/lazyledger/nmt/namespace"
@@ -613,6 +614,28 @@ func BenchmarkComputeRoot(b *testing.B) {
 		})
 	}
 
+}
+
+func Test_Root_RaceCondition(t *testing.T) {
+	// this is very similar to: https://github.com/HuobiRDCenter/huobi_Golang/pull/9
+	tree := New(sha256.New)
+	_ = tree.Push([]byte("some data is good enough here"))
+	numRoutines := 200
+	wg := sync.WaitGroup{}
+	wg.Add(numRoutines)
+	for i := 0; i < numRoutines; i++ {
+		go func() {
+			defer func() {
+				if r := recover(); r != nil {
+					t.Errorf("race condition: panic %s", r)
+				}
+				wg.Done()
+			}()
+			_ = tree.Root()
+		}()
+	}
+
+	wg.Wait()
 }
 
 func shouldPanic(t *testing.T, f func()) {
