@@ -30,8 +30,8 @@ func TestFuzzProveVerifyNameSpace(t *testing.T) {
 	for _, size := range testNsSizes {
 		nidDataMap, sortedKeys := makeRandDataAndSortedKeys(size, minNumberOfNamespaces, maxNumberOfNamespaces, minElementsPerNamespace, maxElementsPerNamespace, emptyNamespaceProbability)
 		t.Logf("Generated %v namespaces for size: %v ...", len(nidDataMap), size)
-		newHashFn := sha256.New
-		tree := nmt.New(newHashFn, nmt.NamespaceIDSize(int(size)))
+		newHash := sha256.New
+		tree := nmt.New(newHash, nmt.NamespaceIDSize(int(size)))
 
 		// push data in order:
 		for _, ns := range sortedKeys {
@@ -55,7 +55,7 @@ func TestFuzzProveVerifyNameSpace(t *testing.T) {
 				t.Fatalf("error on ProveNamespace(%x): %v", ns, err)
 			}
 
-			if ok := proof.VerifyNamespace(newHashFn, nid, data, treeRoot); !ok {
+			if ok := proof.VerifyNamespace(newHash, nid, data, treeRoot); !ok {
 				t.Fatalf("expected VerifyNamespace() == true")
 			}
 
@@ -72,7 +72,7 @@ func TestFuzzProveVerifyNameSpace(t *testing.T) {
 				if err != nil {
 					t.Fatalf("error on Prove(%v): %v", i, err)
 				}
-				if ok := singleItemProof.VerifyInclusion(newHashFn, data[i][:size], data[i][size:], treeRoot); !ok {
+				if ok := singleItemProof.VerifyInclusion(newHash, data[i][:size], data[i][size:], treeRoot); !ok {
 					t.Fatalf("expected VerifyInclusion() == true; data = %#v; proof = %#v", data[i], singleItemProof)
 				}
 				leafIdx++
@@ -89,7 +89,7 @@ func TestFuzzProveVerifyNameSpace(t *testing.T) {
 
 			if len(data) != 0 {
 				emptyProof := nmt.NewEmptyRangeProof(false)
-				if emptyProof.VerifyNamespace(newHashFn, nid, data, treeRoot) {
+				if emptyProof.VerifyNamespace(newHash, nid, data, treeRoot) {
 					t.Fatalf("empty range proof on non-empty data verified to true")
 				}
 				nonEmptyNsCount++
