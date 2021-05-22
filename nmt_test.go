@@ -10,6 +10,7 @@ import (
 	"math/rand"
 	"reflect"
 	"sort"
+	"sync"
 	"testing"
 
 	"github.com/lazyledger/nmt/namespace"
@@ -45,7 +46,7 @@ func ExampleNamespacedMerkleTree() {
 		append(namespace.ID{1}, []byte("leaf_3")...)}
 	// Init a tree with the namespace size as well as
 	// the underlying hash function:
-	tree := New(sha256.New(), NamespaceIDSize(nidSize))
+	tree := New(sha256.New, NamespaceIDSize(nidSize))
 	for _, d := range data {
 		if err := tree.Push(d); err != nil {
 			panic(fmt.Sprintf("unexpected error: %v", err))
@@ -73,11 +74,11 @@ func ExampleNamespacedMerkleTree() {
 		append(namespace.ID{0}, []byte("leaf_1")...),
 	}
 
-	if proof.VerifyNamespace(sha256.New(), namespace.ID{0}, leafs, root) {
+	if proof.VerifyNamespace(sha256.New, namespace.ID{0}, leafs, root) {
 		fmt.Printf("Successfully verified namespace: %x\n", namespace.ID{0})
 	}
 
-	if proof.VerifyNamespace(sha256.New(), namespace.ID{2}, leafs, root) {
+	if proof.VerifyNamespace(sha256.New, namespace.ID{2}, leafs, root) {
 		panic(fmt.Sprintf("Proof for namespace %x, passed for namespace: %x\n", namespace.ID{0}, namespace.ID{2}))
 	}
 	// Output:
@@ -107,7 +108,7 @@ func TestNamespacedMerkleTree_Push(t *testing.T) {
 		// too short though, it can't extract the namespace and hence will complain:
 		{"push with wrong namespace size: Err", []byte{1, 1}, true},
 	}
-	n := New(sha256.New(), NamespaceIDSize(3))
+	n := New(sha256.New, NamespaceIDSize(3))
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if err := n.Push(tt.data); (err != nil) != tt.wantErr {
@@ -147,7 +148,7 @@ func TestNamespacedMerkleTreeRoot(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			n := New(sha256.New(), NamespaceIDSize(tt.nidLen))
+			n := New(sha256.New, NamespaceIDSize(tt.nidLen))
 			for _, d := range tt.pushedData {
 				if err := n.Push(namespace.PrefixedData(append(d.ID, d.Data...))); err != nil {
 					t.Errorf("Push() error = %v, expected no error", err)
@@ -232,7 +233,7 @@ func TestNamespacedMerkleTree_ProveNamespace_Ranges_And_Verify(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			n := New(sha256.New(), NamespaceIDSize(tt.nidLen))
+			n := New(sha256.New, NamespaceIDSize(tt.nidLen))
 			for _, d := range tt.pushData {
 				err := n.Push(namespace.PrefixedData(append(d.ID, d.Data...)))
 				if err != nil {
@@ -259,7 +260,7 @@ func TestNamespacedMerkleTree_ProveNamespace_Ranges_And_Verify(t *testing.T) {
 
 			// Verification round-trip should always pass:
 			gotGetLeaves := n.Get(tt.proveNID)
-			gotChecksOut := gotProof.VerifyNamespace(sha256.New(), tt.proveNID, gotGetLeaves, n.Root())
+			gotChecksOut := gotProof.VerifyNamespace(sha256.New, tt.proveNID, gotGetLeaves, n.Root())
 			if !gotChecksOut {
 				t.Errorf("Proof.VerifyNamespace() gotChecksOut: %v, want: true", gotChecksOut)
 			}
@@ -271,7 +272,7 @@ func TestNamespacedMerkleTree_ProveNamespace_Ranges_And_Verify(t *testing.T) {
 					if err != nil {
 						t.Fatalf("unexpected error on Prove(): %v", err)
 					}
-					gotChecksOut := gotSingleProof.VerifyInclusion(sha256.New(), data.ID, data.Data, n.Root())
+					gotChecksOut := gotSingleProof.VerifyInclusion(sha256.New, data.ID, data.Data, n.Root())
 					if !gotChecksOut {
 						t.Errorf("Proof.VerifyInclusion() gotChecksOut: %v, want: true", gotChecksOut)
 					}
@@ -296,7 +297,7 @@ func TestNamespacedMerkleTree_ProveNamespace_Ranges_And_Verify(t *testing.T) {
 
 func TestIgnoreMaxNamespace(t *testing.T) {
 	var (
-		hash      = sha256.New()
+		hash      = sha256.New
 		nidSize   = 8
 		minNID    = []byte{0, 0, 0, 0, 0, 0, 0, 0}
 		secondNID = []byte{0, 0, 0, 0, 0, 0, 0, 1}
@@ -484,7 +485,7 @@ func TestNodeVisitor(t *testing.T) {
 	}
 
 	data := generateRandNamespacedRawData(numLeaves, nidSize, leafSize)
-	n := New(sha256.New(), NamespaceIDSize(nidSize), NodeVisitor(collectNodeHashes))
+	n := New(sha256.New, NamespaceIDSize(nidSize), NodeVisitor(collectNodeHashes))
 	for j := 0; j < numLeaves; j++ {
 		if err := n.Push(data[j]); err != nil {
 			t.Errorf("err: %v", err)
@@ -521,7 +522,7 @@ func TestNamespacedMerkleTree_ProveErrors(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			n := New(sha256.New(), NamespaceIDSize(tt.nidLen), InitialCapacity(len(tt.pushData)))
+			n := New(sha256.New, NamespaceIDSize(tt.nidLen), InitialCapacity(len(tt.pushData)))
 			for _, d := range tt.pushData {
 				err := n.Push(namespace.PrefixedData(append(d.ID, d.Data...)))
 				if err != nil {
@@ -565,7 +566,7 @@ func TestNamespacedMerkleTree_calculateAbsenceIndex_Panic(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			n := New(sha256.New(), NamespaceIDSize(2))
+			n := New(sha256.New, NamespaceIDSize(2))
 			shouldPanic(t,
 				func() { n.calculateAbsenceIndex(tt.nID) })
 		})
@@ -574,13 +575,13 @@ func TestNamespacedMerkleTree_calculateAbsenceIndex_Panic(t *testing.T) {
 
 func TestInvalidOptions(t *testing.T) {
 	shouldPanic(t, func() {
-		_ = New(sha256.New(), InitialCapacity(-1))
+		_ = New(sha256.New, InitialCapacity(-1))
 	})
 	shouldPanic(t, func() {
-		_ = New(sha256.New(), NamespaceIDSize(-1))
+		_ = New(sha256.New, NamespaceIDSize(-1))
 	})
 	shouldPanic(t, func() {
-		_ = New(sha256.New(), NamespaceIDSize(namespace.IDMaxSize+1))
+		_ = New(sha256.New, NamespaceIDSize(namespace.IDMaxSize+1))
 	})
 }
 
@@ -602,7 +603,7 @@ func BenchmarkComputeRoot(b *testing.B) {
 		b.ResetTimer()
 		b.Run(tt.name, func(b *testing.B) {
 			for i := 0; i < b.N; i++ {
-				n := New(sha256.New())
+				n := New(sha256.New)
 				for j := 0; j < tt.numLeaves; j++ {
 					if err := n.Push(data[j]); err != nil {
 						b.Errorf("err: %v", err)
@@ -613,6 +614,28 @@ func BenchmarkComputeRoot(b *testing.B) {
 		})
 	}
 
+}
+
+func Test_Root_RaceCondition(t *testing.T) {
+	// this is very similar to: https://github.com/HuobiRDCenter/huobi_Golang/pull/9
+	tree := New(sha256.New)
+	_ = tree.Push([]byte("some data is good enough here"))
+	numRoutines := 200
+	wg := sync.WaitGroup{}
+	wg.Add(numRoutines)
+	for i := 0; i < numRoutines; i++ {
+		go func() {
+			defer func() {
+				if r := recover(); r != nil {
+					t.Errorf("race condition: panic %s", r)
+				}
+				wg.Done()
+			}()
+			_ = tree.Root()
+		}()
+	}
+
+	wg.Wait()
 }
 
 func shouldPanic(t *testing.T, f func()) {
