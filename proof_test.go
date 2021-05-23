@@ -13,7 +13,7 @@ import (
 func TestProof_VerifyNamespace_False(t *testing.T) {
 	const testNidLen = 3
 
-	n := New(sha256.New, NamespaceIDSize(testNidLen))
+	n := New(sha256.New(), NamespaceIDSize(testNidLen))
 	data := append(append([]namespaceDataPair{
 		newNamespaceDataPair([]byte{0, 0, 0}, []byte("first leaf"))},
 		generateLeafData(testNidLen, 0, 9, []byte("data"))...,
@@ -73,7 +73,7 @@ func TestProof_VerifyNamespace_False(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := tt.proof.VerifyNamespace(sha256.New, tt.args.nID, tt.args.data, tt.args.root)
+			got := tt.proof.VerifyNamespace(sha256.New(), tt.args.nID, tt.args.data, tt.args.root)
 			if got != tt.want {
 				t.Errorf("VerifyNamespace() got = %v, want %v", got, tt.want)
 			}
