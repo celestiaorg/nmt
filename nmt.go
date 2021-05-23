@@ -83,6 +83,9 @@ type NamespacedMerkleTree struct {
 	namespaceRanges map[string]leafRange
 	minNID          namespace.ID
 	maxNID          namespace.ID
+
+	// cache the root
+	rawRoot []byte
 }
 
 // New initializes a namespaced Merkle tree using the given base hash function
@@ -256,13 +259,17 @@ func (n *NamespacedMerkleTree) Push(namespacedData namespace.PrefixedData) error
 	n.leaves = append(n.leaves, namespacedData)
 	n.updateNamespaceRanges()
 	n.updateMinMaxID(nID)
+	n.rawRoot = nil
 	return nil
 }
 
 // Return the namespaced Merkle Tree's root together with the
 // min. and max. namespace ID.
 func (n *NamespacedMerkleTree) Root() namespace.IntervalDigest {
-	return mustIntervalDigestFromBytes(n.NamespaceSize(), n.computeRoot(0, len(n.leaves)))
+	if n.rawRoot == nil {
+		n.rawRoot = n.computeRoot(0, len(n.leaves))
+	}
+	return mustIntervalDigestFromBytes(n.NamespaceSize(), n.rawRoot)
 }
 
 func (n NamespacedMerkleTree) computeRoot(start, end int) []byte {
