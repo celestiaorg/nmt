@@ -15,7 +15,7 @@ const (
 	DefaultNamespaceIDLen = 8
 )
 
-type NewHash = func() hash.Hash
+type NewHashFn = func() hash.Hash
 
 // defaultHasher uses sha256 as a base-hasher, 8 bytes
 // for the namespace IDs and ignores the maximum possible namespace.
@@ -55,7 +55,7 @@ func Sha256Namespace8FlaggedInner(leftRight []byte) []byte {
 }
 
 type Hasher struct {
-	newHash      NewHash
+	newHashFn    func() hash.Hash
 	NamespaceLen namespace.IDSize
 
 	ignoreMaxNs      bool
@@ -65,7 +65,7 @@ type Hasher struct {
 
 func (n *Hasher) Size() int {
 	if n.size == 0 {
-		n.size = n.newHash().Size()
+		n.size = n.newHashFn().Size()
 	}
 	return n.size
 }
@@ -78,9 +78,9 @@ func (n *Hasher) NamespaceSize() namespace.IDSize {
 	return n.NamespaceLen
 }
 
-func NewNmtHasher(baseHasher NewHash, nidLen namespace.IDSize, ignoreMaxNamespace bool) *Hasher {
+func NewNmtHasher(baseHasher NewHashFn, nidLen namespace.IDSize, ignoreMaxNamespace bool) *Hasher {
 	return &Hasher{
-		newHash:          baseHasher,
+		newHashFn:        baseHasher,
 		NamespaceLen:     nidLen,
 		ignoreMaxNs:      ignoreMaxNamespace,
 		precomputedMaxNs: bytes.Repeat([]byte{0xFF}, int(nidLen)),
@@ -88,7 +88,7 @@ func NewNmtHasher(baseHasher NewHash, nidLen namespace.IDSize, ignoreMaxNamespac
 }
 
 func (n *Hasher) EmptyRoot() []byte {
-	h := n.newHash()
+	h := n.newHashFn()
 	emptyNs := bytes.Repeat([]byte{0}, int(n.NamespaceLen))
 	hash := h.Sum(nil)
 	digest := append(append(emptyNs, emptyNs...), hash...)
@@ -105,7 +105,7 @@ func (n *Hasher) EmptyRoot() []byte {
 //Note that for leaves minNs = maxNs = ns(leaf) = leaf[:NamespaceLen].
 //nolint:errcheck
 func (n *Hasher) HashLeaf(leaf []byte) []byte {
-	h := n.newHash()
+	h := n.newHashFn()
 
 	nID := leaf[:n.NamespaceLen]
 	data := leaf[n.NamespaceLen:]
@@ -120,7 +120,7 @@ func (n *Hasher) HashLeaf(leaf []byte) []byte {
 // left and right child node bytes, including their respective min and max namespace IDs:
 // left = left.Min() || left.Max() || l.Hash().
 func (n *Hasher) HashNode(l, r []byte) []byte {
-	h := n.newHash()
+	h := n.newHashFn()
 
 	// the actual hash result of the children got extended (or flagged) by their
 	// children's minNs || maxNs; hence the flagLen = 2 * NamespaceLen:

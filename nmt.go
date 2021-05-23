@@ -88,7 +88,7 @@ type NamespacedMerkleTree struct {
 // and for the given namespace size (number of bytes).
 // If the namespace size is 0 this corresponds to a regular non-namespaced
 // Merkle tree.
-func New(h NewHash, setters ...Option) *NamespacedMerkleTree {
+func New(h NewHashFn, setters ...Option) *NamespacedMerkleTree {
 	// default options:
 	opts := &Options{
 		InitialCapacity:    128,
