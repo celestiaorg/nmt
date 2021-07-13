@@ -12,7 +12,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/lazyledger/nmt/namespace"
+	"github.com/celestiaorg/nmt/namespace"
 )
 
 type namespaceDataPair struct {
@@ -139,7 +139,7 @@ func TestNamespacedMerkleTreeRoot(t *testing.T) {
 		wantRoot   []byte
 	}{
 		// default empty root according to base case:
-		// https://github.com/lazyledger/lazyledger-specs/blob/master/specs/data_structures.md#namespace-merkle-tree
+		// https://github.com/celestiaorg/celestiaorg-specs/blob/master/specs/data_structures.md#namespace-merkle-tree
 		{"Empty", 3, nil, zeroNs, zeroNs, emptyRoot},
 		{"One leaf", 3, []namespaceDataPair{newNamespaceDataPair(zeroNs, leaf)}, zeroNs, zeroNs, leafHash},
 		{"Two leaves", 3, []namespaceDataPair{newNamespaceDataPair(zeroNs, leaf), newNamespaceDataPair(zeroNs, leaf)}, zeroNs, zeroNs, twoZeroLeafsRoot},

@@ -4,10 +4,10 @@ import (
 	"crypto/sha256"
 	"testing"
 
-	"github.com/lazyledger/merkletree"
+	"github.com/celestiaorg/merkletree"
 
-	"github.com/lazyledger/nmt/internal"
-	"github.com/lazyledger/nmt/namespace"
+	"github.com/celestiaorg/nmt/internal"
+	"github.com/celestiaorg/nmt/namespace"
 )
 
 func TestProof_VerifyNamespace_False(t *testing.T) {

@@ -6,9 +6,9 @@ import (
 	"sort"
 	"testing"
 
+	"github.com/celestiaorg/nmt"
+	"github.com/celestiaorg/nmt/namespace"
 	"github.com/google/gofuzz"
-	"github.com/lazyledger/nmt"
-	"github.com/lazyledger/nmt/namespace"
 )
 
 func TestFuzzProveVerifyNameSpace(t *testing.T) {

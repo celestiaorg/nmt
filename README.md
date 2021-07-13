@@ -1,9 +1,9 @@
 # Namespaced Merkle Tree (NMT)
 ![Go version](https://img.shields.io/badge/go-1.14-blue.svg)
-[![API Reference](https://camo.githubusercontent.com/915b7be44ada53c290eb157634330494ebe3e30a/68747470733a2f2f676f646f632e6f72672f6769746875622e636f6d2f676f6c616e672f6764646f3f7374617475732e737667)](https://pkg.go.dev/github.com/lazyledger/nmt)
-![golangci-lint](https://github.com/lazyledger/nmt/workflows/golangci-lint/badge.svg?branch=master)
-![Go](https://github.com/lazyledger/nmt/workflows/Go/badge.svg)
-![codecov.io](https://codecov.io/github/lazyledger/nmt/coverage.svg?branch=master)
+[![API Reference](https://camo.githubusercontent.com/915b7be44ada53c290eb157634330494ebe3e30a/68747470733a2f2f676f646f632e6f72672f6769746875622e636f6d2f676f6c616e672f6764646f3f7374617475732e737667)](https://pkg.go.dev/github.com/celestiaorg/nmt)
+![golangci-lint](https://github.com/celestiaorg/nmt/workflows/golangci-lint/badge.svg?branch=master)
+![Go](https://github.com/celestiaorg/nmt/workflows/Go/badge.svg)
+![codecov.io](https://codecov.io/github/celestiaorg/nmt/coverage.svg?branch=master)
 
 
 A Namespaced Merkle Tree is
@@ -30,8 +30,8 @@ import (
     "crypto/sha256"
     "fmt"
 
-    "github.com/lazyledger/nmt"
-    "github.com/lazyledger/nmt/namespace"
+    "github.com/celestiaorg/nmt"
+    "github.com/celestiaorg/nmt/namespace"
 )
 
 func main() {
@@ -91,14 +91,14 @@ Where `nid_0 = nid_1 = 0` and `nid_2 = nid_3 = 1` and `data_i = "leaf_i"` for `i
 ## Related
 
 This implementation (currently) uses NebulousLabs' [merkletree][NebulousLabs'] implementation
-and was heavily inspired by the initial implementation in the LazyLedger [prototype].
+and was heavily inspired by the initial implementation in the celestiaorg [prototype].
 
 
 <!--- TODO references --->
 [academic paper]: https://arxiv.org/abs/1905.09274
 [@musalbas]: https://github.com/musalbas
 
-[prototype]: https://github.com/lazyledger/lazyledger-prototype
+[prototype]: https://github.com/celestiaorg/lazyledger-prototype
 [NebulousLabs']: https://gitlab.com/NebulousLabs/merkletree
 [trillian]: https://github.com/google/trillian
 [`LogHasher`]: https://github.com/google/trillian/blob/7502e99bb92ecf0ec8add958889c751f2cfc7f59/merkle/hashers/tree_hasher.go#L23-L34
