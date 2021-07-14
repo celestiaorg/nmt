@@ -7,9 +7,9 @@ import (
 	"fmt"
 	"math/bits"
 
-	"github.com/lazyledger/merkletree"
-	"github.com/lazyledger/nmt/internal"
-	"github.com/lazyledger/nmt/namespace"
+	"github.com/celestiaorg/merkletree"
+	"github.com/celestiaorg/nmt/internal"
+	"github.com/celestiaorg/nmt/namespace"
 )
 
 var (
@@ -53,7 +53,7 @@ func NamespaceIDSize(size int) Option {
 
 // IgnoreMaxNamespace sets whether the largest possible namespace.ID MAX_NID should be 'ignored'.
 // If set to true, this allows for shorter proofs in particular use-cases.
-// E.g., see: https://github.com/lazyledger/lazyledger-specs/blob/master/specs/data_structures.md#namespace-merkle-tree
+// E.g., see: https://github.com/celestiaorg/celestiaorg-specs/blob/master/specs/data_structures.md#namespace-merkle-tree
 // Defaults to true.
 func IgnoreMaxNamespace(ignore bool) Option {
 	return func(opts *Options) {
@@ -228,7 +228,7 @@ func (n NamespacedMerkleTree) calculateAbsenceIndex(nID namespace.ID) int {
 
 func (n *NamespacedMerkleTree) foundInRange(nID namespace.ID) (bool, int, int) {
 	// This is a faster version of this code snippet:
-	// https://github.com/lazyledger/lazyledger-prototype/blob/2aeca6f55ad389b9d68034a0a7038f80a8d2982e/simpleblock.go#L106-L117
+	// https://github.com/celestiaorg/celestiaorg-prototype/blob/2aeca6f55ad389b9d68034a0a7038f80a8d2982e/simpleblock.go#L106-L117
 	foundRng, found := n.namespaceRanges[string(nID)]
 	// XXX casting from uint64 to int is kinda crappy but nebolousLabs'
 	// range proof api requires int params only to convert them to uint64 ...

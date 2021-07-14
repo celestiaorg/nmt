@@ -5,8 +5,8 @@ import (
 	"math"
 	"math/bits"
 
-	"github.com/lazyledger/merkletree"
-	"github.com/lazyledger/nmt/namespace"
+	"github.com/celestiaorg/merkletree"
+	"github.com/celestiaorg/nmt/namespace"
 )
 
 // Proof represents proof of a namespace.ID in an NMT.

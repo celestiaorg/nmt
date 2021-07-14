@@ -3,7 +3,7 @@ package internal
 import (
 	"io"
 
-	"github.com/lazyledger/merkletree"
+	"github.com/celestiaorg/merkletree"
 )
 
 type TreeHasher interface {
