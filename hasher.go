@@ -15,11 +15,9 @@ const (
 	DefaultNamespaceIDLen = 8
 )
 
-type NewHash = func() hash.Hash
-
 // defaultHasher uses sha256 as a base-hasher, 8 bytes
 // for the namespace IDs and ignores the maximum possible namespace.
-var defaultHasher = NewNmtHasher(sha256.New, DefaultNamespaceIDLen, true)
+var defaultHasher = NewNmtHasher(sha256.New(), DefaultNamespaceIDLen, true)
 
 // Sha256Namespace8FlaggedLeaf uses sha256 as a base-hasher, 8 bytes
 // for the namespace IDs and ignores the maximum possible namespace.
@@ -48,26 +46,19 @@ func Sha256Namespace8FlaggedLeaf(namespacedData []byte) []byte {
 // The output will also be of length 2*DefaultNamespaceIDLen+sha256.Size = 48 bytes.
 func Sha256Namespace8FlaggedInner(leftRight []byte) []byte {
 	const flagLen = DefaultNamespaceIDLen * 2
-	left := leftRight[:flagLen+sha256.Size]
-	right := leftRight[flagLen+sha256.Size:]
+	sha256Len := defaultHasher.Size()
+	left := leftRight[:flagLen+sha256Len]
+	right := leftRight[flagLen+sha256Len:]
 
 	return defaultHasher.HashNode(left, right)
 }
 
 type Hasher struct {
-	newHash      NewHash
+	hash.Hash
 	NamespaceLen namespace.IDSize
 
 	ignoreMaxNs      bool
 	precomputedMaxNs namespace.ID
-	size             int
-}
-
-func (n *Hasher) Size() int {
-	if n.size == 0 {
-		n.size = n.newHash().Size()
-	}
-	return n.size
 }
 
 func (n *Hasher) IsMaxNamespaceIDIgnored() bool {
@@ -78,9 +69,9 @@ func (n *Hasher) NamespaceSize() namespace.IDSize {
 	return n.NamespaceLen
 }
 
-func NewNmtHasher(baseHasher NewHash, nidLen namespace.IDSize, ignoreMaxNamespace bool) *Hasher {
+func NewNmtHasher(baseHasher hash.Hash, nidLen namespace.IDSize, ignoreMaxNamespace bool) *Hasher {
 	return &Hasher{
-		newHash:          baseHasher,
+		Hash:             baseHasher,
 		NamespaceLen:     nidLen,
 		ignoreMaxNs:      ignoreMaxNamespace,
 		precomputedMaxNs: bytes.Repeat([]byte{0xFF}, int(nidLen)),
@@ -88,10 +79,9 @@ func NewNmtHasher(baseHasher NewHash, nidLen namespace.IDSize, ignoreMaxNamespac
 }
 
 func (n *Hasher) EmptyRoot() []byte {
-	h := n.newHash()
 	emptyNs := bytes.Repeat([]byte{0}, int(n.NamespaceLen))
-	hash := h.Sum(nil)
-	digest := append(append(emptyNs, emptyNs...), hash...)
+	h := n.Sum(nil)
+	digest := append(append(emptyNs, emptyNs...), h...)
 
 	return digest
 }
@@ -105,7 +95,8 @@ func (n *Hasher) EmptyRoot() []byte {
 //Note that for leaves minNs = maxNs = ns(leaf) = leaf[:NamespaceLen].
 //nolint:errcheck
 func (n *Hasher) HashLeaf(leaf []byte) []byte {
-	h := n.newHash()
+	h := n.Hash
+	h.Reset()
 
 	nID := leaf[:n.NamespaceLen]
 	data := leaf[n.NamespaceLen:]
@@ -120,7 +111,8 @@ func (n *Hasher) HashLeaf(leaf []byte) []byte {
 // left and right child node bytes, including their respective min and max namespace IDs:
 // left = left.Min() || left.Max() || l.Hash().
 func (n *Hasher) HashNode(l, r []byte) []byte {
-	h := n.newHash()
+	h := n.Hash
+	h.Reset()
 
 	// the actual hash result of the children got extended (or flagged) by their
 	// children's minNs || maxNs; hence the flagLen = 2 * NamespaceLen:

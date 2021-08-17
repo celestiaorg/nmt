@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"hash"
 	"math/bits"
 
 	"github.com/celestiaorg/merkletree"
@@ -82,13 +83,16 @@ type NamespacedMerkleTree struct {
 	namespaceRanges map[string]leafRange
 	minNID          namespace.ID
 	maxNID          namespace.ID
+
+	// cache the root
+	rawRoot []byte
 }
 
 // New initializes a namespaced Merkle tree using the given base hash function
 // and for the given namespace size (number of bytes).
 // If the namespace size is 0 this corresponds to a regular non-namespaced
 // Merkle tree.
-func New(h NewHash, setters ...Option) *NamespacedMerkleTree {
+func New(h hash.Hash, setters ...Option) *NamespacedMerkleTree {
 	// default options:
 	opts := &Options{
 		InitialCapacity:    128,
@@ -255,13 +259,17 @@ func (n *NamespacedMerkleTree) Push(namespacedData namespace.PrefixedData) error
 	n.leaves = append(n.leaves, namespacedData)
 	n.updateNamespaceRanges()
 	n.updateMinMaxID(nID)
+	n.rawRoot = nil
 	return nil
 }
 
 // Return the namespaced Merkle Tree's root together with the
 // min. and max. namespace ID.
 func (n *NamespacedMerkleTree) Root() namespace.IntervalDigest {
-	return mustIntervalDigestFromBytes(n.NamespaceSize(), n.computeRoot(0, len(n.leaves)))
+	if n.rawRoot == nil {
+		n.rawRoot = n.computeRoot(0, len(n.leaves))
+	}
+	return mustIntervalDigestFromBytes(n.NamespaceSize(), n.rawRoot)
 }
 
 func (n NamespacedMerkleTree) computeRoot(start, end int) []byte {
