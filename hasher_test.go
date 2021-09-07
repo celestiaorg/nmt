@@ -18,8 +18,10 @@ func Test_namespacedTreeHasher_HashLeaf(t *testing.T) {
 	defaultRawData := []byte("a blockchain is a chain of blocks")
 
 	// Note: ensure we only hash in the raw data without the namespace prefixes
-	emptyHash := sum(crypto.SHA256, []byte{LeafPrefix}, []byte{})
-	defaultHash := sum(crypto.SHA256, []byte{LeafPrefix}, defaultRawData)
+	emptyHashZeroNID := sum(crypto.SHA256, []byte{LeafPrefix}, zeroNID, []byte{})
+	emptyHashOneNID := sum(crypto.SHA256, []byte{LeafPrefix}, oneNID, []byte{})
+	defaultHashOneNID := sum(crypto.SHA256, []byte{LeafPrefix}, oneNID, defaultRawData)
+	defaultHashLongNID := sum(crypto.SHA256, []byte{LeafPrefix}, longNID, defaultRawData)
 
 	oneNIDLeaf := append(oneNID, defaultRawData...)
 	longNIDLeaf := append(longNID, defaultRawData...)
@@ -30,11 +32,11 @@ func Test_namespacedTreeHasher_HashLeaf(t *testing.T) {
 		leaf  []byte
 		want  []byte
 	}{
-		{"1 byte namespaced empty leaf", 1, zeroNID, append(append(zeroNID, zeroNID...), emptyHash...)},
-		{"1 byte namespaced empty leaf", 1, oneNID, append(append(oneNID, oneNID...), emptyHash...)},
-		{"1 byte namespaced leaf with data", 1, oneNIDLeaf, append(append(oneNID, oneNID...), defaultHash...)},
-		{"namespaced empty leaf", 9, longNIDLeaf, append(append(longNID, longNID...), defaultHash...)},
-		{"namespaced leaf with data", 9, longNID, append(append(longNID, longNID...), emptyHash...)},
+		{"1 byte namespaced empty leaf", 1, zeroNID, append(append(zeroNID, zeroNID...), emptyHashZeroNID...)},
+		{"1 byte namespaced empty leaf", 1, oneNID, append(append(oneNID, oneNID...), emptyHashOneNID...)},
+		{"1 byte namespaced leaf with data", 1, oneNIDLeaf, append(append(oneNID, oneNID...), defaultHashOneNID...)},
+		{"namespaced leaf with data", 9, longNIDLeaf, append(append(longNID, longNID...), defaultHashLongNID...)},
+		{"namespaced empty leaf", 9, longNID, append(append(longNID, longNID...), sum(crypto.SHA256, []byte{LeafPrefix}, longNID, []byte{})...)},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

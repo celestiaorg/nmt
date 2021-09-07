@@ -99,9 +99,10 @@ func (n *Hasher) HashLeaf(leaf []byte) []byte {
 	h.Reset()
 
 	nID := leaf[:n.NamespaceLen]
-	data := leaf[n.NamespaceLen:]
-	res := append(append(make([]byte, 0), nID...), nID...)
-	data = append([]byte{LeafPrefix}, data...)
+	resLen := int(2*n.NamespaceLen) + n.Hash.Size()
+	res := append(append(make([]byte, 0, resLen), nID...), nID...)
+	// h(0x00, d.namespaceID, d.rawData)
+	data := append(append(make([]byte, 0, len(leaf)+1), LeafPrefix), leaf...)
 	h.Write(data)
 	return h.Sum(res)
 }

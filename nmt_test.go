@@ -122,13 +122,13 @@ func TestNamespacedMerkleTree_Push(t *testing.T) {
 
 func TestNamespacedMerkleTreeRoot(t *testing.T) {
 	// does some sanity checks on root computation
-	// TODO: add in more realistic test-vectors
 	zeroNs := []byte{0, 0, 0}
 	onesNS := []byte{1, 1, 1}
-	leaf := []byte("leaf1")
-	leafHash := sum(crypto.SHA256, []byte{LeafPrefix}, leaf)
-	zeroFlaggedLeaf := append(append(zeroNs, zeroNs...), leafHash...)
-	oneFlaggedLeaf := append(append(onesNS, onesNS...), leafHash...)
+	leafData := []byte("leaf1")
+	zeroLeafHash := sum(crypto.SHA256, []byte{LeafPrefix}, zeroNs, leafData)
+	oneLeafHash := sum(crypto.SHA256, []byte{LeafPrefix}, onesNS, leafData)
+	zeroFlaggedLeaf := append(append(zeroNs, zeroNs...), zeroLeafHash...)
+	oneFlaggedLeaf := append(append(onesNS, onesNS...), oneLeafHash...)
 	twoZeroLeafsRoot := sum(crypto.SHA256, []byte{NodePrefix}, zeroFlaggedLeaf, zeroFlaggedLeaf)
 	diffNSLeafsRoot := sum(crypto.SHA256, []byte{NodePrefix}, zeroFlaggedLeaf, oneFlaggedLeaf)
 	emptyRoot := crypto.SHA256.New().Sum(nil)
@@ -142,9 +142,9 @@ func TestNamespacedMerkleTreeRoot(t *testing.T) {
 		// default empty root according to base case:
 		// https://github.com/celestiaorg/celestiaorg-specs/blob/master/specs/data_structures.md#namespace-merkle-tree
 		{"Empty", 3, nil, appendAll(zeroNs, zeroNs, emptyRoot)},
-		{"One leaf", 3, []namespaceDataPair{newNamespaceDataPair(zeroNs, leaf)}, appendAll(zeroNs, zeroNs, leafHash)},
-		{"Two leaves", 3, []namespaceDataPair{newNamespaceDataPair(zeroNs, leaf), newNamespaceDataPair(zeroNs, leaf)}, appendAll(zeroNs, zeroNs, twoZeroLeafsRoot)},
-		{"Two leaves diff namespaces", 3, []namespaceDataPair{newNamespaceDataPair(zeroNs, leaf), newNamespaceDataPair(onesNS, leaf)}, appendAll(zeroNs, onesNS, diffNSLeafsRoot)},
+		{"One leaf", 3, []namespaceDataPair{newNamespaceDataPair(zeroNs, leafData)}, appendAll(zeroNs, zeroNs, sum(crypto.SHA256, []byte{LeafPrefix}, zeroNs, leafData))},
+		{"Two leaves", 3, []namespaceDataPair{newNamespaceDataPair(zeroNs, leafData), newNamespaceDataPair(zeroNs, leafData)}, appendAll(zeroNs, zeroNs, twoZeroLeafsRoot)},
+		{"Two leaves diff namespaces", 3, []namespaceDataPair{newNamespaceDataPair(zeroNs, leafData), newNamespaceDataPair(onesNS, leafData)}, appendAll(zeroNs, onesNS, diffNSLeafsRoot)},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
