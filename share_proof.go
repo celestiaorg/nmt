@@ -2,12 +2,11 @@ package nmt
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"errors"
 	"hash"
 
-	"github.com/celestiaorg/celestia-core/pkg/consts"
 	"github.com/celestiaorg/nmt/namespace"
-	"github.com/tendermint/tendermint/crypto/tmhash"
 )
 
 type NamespaceMerkleTreeInclusionProof struct {
@@ -29,18 +28,18 @@ func (nmtip *NamespaceMerkleTreeInclusionProof) ValidateBasic() error {
 	}
 	// check if the hash values have the correct byte size
 	for _, siblingValue := range nmtip.SiblingValues {
-		if len(siblingValue) != tmhash.Size {
+		if len(siblingValue) != sha256.Size {
 			return errors.New("Number of hash bytes is incorrect.")
 		}
 	}
 	// check if the namespaceIDs have the correct sizes
 	for _, siblingMin := range nmtip.SiblingMins {
-		if len(siblingMin) != consts.NamespaceSize {
+		if len(siblingMin) != 8 {
 			return errors.New("Number of namespace bytes is incorrect.")
 		}
 	}
 	for _, siblingMax := range nmtip.SiblingMaxes {
-		if len(siblingMax) != consts.NamespaceSize {
+		if len(siblingMax) != DefaultNamespaceIDLen {
 			return errors.New("Number of namespace bytes is incorrect.")
 		}
 	}
