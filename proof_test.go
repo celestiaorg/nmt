@@ -33,7 +33,7 @@ func TestProof_VerifyNamespace_False(t *testing.T) {
 	type args struct {
 		nID  namespace.ID
 		data [][]byte
-		root namespace.IntervalDigest
+		root []byte
 	}
 	pushedZeroNs := n.Get([]byte{0, 0, 0})
 	pushedLastNs := n.Get([]byte{0, 0, 8})
