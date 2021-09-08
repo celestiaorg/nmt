@@ -263,8 +263,8 @@ func (n *NamespacedMerkleTree) Push(namespacedData namespace.PrefixedData) error
 	return nil
 }
 
-// Return the namespaced Merkle Tree's root together with the
-// min. and max. namespace ID.
+// Return the namespaced Merkle Tree's root with the minimum and maximum
+// namespace. min || max || hashDigest
 func (n *NamespacedMerkleTree) Root() []byte {
 	if n.rawRoot == nil {
 		n.rawRoot = n.computeRoot(0, len(n.leaves))
