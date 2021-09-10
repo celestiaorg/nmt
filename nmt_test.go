@@ -55,11 +55,13 @@ func ExampleNamespacedMerkleTree() {
 	// compute the root
 	root := tree.Root()
 	// the root's min/max namespace is the min and max namespace of all leaves:
-	if root.Min.Equal(namespace.ID{0}) {
-		fmt.Printf("Min namespace: %x\n", root.Min)
+	minNS := minNamespace(root, tree.NamespaceSize())
+	maxNS := maxNamespace(root, tree.NamespaceSize())
+	if bytes.Equal(minNS, namespace.ID{0}) {
+		fmt.Printf("Min namespace: %x\n", minNS)
 	}
-	if root.Max.Equal(namespace.ID{1}) {
-		fmt.Printf("Max namespace: %x\n", root.Max)
+	if bytes.Equal(maxNS, namespace.ID{1}) {
+		fmt.Printf("Max namespace: %x\n", maxNS)
 	}
 
 	// compute proof for namespace 0:
@@ -135,16 +137,14 @@ func TestNamespacedMerkleTreeRoot(t *testing.T) {
 		name       string
 		nidLen     int
 		pushedData []namespaceDataPair
-		wantMinNs  namespace.ID
-		wantMaxNs  namespace.ID
 		wantRoot   []byte
 	}{
 		// default empty root according to base case:
 		// https://github.com/celestiaorg/celestiaorg-specs/blob/master/specs/data_structures.md#namespace-merkle-tree
-		{"Empty", 3, nil, zeroNs, zeroNs, emptyRoot},
-		{"One leaf", 3, []namespaceDataPair{newNamespaceDataPair(zeroNs, leafData)}, zeroNs, zeroNs, sum(crypto.SHA256, []byte{LeafPrefix}, zeroNs, leafData)},
-		{"Two leaves", 3, []namespaceDataPair{newNamespaceDataPair(zeroNs, leafData), newNamespaceDataPair(zeroNs, leafData)}, zeroNs, zeroNs, twoZeroLeafsRoot},
-		{"Two leaves diff namespaces", 3, []namespaceDataPair{newNamespaceDataPair(zeroNs, leafData), newNamespaceDataPair(onesNS, leafData)}, zeroNs, onesNS, diffNSLeafsRoot},
+		{"Empty", 3, nil, appendAll(zeroNs, zeroNs, emptyRoot)},
+		{"One leaf", 3, []namespaceDataPair{newNamespaceDataPair(zeroNs, leafData)}, appendAll(zeroNs, zeroNs, sum(crypto.SHA256, []byte{LeafPrefix}, zeroNs, leafData))},
+		{"Two leaves", 3, []namespaceDataPair{newNamespaceDataPair(zeroNs, leafData), newNamespaceDataPair(zeroNs, leafData)}, appendAll(zeroNs, zeroNs, twoZeroLeafsRoot)},
+		{"Two leaves diff namespaces", 3, []namespaceDataPair{newNamespaceDataPair(zeroNs, leafData), newNamespaceDataPair(onesNS, leafData)}, appendAll(zeroNs, onesNS, diffNSLeafsRoot)},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -154,19 +154,24 @@ func TestNamespacedMerkleTreeRoot(t *testing.T) {
 					t.Errorf("Push() error = %v, expected no error", err)
 				}
 			}
-			root := n.Root()
-			gotMinNs, gotMaxNs, gotRoot := root.Min, root.Max, root.Hash()
-			if !reflect.DeepEqual(gotMinNs, tt.wantMinNs) {
-				t.Errorf("Root() gotMinNs = %v, want %v", gotMinNs, tt.wantMinNs)
-			}
-			if !reflect.DeepEqual(gotMaxNs, tt.wantMaxNs) {
-				t.Errorf("Root() gotMaxNs = %v, want %v", gotMaxNs, tt.wantMaxNs)
-			}
+			gotRoot := n.Root()
 			if !reflect.DeepEqual(gotRoot, tt.wantRoot) {
 				t.Errorf("Root() gotRoot = %v, want %v", gotRoot, tt.wantRoot)
 			}
 		})
 	}
+}
+
+func appendAll(slices ...[]byte) []byte {
+	totalLen := 0
+	for _, slice := range slices {
+		totalLen += len(slice)
+	}
+	out := make([]byte, 0, totalLen)
+	for _, slice := range slices {
+		out = append(out, slice...)
+	}
+	return out
 }
 
 func TestNamespacedMerkleTree_ProveNamespace_Ranges_And_Verify(t *testing.T) {
@@ -441,8 +446,8 @@ func TestIgnoreMaxNamespace(t *testing.T) {
 					panic("unexpected error")
 				}
 			}
-			gotRootMaxNID := tree.Root().Max
-			if !gotRootMaxNID.Equal(tc.wantRootMaxNID) {
+			gotRootMaxNID := tree.Root()[tree.NamespaceSize() : tree.NamespaceSize()*2]
+			if !bytes.Equal(tc.wantRootMaxNID, gotRootMaxNID) {
 				t.Fatalf("Case: %v, '%v', root.Max() got: %x, want: %x", i, tc.name, gotRootMaxNID, tc.wantRootMaxNID)
 			}
 			for idx, d := range tc.pushData {
@@ -493,14 +498,8 @@ func TestNodeVisitor(t *testing.T) {
 	}
 	root := n.Root()
 	last := nodeHashes[len(nodeHashes)-1]
-	if !bytes.Equal(root.Hash(), last[nidSize*2:]) {
+	if !bytes.Equal(root, last) {
 		t.Fatalf("last visited node's digest does not match the tree root's.")
-	}
-	if !bytes.Equal(root.Min, last[:nidSize]) {
-		t.Fatalf("last visited node's min namespace does not match the tree root's.")
-	}
-	if !bytes.Equal(root.Max, last[nidSize:nidSize*2]) {
-		t.Fatalf("last visited node's max namespace does not match the tree root's.")
 	}
 	t.Log("printing nodes in visiting order") // postorder DFS
 	for _, nodeHash := range nodeHashes {

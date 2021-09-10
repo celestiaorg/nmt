@@ -263,13 +263,13 @@ func (n *NamespacedMerkleTree) Push(namespacedData namespace.PrefixedData) error
 	return nil
 }
 
-// Return the namespaced Merkle Tree's root together with the
-// min. and max. namespace ID.
-func (n *NamespacedMerkleTree) Root() namespace.IntervalDigest {
+// Return the namespaced Merkle Tree's root with the minimum and maximum
+// namespace. min || max || hashDigest
+func (n *NamespacedMerkleTree) Root() []byte {
 	if n.rawRoot == nil {
 		n.rawRoot = n.computeRoot(0, len(n.leaves))
 	}
-	return mustIntervalDigestFromBytes(n.NamespaceSize(), n.rawRoot)
+	return n.rawRoot
 }
 
 func (n NamespacedMerkleTree) computeRoot(start, end int) []byte {
@@ -371,4 +371,16 @@ func (n *NamespacedMerkleTree) computeLeafHashesIfNecessary() {
 
 type leafRange struct {
 	start, end uint64
+}
+
+// minNamespace parses the minimum namespace id from a given hash
+func minNamespace(hash []byte, size namespace.IDSize) []byte {
+	min := make([]byte, 0, size)
+	return append(min, hash[:size]...)
+}
+
+// maxNamespace parses the maximum namespace id from a given hash
+func maxNamespace(hash []byte, size namespace.IDSize) []byte {
+	max := make([]byte, 0, size)
+	return append(max, hash[size:size*2]...)
 }

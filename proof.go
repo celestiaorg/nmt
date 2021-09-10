@@ -96,9 +96,11 @@ func NewAbsenceProof(proofStart, proofEnd int, proofNodes [][]byte, leafHash []b
 // VerifyNamespace verifies a whole namespace, i.e. it verifies inclusion of
 // the provided data in the tree. Additionally, it verifies that the namespace
 // is complete and no leaf of that namespace was left out in the proof.
-func (proof Proof) VerifyNamespace(h hash.Hash, nID namespace.ID, data [][]byte, root namespace.IntervalDigest) bool {
+func (proof Proof) VerifyNamespace(h hash.Hash, nID namespace.ID, data [][]byte, root []byte) bool {
 	nth := NewNmtHasher(h, nID.Size(), proof.isMaxNamespaceIDIgnored)
-	if nID.Size() != root.Min.Size() || nID.Size() != root.Max.Size() {
+	min := namespace.ID(minNamespace(root, nID.Size()))
+	max := namespace.ID(maxNamespace(root, nID.Size()))
+	if nID.Size() != min.Size() || nID.Size() != max.Size() {
 		// conflicting namespace sizes
 		return false
 	}
@@ -137,7 +139,7 @@ func (proof Proof) VerifyNamespace(h hash.Hash, nID namespace.ID, data [][]byte,
 	return proof.verifyLeafHashes(nth, true, nID, gotLeafHashes, root)
 }
 
-func (proof Proof) verifyLeafHashes(nth *Hasher, verifyCompleteness bool, nID namespace.ID, gotLeafHashes [][]byte, root namespace.IntervalDigest) bool {
+func (proof Proof) verifyLeafHashes(nth *Hasher, verifyCompleteness bool, nID namespace.ID, gotLeafHashes [][]byte, root []byte) bool {
 	// The code below is almost identical to NebulousLabs'
 	// merkletree.VerifyMultiRangeProof.
 	//
@@ -183,16 +185,16 @@ func (proof Proof) verifyLeafHashes(nth *Hasher, verifyCompleteness bool, nID na
 	if verifyCompleteness {
 		// leftSubtrees contains the subtree roots upto [0, r.Start)
 		for _, subtree := range leftSubtrees {
-			leftSubTreeMax := mustIntervalDigestFromBytes(nth.NamespaceSize(), subtree).Max
-			if nID.LessOrEqual(leftSubTreeMax) {
+			leftSubTreeMax := maxNamespace(subtree, nth.NamespaceSize())
+			if nID.LessOrEqual(namespace.ID(leftSubTreeMax)) {
 				return false
 			}
 		}
 		// rightSubtrees only contains the subtrees after [0, r.Start)
 		rightSubtrees := proof.nodes
 		for _, subtree := range rightSubtrees {
-			rightSubTreeMin := mustIntervalDigestFromBytes(nth.NamespaceSize(), subtree).Min
-			if rightSubTreeMin.LessOrEqual(nID) {
+			rightSubTreeMin := minNamespace(subtree, nth.NamespaceSize())
+			if namespace.ID(rightSubTreeMin).LessOrEqual(nID) {
 				return false
 			}
 		}
@@ -201,10 +203,10 @@ func (proof Proof) verifyLeafHashes(nth *Hasher, verifyCompleteness bool, nID na
 	// add remaining proof hashes after the last range ends
 	consumeUntil(math.MaxUint64)
 
-	return bytes.Equal(tree.Root(), root.Bytes())
+	return bytes.Equal(tree.Root(), root)
 }
 
-func (proof Proof) VerifyInclusion(h hash.Hash, nid namespace.ID, data []byte, root namespace.IntervalDigest) bool {
+func (proof Proof) VerifyInclusion(h hash.Hash, nid namespace.ID, data []byte, root []byte) bool {
 	nth := NewNmtHasher(h, nid.Size(), proof.isMaxNamespaceIDIgnored)
 	leafData := append(nid, data...)
 	return proof.verifyLeafHashes(nth, false, nid, [][]byte{nth.HashLeaf(leafData)}, root)
@@ -219,14 +221,4 @@ func nextSubtreeSize(start, end uint64) int {
 		return 1 << uint(max)
 	}
 	return 1 << uint(ideal)
-}
-
-// mustIntervalDigestFromBytes optimistially converts bytes to IntervalDigest or panics
-func mustIntervalDigestFromBytes(idlen namespace.IDSize, bytes []byte) namespace.IntervalDigest {
-	id, err := namespace.IntervalDigestFromBytes(idlen, bytes)
-	if err != nil {
-		panic(err)
-	}
-
-	return id
 }
