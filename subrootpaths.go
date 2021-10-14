@@ -1,8 +1,7 @@
-package main
+package nmt
 
 import (
 	"errors"
-	"fmt"
 	"math"
 )
 
@@ -21,9 +20,18 @@ func subdivide(idxStart uint, width uint) []int {
 	return append(path, subdivide(idxStart, center)...)
 }
 
+func extractBranch(path []int, depth int, index int, offset int) []int {
+	rightCapture := make([]int, len(path))
+	copy(rightCapture, path)
+	rightCapture[len(path)-index] = 1
+	rightCapture = rightCapture[:depth-(index-offset)]
+	return rightCapture
+}
+
 func prune(idxStart uint, pathStart []int, idxEnd uint, pathEnd []int, maxWidth uint) [][]int {
 
 	var prunedPaths [][]int
+	var preprocessedPaths [][]int
 
 	// special case of two-share length
 	if idxStart+1 >= idxEnd {
@@ -37,14 +45,14 @@ func prune(idxStart uint, pathStart []int, idxEnd uint, pathEnd []int, maxWidth 
 	// if starting share is on an odd index
 	if idxStart%2 == 1 {
 		idxStart += 1
-		prunedPaths = append(prunedPaths, pathStart)
+		preprocessedPaths = append(preprocessedPaths, pathStart)
 		pathStart = subdivide(idxStart, maxWidth)
 	}
 
 	// if ending share is on an even index
 	if idxEnd%2 == 0 {
 		idxEnd -= 1
-		prunedPaths = append(prunedPaths, pathEnd)
+		preprocessedPaths = append(preprocessedPaths, pathEnd)
 		pathEnd = subdivide(idxEnd, maxWidth)
 	}
 
@@ -58,33 +66,22 @@ func prune(idxStart uint, pathStart []int, idxEnd uint, pathEnd []int, maxWidth 
 			if (nodeSpan+idxStart)-1 < idxEnd {
 				// if nodespan is less than end index, continue traversing upwards
 				capturedSpan = nodeSpan
+				// if a right path has been encountered, we want to return the right
+				// branch one level down
 				if rightTraversed {
-					rightCapture := make([]int, len(pathStart))
-					copy(rightCapture, pathStart)
-					rightCapture[len(pathStart)-i] = 1
-					rightCapture = rightCapture[:treeDepth-(i-1)]
-					prunedPaths = append(prunedPaths, rightCapture)
+					prunedPaths = append(prunedPaths, extractBranch(pathStart, treeDepth, i, 1))
 				} else {
-					rightCapture := make([]int, len(pathStart)-i)
-					copy(rightCapture, pathStart[:len(pathStart)-i])
-					rightCapture[len(pathStart)-i-1] = 1
-					prunedPaths = append(prunedPaths, rightCapture)
+					prunedPaths = append(prunedPaths, extractBranch(pathStart, treeDepth, i, 0))
 				}
 			} else if (nodeSpan+idxStart)-1 == idxEnd {
+				// if it's equal to the end index, this is the final root to return
 				if rightTraversed {
-					rightCapture := make([]int, len(pathStart))
-					copy(rightCapture, pathStart)
-					rightCapture[len(pathStart)-i] = 1
-					rightCapture = rightCapture[:treeDepth-(i-1)]
-					prunedPaths = append(prunedPaths, rightCapture)
-					return prunedPaths
+					prunedPaths = append(prunedPaths, extractBranch(pathStart, treeDepth, i, 1))
+					return append(preprocessedPaths, prunedPaths...)
 				} else {
-					rightCapture := make([]int, len(pathStart))
-					copy(rightCapture, pathStart)
-					//rightCapture[len(pathStart)-i] = 1
-					rightCapture = rightCapture[:treeDepth-i]
-					prunedPaths = append(prunedPaths, rightCapture)
-					return prunedPaths
+					// if we've never traversed right then this is a special case
+					// where the last root found here encompasses the whole lower tree
+					return append(make([][]int, 0), pathStart[:treeDepth-i])
 				}
 			} else {
 				// else if it's greater than the end index, break out of the left-capture loop
@@ -113,20 +110,15 @@ func prune(idxStart uint, pathStart []int, idxEnd uint, pathEnd []int, maxWidth 
 		} else {
 			nodeSpan := uint(math.Pow(float64(2), float64(i)))
 			if int(idxEnd)-int(nodeSpan) <= int(capturedSpan) {
-				rightCapture := make([]int, len(pathEnd))
-				copy(rightCapture, pathEnd)
-				rightCapture[len(pathEnd)-i] = 1
-				rightCapture = rightCapture[:treeDepth-(i)]
-				outPath = rightCapture
-			} else {
-				continue
+				// traverse upwards while updating the latest path found
+				outPath = extractBranch(pathEnd, treeDepth, i, 0)
 			}
 		}
 	}
 
 	prunedPaths = append(prunedPaths, outPath)
 
-	return prunedPaths
+	return append(preprocessedPaths, prunedPaths...)
 }
 
 // Pure function that takes arguments: square size, share index start,
@@ -159,8 +151,6 @@ func GetSubrootPaths(squareSize uint, idxStart uint, shareLen uint) ([][]int, er
 	pathStart := subdivide(shareStart, squareSize)
 	pathEnd := subdivide(shareEnd, squareSize)
 
-	subtreeLvls := int(math.Log2(float64(squareSize))) - 1
-
 	if shareLen == 0 {
 		paths = append(paths, pathStart)
 		return paths, nil
@@ -169,29 +159,15 @@ func GetSubrootPaths(squareSize uint, idxStart uint, shareLen uint) ([][]int, er
 	if startRow == endRow-1 {
 		paths = append(paths, prune(shareStart, pathStart, shareEnd, pathEnd, squareSize)...)
 	} else {
-		prune(shareStart, pathStart, squareSize-1, make([]int, subtreeLvls, subtreeLvls), squareSize)
-		prune(0, make([]int, subtreeLvls, subtreeLvls), shareEnd, pathEnd, squareSize)
+		rightEndPath := subdivide(squareSize-1, squareSize)
+		leftEndPath := subdivide(0, squareSize)
+		for i := 0; i < (endRow-startRow)-1; i++ {
+			var p []int
+			paths = append(paths, p)
+		}
+		paths = append(paths, prune(shareStart, pathStart, squareSize-1, rightEndPath, squareSize)...)
+		paths = append(paths, prune(0, leftEndPath, shareEnd, pathEnd, squareSize)...)
 	}
 
 	return paths, nil
-}
-
-func main() {
-	//	fmt.Println(getSubrootPaths(8, 0, 7))
-	//	fmt.Println(getSubrootPaths(8, 3, 1))
-	//	fmt.Println(getSubrootPaths(8, 2, 3))
-	//	fmt.Println(getSubrootPaths(8, 2, 4))
-	//	fmt.Println(getSubrootPaths(8, 0, 2))
-	fmt.Println("32, 0, 4")
-	fmt.Println(GetSubrootPaths(32, 0, 4))
-	fmt.Println("32, 1, 8")
-	fmt.Println(GetSubrootPaths(32, 1, 8))
-	fmt.Println("32, 1, 11")
-	fmt.Println(GetSubrootPaths(32, 1, 11))
-	fmt.Println("32, 18, 11")
-	fmt.Println(GetSubrootPaths(32, 18, 11))
-	fmt.Println("4, 0, 1")
-	fmt.Println(GetSubrootPaths(4, 0, 1))
-	//	fmt.Println(getSubrootPaths(32, 1, 16))
-	//	fmt.Println(getSubrootPaths(32, 0, 16))
 }
