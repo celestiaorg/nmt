@@ -33,7 +33,7 @@ func prune(idxStart uint, pathStart []int, idxEnd uint, pathEnd []int, maxWidth 
 	var prunedPaths [][]int
 	var preprocessedPaths [][]int
 
-	// special case of two-share length
+	// special case of two-share length, just return one or two paths
 	if idxStart+1 >= idxEnd {
 		if idxStart%2 == 1 {
 			return append(prunedPaths, pathStart, pathEnd)
@@ -42,14 +42,14 @@ func prune(idxStart uint, pathStart []int, idxEnd uint, pathEnd []int, maxWidth 
 		}
 	}
 
-	// if starting share is on an odd index
+	// if starting share is on an odd index, add that single path and shift it right 1
 	if idxStart%2 == 1 {
 		idxStart += 1
 		preprocessedPaths = append(preprocessedPaths, pathStart)
 		pathStart = subdivide(idxStart, maxWidth)
 	}
 
-	// if ending share is on an even index
+	// if ending share is on an even index, add that single index and shift it left 1
 	if idxEnd%2 == 0 {
 		idxEnd -= 1
 		preprocessedPaths = append(preprocessedPaths, pathEnd)
@@ -63,14 +63,15 @@ func prune(idxStart uint, pathStart []int, idxEnd uint, pathEnd []int, maxWidth 
 	for i := 1; i < treeDepth; i++ {
 		nodeSpan := uint(math.Pow(float64(2), float64(i)))
 		if pathStart[len(pathStart)-i] == 0 {
+			// if nodespan is less than end index, continue traversing upwards
 			if (nodeSpan+idxStart)-1 < idxEnd {
-				// if nodespan is less than end index, continue traversing upwards
 				capturedSpan = nodeSpan
 				// if a right path has been encountered, we want to return the right
 				// branch one level down
 				if rightTraversed {
 					prunedPaths = append(prunedPaths, extractBranch(pathStart, treeDepth, i, 1))
 				} else {
+					// else add the current root node
 					prunedPaths = append(prunedPaths, extractBranch(pathStart, treeDepth, i, 0))
 				}
 			} else if (nodeSpan+idxStart)-1 == idxEnd {
@@ -130,6 +131,7 @@ func GetSubrootPaths(squareSize uint, idxStart uint, shareLen uint) ([][]int, er
 	var paths [][]int
 	shares := squareSize * squareSize
 
+	// no path exists for 0 length slice
 	if shareLen == 0 {
 		return nil, errors.New("GetSubrootPaths: Can't compute path for 0 length share slice")
 	}
@@ -151,21 +153,26 @@ func GetSubrootPaths(squareSize uint, idxStart uint, shareLen uint) ([][]int, er
 	pathStart := subdivide(shareStart, squareSize)
 	pathEnd := subdivide(shareEnd, squareSize)
 
-	if shareLen == 0 {
+	// if the length is one, just return the subdivided start path
+	if shareStart == shareEnd {
 		paths = append(paths, pathStart)
 		return paths, nil
 	}
 
+	// if the shares are all in one row, do the normal case
 	if startRow == endRow-1 {
 		paths = append(paths, prune(shareStart, pathStart, shareEnd, pathEnd, squareSize)...)
 	} else {
+		// if the shares span multiple rows, treat it as 2 different path generations,
+		// one from left-most root to end of a row, and one from start of a row to right-most root,
+		// and returning nil lists for the fully covered rows in between
 		rightEndPath := subdivide(squareSize-1, squareSize)
 		leftEndPath := subdivide(0, squareSize)
+		paths = append(paths, prune(shareStart, pathStart, squareSize-1, rightEndPath, squareSize)...)
 		for i := 0; i < (endRow-startRow)-1; i++ {
 			var p []int
 			paths = append(paths, p)
 		}
-		paths = append(paths, prune(shareStart, pathStart, squareSize-1, rightEndPath, squareSize)...)
 		paths = append(paths, prune(0, leftEndPath, shareEnd, pathEnd, squareSize)...)
 	}
 
