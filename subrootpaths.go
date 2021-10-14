@@ -154,7 +154,7 @@ func GetSubrootPaths(squareSize uint, idxStart uint, shareLen uint) ([][]int, er
 	pathEnd := subdivide(shareEnd, squareSize)
 
 	// if the length is one, just return the subdivided start path
-	if shareStart == shareEnd {
+	if shareLen == 0 {
 		paths = append(paths, pathStart)
 		return paths, nil
 	}
