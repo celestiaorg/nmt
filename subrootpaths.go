@@ -81,7 +81,7 @@ func prune(idxStart uint, pathStart []int, idxEnd uint, pathEnd []int, maxWidth 
 				} else {
 					// if we've never traversed right then this is a special case
 					// where the last root found here encompasses the whole lower tree
-					return append(make([][]int, 0), pathStart[:treeDepth-i])
+					return append(preprocessedPaths, pathStart[:treeDepth-i])
 				}
 			} else {
 				// else if it's greater than the end index, break out of the left-capture loop
