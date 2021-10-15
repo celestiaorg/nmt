@@ -11,17 +11,15 @@ var SRPPastSquareSize = errors.New("GetSubrootPaths: Share slice can't be past t
 
 func subdivide(idxStart uint, width uint) []int {
 	var path []int
-	if width == 1 {
-		return path
+	pathlen := int(math.Log2(float64(width)))
+	for i := pathlen - 1; i >= 0; i-- {
+		if (idxStart & (1 << i)) == 0 {
+			path = append(path, 0)
+		} else {
+			path = append(path, 1)
+		}
 	}
-	center := width / 2
-	if idxStart < center {
-		path = append(path, 0)
-	} else {
-		idxStart -= center
-		path = append(path, 1)
-	}
-	return append(path, subdivide(idxStart, center)...)
+	return path
 }
 
 func extractBranch(path []int, depth int, index int, offset int) []int {
@@ -47,14 +45,14 @@ func prune(idxStart uint, pathStart []int, idxEnd uint, pathEnd []int, maxWidth 
 
 	// if starting share is on an odd index, add that single path and shift it right 1
 	if idxStart%2 == 1 {
-		idxStart += 1
+		idxStart++
 		preprocessedPaths = append(preprocessedPaths, pathStart)
 		pathStart = subdivide(idxStart, maxWidth)
 	}
 
 	// if ending share is on an even index, add that single index and shift it left 1
 	if idxEnd%2 == 0 {
-		idxEnd -= 1
+		idxEnd--
 		preprocessedPaths = append(preprocessedPaths, pathEnd)
 		pathEnd = subdivide(idxEnd, maxWidth)
 	}
