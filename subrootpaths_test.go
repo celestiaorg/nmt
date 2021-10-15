@@ -1,28 +1,114 @@
 package nmt
 
 import (
-	"fmt"
+	"reflect"
 	"testing"
 )
 
+func TestArgValidation(t *testing.T) {
+	var err error
+	var paths [][][]int
+
+	paths, err = GetSubrootPaths(0, 0, 0)
+	if err == nil {
+		t.Fatalf(`GetSubrootPaths(0, 0, 0) = %v, %v, want square size error`, paths, err)
+	}
+
+	paths, err = GetSubrootPaths(1, 0, 1)
+	if err == nil {
+		t.Fatalf(`GetSubrootPaths(1, 0, 1) = %v, %v, want square size error`, paths, err)
+	}
+
+	paths, err = GetSubrootPaths(20, 0, 1)
+	if err == nil {
+		t.Fatalf(`GetSubrootPaths(20, 0, 1) = %v, %v, want square size error`, paths, err)
+	}
+
+	paths, err = GetSubrootPaths(4, 0, 17)
+	if err == nil {
+		t.Fatalf(`GetSubrootPaths(4, 0, 17) = %v, %v, want length past square size error`, paths, err)
+	}
+
+	paths, err = GetSubrootPaths(4, 0, 0)
+	if err == nil {
+		t.Fatalf(`GetSubrootPaths(4, 0, 0) = %v, %v, want invalid share size error`, paths, err)
+	}
+}
+
 func TestPathGeneration(t *testing.T) {
-	//	fmt.Println(getSubrootPaths(8, 0, 7))
-	//	fmt.Println(getSubrootPaths(8, 3, 1))
-	//	fmt.Println(getSubrootPaths(8, 2, 3))
-	//	fmt.Println(getSubrootPaths(8, 2, 4))
-	//	fmt.Println(getSubrootPaths(8, 0, 2))
-	fmt.Println("32, 0, 4")
-	fmt.Println(GetSubrootPaths(32, 0, 4))
-	fmt.Println("32, 1, 8")
-	fmt.Println(GetSubrootPaths(32, 1, 8))
-	fmt.Println("32, 1, 11")
-	fmt.Println(GetSubrootPaths(32, 1, 11))
-	fmt.Println("32, 18, 11")
-	fmt.Println(GetSubrootPaths(32, 18, 11))
-	fmt.Println("4, 0, 1")
-	fmt.Println(GetSubrootPaths(4, 0, 1))
-	fmt.Println("16, 0, 8")
-	fmt.Println(GetSubrootPaths(16, 0, 8))
-	//	fmt.Println(getSubrootPaths(32, 1, 16))
-	//	fmt.Println(getSubrootPaths(32, 0, 16))
+
+	var err error
+	var paths [][][]int
+
+	paths, err = GetSubrootPaths(2, 0, 2)
+	{
+		check := [][][]int{{{}}}
+		if !reflect.DeepEqual(paths, check) {
+			t.Fatalf(`GetSubrootPaths(2, 0, 2) = %v, %v, want %v`, paths, err, check)
+		}
+	}
+
+	paths, err = GetSubrootPaths(2, 0, 1)
+	{
+		check := [][][]int{{{0}}}
+		if !reflect.DeepEqual(paths, check) {
+			t.Fatalf(`GetSubrootPaths(2, 0, 1) = %v, %v, want %v`, paths, err, check)
+		}
+	}
+
+	paths, err = GetSubrootPaths(2, 1, 1)
+	{
+		check := [][][]int{{{1}}}
+		if !reflect.DeepEqual(paths, check) {
+			t.Fatalf(`GetSubrootPaths(2, 1, 1) = %v, %v, want %v`, paths, err, check)
+		}
+	}
+
+	paths, err = GetSubrootPaths(8, 1, 6)
+	{
+		check := [][][]int{{{0, 0, 1}, {1, 1, 0}, {0, 1}, {1, 0}}}
+		if !reflect.DeepEqual(paths, check) {
+			t.Fatalf(`GetSubrootPaths(8, 1, 6) = %v, %v, want %v`, paths, err, check)
+		}
+	}
+
+	paths, err = GetSubrootPaths(32, 0, 32)
+	{
+		check := [][][]int{{{}}}
+		if !reflect.DeepEqual(paths, check) {
+			t.Fatalf(`GetSubrootPaths(32, 0, 32) = %v, %v, want %v`, paths, err, check)
+		}
+	}
+
+	paths, err = GetSubrootPaths(32, 0, 64)
+	{
+		check := [][][]int{{{}}, {{}}}
+		if !reflect.DeepEqual(paths, check) {
+			t.Fatalf(`GetSubrootPaths(32, 0, 64) = %v, %v, want %v`, paths, err, check)
+		}
+	}
+
+	paths, err = GetSubrootPaths(32, 0, 96)
+	{
+		check := [][][]int{{{}}, {{}}, {{}}}
+		if !reflect.DeepEqual(paths, check) {
+			t.Fatalf(`GetSubrootPaths(32, 0, 96) = %v, %v, want %v`, paths, err, check)
+		}
+	}
+
+	paths, err = GetSubrootPaths(32, 18, 11)
+	{
+		check := [][][]int{{{1, 1, 1, 0, 0}, {1, 0, 0, 1}, {1, 0, 1}, {1, 1, 0}}}
+		if !reflect.DeepEqual(paths, check) {
+			t.Fatalf(`GetSubrootPaths(32, 18, 11) = %v, %v, want %v`, paths, err, check)
+		}
+	}
+
+	paths, err = GetSubrootPaths(32, 48, 16)
+	{
+		check := [][][]int{{{1}}}
+		if !reflect.DeepEqual(paths, check) {
+			t.Fatalf(`GetSubrootPaths(32, 18, 11) = %v, %v, want %v`, paths, err, check)
+		}
+	}
 }

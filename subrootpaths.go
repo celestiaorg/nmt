@@ -24,8 +24,7 @@ func extractBranch(path []int, depth int, index int, offset int) []int {
 	rightCapture := make([]int, len(path))
 	copy(rightCapture, path)
 	rightCapture[len(path)-index] = 1
-	rightCapture = rightCapture[:depth-(index-offset)]
-	return rightCapture
+	return rightCapture[:depth-(index-offset)]
 }
 
 func prune(idxStart uint, pathStart []int, idxEnd uint, pathEnd []int, maxWidth uint) [][]int {
@@ -60,7 +59,7 @@ func prune(idxStart uint, pathStart []int, idxEnd uint, pathEnd []int, maxWidth 
 	capturedSpan := uint(0)
 	rightTraversed := false
 
-	for i := 1; i < treeDepth; i++ {
+	for i := 1; i <= treeDepth; i++ {
 		nodeSpan := uint(math.Pow(float64(2), float64(i)))
 		if pathStart[len(pathStart)-i] == 0 {
 			// if nodespan is less than end index, continue traversing upwards
@@ -101,7 +100,7 @@ func prune(idxStart uint, pathStart []int, idxEnd uint, pathEnd []int, maxWidth 
 
 	var outPath []int
 
-	for i := 1; i < treeDepth; i++ {
+	for i := 1; i <= treeDepth; i++ {
 		// if we ever reach a left branch connection on this loop we've found the final slice
 		if pathEnd[len(pathEnd)-i] == 0 {
 			if outPath == nil {
@@ -122,14 +121,24 @@ func prune(idxStart uint, pathStart []int, idxEnd uint, pathEnd []int, maxWidth 
 	return append(preprocessedPaths, prunedPaths...)
 }
 
-// Pure function that takes arguments: square size, share index start,
-// and share length, and returns a minimal path to the subtree root that
-// encompasses that entire range, with the path starting from the
-// nearest row root.
-func GetSubrootPaths(squareSize uint, idxStart uint, shareLen uint) ([][]int, error) {
+// GetSubrootPaths is a pure function that takes arguments: square size, share index start,
+// and share length, and returns a minimal set of paths to the subtree roots that
+// encompasses that entire range of shares, with each top level entry in the list
+// starting from the nearest row root.
+//
+// An empty entry in the top level list means the shares span that entire row and so
+// the root for that segment of shares is equivalent to the row root.
+func GetSubrootPaths(squareSize uint, idxStart uint, shareLen uint) ([][][]int, error) {
 
 	var paths [][]int
+	var top [][][]int
+
 	shares := squareSize * squareSize
+
+	// check if squareSize is a power of 2 by checking that only 1 bit is on
+	if squareSize < 2 || !((squareSize & (squareSize - 1)) == 0) {
+		return nil, errors.New("GetSubrootPaths: Supplied square size is not a power of 2")
+	}
 
 	// no path exists for 0 length slice
 	if shareLen == 0 {
@@ -155,26 +164,24 @@ func GetSubrootPaths(squareSize uint, idxStart uint, shareLen uint) ([][]int, er
 
 	// if the length is one, just return the subdivided start path
 	if shareLen == 0 {
-		paths = append(paths, pathStart)
-		return paths, nil
+		return append(top, append(paths, pathStart)), nil
 	}
 
 	// if the shares are all in one row, do the normal case
 	if startRow == endRow-1 {
-		paths = append(paths, prune(shareStart, pathStart, shareEnd, pathEnd, squareSize)...)
+		top = append(top, prune(shareStart, pathStart, shareEnd, pathEnd, squareSize))
 	} else {
 		// if the shares span multiple rows, treat it as 2 different path generations,
 		// one from left-most root to end of a row, and one from start of a row to right-most root,
-		// and returning nil lists for the fully covered rows in between
-		rightEndPath := subdivide(squareSize-1, squareSize)
-		leftEndPath := subdivide(0, squareSize)
-		paths = append(paths, prune(shareStart, pathStart, squareSize-1, rightEndPath, squareSize)...)
-		for i := 0; i < (endRow-startRow)-1; i++ {
-			var p []int
-			paths = append(paths, p)
+		// and returning nil lists for the fully covered rows in between=
+		left, _ := GetSubrootPaths(squareSize, idxStart, squareSize-idxStart)
+		right, _ := GetSubrootPaths(squareSize, 0, shareEnd+1)
+		top = append(top, left[0])
+		for i := 1; i < (endRow-startRow)-1; i++ {
+			top = append(top, [][]int{{}})
 		}
-		paths = append(paths, prune(0, leftEndPath, shareEnd, pathEnd, squareSize)...)
+		top = append(top, right[0])
 	}
 
-	return paths, nil
+	return top, nil
 }
