@@ -60,10 +60,8 @@ func prune(idxStart uint, pathStart []int, idxEnd uint, pathEnd []int, maxWidth 
 	treeDepth := len(pathStart)
 	capturedSpan := uint(0)
 	rightTraversed := false
-	//	lastVisited := 0
 
 	for i := 1; i <= treeDepth; i++ {
-		//		lastVisited = i
 		nodeSpan := uint(math.Pow(float64(2), float64(i)))
 		if pathStart[len(pathStart)-i] == 0 {
 			// if nodespan is less than end index, continue traversing upwards
@@ -91,6 +89,8 @@ func prune(idxStart uint, pathStart []int, idxEnd uint, pathEnd []int, maxWidth 
 				// else if it's greater than the end index, break out of the left-capture loop
 				capturedSpan = nodeSpan/2 - 1
 				if !rightTraversed {
+					// if a right path hasn't been encountered, add only the last node added
+					// as it will contain all the previous ones perfectly
 					prunedPaths = append([][]int{}, prunedPaths[len(prunedPaths)-1])
 				}
 				break
@@ -108,7 +108,6 @@ func prune(idxStart uint, pathStart []int, idxEnd uint, pathEnd []int, maxWidth 
 	combined := append(preprocessedPaths, prunedPaths...)
 	newStart := idxStart + capturedSpan + 1
 	return append(combined, prune(newStart, subdivide(newStart, maxWidth), idxEnd, pathEnd, maxWidth)...)
-	//return append(preprocessedPaths, prunedPaths...)
 }
 
 // GetSubrootPaths is a pure function that takes arguments: square size, share index start,
