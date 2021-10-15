@@ -5,6 +5,10 @@ import (
 	"math"
 )
 
+var SRPNotPowerOf2 = errors.New("GetSubrootPaths: Supplied square size is not a power of 2")
+var SRPInvalidShareSize = errors.New("GetSubrootPaths: Can't compute path for 0 length share slice")
+var SRPPastSquareSize = errors.New("GetSubrootPaths: Share slice can't be past the square size")
+
 func subdivide(idxStart uint, width uint) []int {
 	var path []int
 	if width == 1 {
@@ -137,12 +141,12 @@ func GetSubrootPaths(squareSize uint, idxStart uint, shareLen uint) ([][][]int, 
 
 	// check if squareSize is a power of 2 by checking that only 1 bit is on
 	if squareSize < 2 || !((squareSize & (squareSize - 1)) == 0) {
-		return nil, errors.New("GetSubrootPaths: Supplied square size is not a power of 2")
+		return nil, SRPNotPowerOf2
 	}
 
 	// no path exists for 0 length slice
 	if shareLen == 0 {
-		return nil, errors.New("GetSubrootPaths: Can't compute path for 0 length share slice")
+		return nil, SRPInvalidShareSize
 	}
 
 	// adjust for 0 index
@@ -150,7 +154,7 @@ func GetSubrootPaths(squareSize uint, idxStart uint, shareLen uint) ([][][]int, 
 
 	// sanity checking
 	if idxStart >= shares || idxStart+shareLen >= shares {
-		return nil, errors.New("GetSubrootPaths: Share slice can't be past the square size")
+		return nil, SRPPastSquareSize
 	}
 
 	startRow := int(math.Floor(float64(idxStart) / float64(squareSize)))
