@@ -64,6 +64,14 @@ func TestPathGeneration(t *testing.T) {
 		}
 	}
 
+	paths, err = GetSubrootPaths(4, 1, 2)
+	{
+		check := [][][]int{{{0, 1}, {1, 0}}}
+		if !reflect.DeepEqual(paths, check) {
+			t.Fatalf(`GetSubrootPaths(4, 1, 2) = %v, %v, want %v`, paths, err, check)
+		}
+	}
+
 	paths, err = GetSubrootPaths(8, 1, 6)
 	{
 		check := [][][]int{{{0, 0, 1}, {1, 1, 0}, {0, 1}, {1, 0}}}
@@ -101,6 +109,14 @@ func TestPathGeneration(t *testing.T) {
 		check := [][][]int{{{1, 1, 1, 0, 0}, {1, 0, 0, 1}, {1, 0, 1}, {1, 1, 0}}}
 		if !reflect.DeepEqual(paths, check) {
 			t.Fatalf(`GetSubrootPaths(32, 18, 11) = %v, %v, want %v`, paths, err, check)
+		}
+	}
+
+	paths, err = GetSubrootPaths(32, 14, 18)
+	{
+		check := [][][]int{{{0, 1, 1, 1}, {1}}}
+		if !reflect.DeepEqual(paths, check) {
+			t.Fatalf(`GetSubrootPaths(32, 14, 18) = %v, %v, want %v`, paths, err, check)
 		}
 	}
 
