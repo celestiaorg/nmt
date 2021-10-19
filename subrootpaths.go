@@ -5,9 +5,11 @@ import (
 	"math"
 )
 
-var SRPNotPowerOf2 = errors.New("GetSubrootPaths: Supplied square size is not a power of 2")
-var SRPInvalidShareSize = errors.New("GetSubrootPaths: Can't compute path for 0 length share slice")
-var SRPPastSquareSize = errors.New("GetSubrootPaths: Share slice can't be past the square size")
+var (
+	SRPNotPowerOf2      = errors.New("GetSubrootPaths: Supplied square size is not a power of 2")
+	SRPInvalidShareSize = errors.New("GetSubrootPaths: Can't compute path for 0 length share slice")
+	SRPPastSquareSize   = errors.New("GetSubrootPaths: Share slice can't be past the square size")
+)
 
 func subdivide(idxStart uint, width uint) []int {
 	var path []int
