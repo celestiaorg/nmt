@@ -125,6 +125,11 @@ func TestPathGeneration(t *testing.T) {
 			want:  pathResult{{{}}},
 			desc:  "Span for last row in the square, should return empty list.",
 		},
+		{
+			input: pathSpan{squareSize: 32, startNode: 1023, length: 1},
+			want:  pathResult{{{1, 1, 1, 1, 1}}},
+			desc:  "Span for last node in the last row in the square, should return a path of 1s",
+		},
 	}
 
 	for _, tc := range tests {

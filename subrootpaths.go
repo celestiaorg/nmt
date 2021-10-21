@@ -24,17 +24,20 @@ func subdivide(idxStart uint, width uint) []int {
 	return path
 }
 
-func extractBranch(path []int, depth int, index int, offset int, branch int) []int {
+func extractBranch(path []int, index int, offset int, branch int) []int {
 	rightCapture := make([]int, len(path))
 	copy(rightCapture, path)
-	rightCapture[len(path)-index] = branch
-	return rightCapture[:depth-(index-offset)]
+	rightCapture[index] = branch
+	return rightCapture[:index+offset]
 }
 
-func prune(idxStart uint, pathStart []int, idxEnd uint, pathEnd []int, maxWidth uint) [][]int {
+func prune(idxStart uint, idxEnd uint, maxWidth uint) [][]int {
 
 	var prunedPaths [][]int
 	var preprocessedPaths [][]int
+
+	pathStart := subdivide(idxStart, maxWidth)
+	pathEnd := subdivide(idxEnd, maxWidth)
 
 	// special case of two-share length, just return one or two paths
 	if idxStart+1 >= idxEnd {
@@ -63,38 +66,23 @@ func prune(idxStart uint, pathStart []int, idxEnd uint, pathEnd []int, maxWidth 
 	capturedSpan := uint(0)
 	rightTraversed := false
 
-	for i := 1; i <= treeDepth; i++ {
-		nodeSpan := uint(math.Pow(float64(2), float64(i)))
-		if pathStart[len(pathStart)-i] == 0 {
+	for i := treeDepth - 1; i >= 0 && capturedSpan < idxEnd; i-- {
+		nodeSpan := uint(math.Pow(float64(2), float64(treeDepth-i)))
+		if pathStart[i] == 0 {
 			// if nodespan is less than end index, continue traversing upwards
-			if (nodeSpan+idxStart)-1 < idxEnd {
-				capturedSpan = nodeSpan
+			lastNode := nodeSpan + idxStart - 1
+			if lastNode <= idxEnd {
+				capturedSpan = lastNode
 				// if a right path has been encountered, we want to return the right
 				// branch one level down
 				if rightTraversed {
-					prunedPaths = append(prunedPaths, extractBranch(pathStart, treeDepth, i, 1, 1))
+					prunedPaths = append(prunedPaths, extractBranch(pathStart, i, 1, 1))
 				} else {
-					// else add the current root node
-					prunedPaths = append(prunedPaths, extractBranch(pathStart, treeDepth, i, 0, 1))
-				}
-			} else if (nodeSpan+idxStart)-1 == idxEnd {
-				// if it's equal to the end index, this is the final root to return
-				if rightTraversed {
-					prunedPaths = append(prunedPaths, extractBranch(pathStart, treeDepth, i, 1, 1))
-					return append(preprocessedPaths, prunedPaths...)
-				} else {
-					// if we've never traversed right then this is a special case
-					// where the last root found here encompasses the whole lower tree
-					return append(preprocessedPaths, pathStart[:treeDepth-i])
+					// else add *just* the current root node
+					prunedPaths = [][]int{pathStart[:i]}
 				}
 			} else {
 				// else if it's greater than the end index, break out of the left-capture loop
-				capturedSpan = nodeSpan/2 - 1
-				if !rightTraversed {
-					// if a right path hasn't been encountered, add only the last node added
-					// as it will contain all the previous ones perfectly
-					prunedPaths = append([][]int{}, prunedPaths[len(prunedPaths)-1])
-				}
 				break
 			}
 		} else {
@@ -107,9 +95,15 @@ func prune(idxStart uint, pathStart []int, idxEnd uint, pathEnd []int, maxWidth 
 		}
 	}
 
+	// if the process captured the span to the end, return the results
+	if capturedSpan == idxEnd {
+		return append(preprocessedPaths, prunedPaths...)
+	}
+
+	// else recurse into the leftover span
 	combined := append(preprocessedPaths, prunedPaths...)
-	newStart := idxStart + capturedSpan + 1
-	return append(combined, prune(newStart, subdivide(newStart, maxWidth), idxEnd, pathEnd, maxWidth)...)
+	newStart := capturedSpan + 1
+	return append(combined, prune(newStart, idxEnd, maxWidth)...)
 }
 
 // GetSubrootPaths is a pure function that takes arguments: square size, share index start,
@@ -150,17 +144,14 @@ func GetSubrootPaths(squareSize uint, idxStart uint, shareLen uint) ([][][]int, 
 	shareStart := idxStart % squareSize
 	shareEnd := (idxStart + shareLen) % squareSize
 
-	pathStart := subdivide(shareStart, squareSize)
-	pathEnd := subdivide(shareEnd, squareSize)
-
 	// if the length is one, just return the subdivided start path
 	if shareLen == 0 {
-		return append(top, append(paths, pathStart)), nil
+		return append(top, append(paths, subdivide(shareStart, squareSize))), nil
 	}
 
 	// if the shares are all in one row, do the normal case
 	if startRow == endRow-1 {
-		top = append(top, prune(shareStart, pathStart, shareEnd, pathEnd, squareSize))
+		top = append(top, prune(shareStart, shareEnd, squareSize))
 	} else {
 		// if the shares span multiple rows, treat it as 2 different path generations,
 		// one from left-most root to end of a row, and one from start of a row to right-most root,
