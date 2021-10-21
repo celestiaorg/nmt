@@ -42,9 +42,9 @@ func prune(idxStart uint, idxEnd uint, maxWidth uint) [][]int {
 	// special case of two-share length, just return one or two paths
 	if idxStart+1 >= idxEnd {
 		if idxStart%2 == 1 {
-			return append(prunedPaths, pathStart, pathEnd)
+			return [][]int{pathStart, pathEnd}
 		} else {
-			return append(prunedPaths, pathStart[:len(pathStart)-1])
+			return [][]int{pathStart[:len(pathStart)-1]}
 		}
 	}
 
@@ -94,15 +94,13 @@ func prune(idxStart uint, idxEnd uint, maxWidth uint) [][]int {
 		}
 	}
 
+	combined := append(preprocessedPaths, prunedPaths...)
 	// if the process captured the span to the end, return the results
 	if capturedSpan == idxEnd {
-		return append(preprocessedPaths, prunedPaths...)
+		return combined
 	}
-
 	// else recurse into the leftover span
-	combined := append(preprocessedPaths, prunedPaths...)
-	newStart := capturedSpan + 1
-	return append(combined, prune(newStart, idxEnd, maxWidth)...)
+	return append(combined, prune(capturedSpan+1, idxEnd, maxWidth)...)
 }
 
 // GetSubrootPaths is a pure function that takes arguments: square size, share index start,
