@@ -165,7 +165,7 @@ func GetSubrootPaths(squareSize uint, idxStart uint, shareLen uint) ([][][]int, 
 		// if the shares span multiple rows, treat it as 2 different path generations,
 		// one from left-most root to end of a row, and one from start of a row to right-most root,
 		// and returning nil lists for the fully covered rows in between=
-		left, _ := GetSubrootPaths(squareSize, idxStart, squareSize-idxStart)
+		left, _ := GetSubrootPaths(squareSize, shareStart, squareSize-shareStart)
 		right, _ := GetSubrootPaths(squareSize, 0, shareEnd+1)
 		top = append(top, left[0])
 		for i := 1; i < (endRow-startRow)-1; i++ {

@@ -1,6 +1,7 @@
 package nmt
 
 import (
+	"fmt"
 	"reflect"
 	"testing"
 )
@@ -115,11 +116,22 @@ func TestPathGeneration(t *testing.T) {
 			want:  pathResult{{{}}, {{}}, {{}}, {{}}, {{}}, {{}}, {{}}, {{}}, {{}}, {{}}, {{}}, {{}}, {{}}, {{}}, {{}}, {{}}, {{}}, {{}}, {{}}, {{}}, {{}}, {{}}, {{}}, {{}}, {{}}, {{}}, {{}}, {{}}, {{}}, {{}}, {{}}, {{}}},
 			desc:  "Span for the entire square. Should return 32 empty lists to signify span covers every row in the square",
 		},
+		{
+			input: pathSpan{squareSize: 32, startNode: 988, length: 32},
+			want:  pathResult{{{1, 1, 1}}, {{0}, {1, 0}, {1, 1, 0}}},
+			desc:  "Span for last two rows in square, should return last branch of second to last row, left half of last row, and two branches on right half of last row",
+		},
+		{
+			input: pathSpan{squareSize: 32, startNode: 992, length: 32},
+			want:  pathResult{{{}}},
+			desc:  "Span for last row in the square, should return empty list.",
+		},
 	}
 
 	for _, tc := range tests {
 		paths, err := GetSubrootPaths(tc.input.squareSize, tc.input.startNode, tc.input.length)
 		if !reflect.DeepEqual(pathResult(paths), tc.want) {
+			fmt.Println(tc.desc)
 			t.Fatalf(`GetSubrootPaths(%v) = %v, %v, want %v - rationale: %v`, tc.input, paths, err, tc.want, tc.desc)
 		}
 	}
