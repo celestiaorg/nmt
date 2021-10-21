@@ -59,7 +59,6 @@ func prune(idxStart uint, idxEnd uint, maxWidth uint) [][]int {
 	if idxEnd%2 == 0 {
 		idxEnd--
 		preprocessedPaths = append(preprocessedPaths, pathEnd)
-		pathEnd = subdivide(idxEnd, maxWidth)
 	}
 
 	treeDepth := len(pathStart)
