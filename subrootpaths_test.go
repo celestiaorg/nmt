@@ -25,7 +25,7 @@ func TestArgValidation(t *testing.T) {
 		{input: pathSpan{squareSize: 1, startNode: 0, length: 1}, want: srpNotPowerOf2},
 		{input: pathSpan{squareSize: 20, startNode: 0, length: 1}, want: srpNotPowerOf2},
 		{input: pathSpan{squareSize: 4, startNode: 0, length: 17}, want: srpPastSquareSize},
-		{input: pathSpan{squareSize: 4, startNode: 0, length: 0}, want: srpInvalidShareSize},
+		{input: pathSpan{squareSize: 4, startNode: 0, length: 0}, want: srpInvalidShareCount},
 	}
 
 	for _, tc := range tests {
