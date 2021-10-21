@@ -1,7 +1,6 @@
 package nmt
 
 import (
-	"fmt"
 	"reflect"
 	"testing"
 )
@@ -131,7 +130,6 @@ func TestPathGeneration(t *testing.T) {
 	for _, tc := range tests {
 		paths, err := GetSubrootPaths(tc.input.squareSize, tc.input.startNode, tc.input.length)
 		if !reflect.DeepEqual(pathResult(paths), tc.want) {
-			fmt.Println(tc.desc)
 			t.Fatalf(`GetSubrootPaths(%v) = %v, %v, want %v - rationale: %v`, tc.input, paths, err, tc.want, tc.desc)
 		}
 	}
