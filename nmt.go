@@ -373,14 +373,14 @@ type leafRange struct {
 	start, end uint64
 }
 
-// minNamespace parses the minimum namespace id from a given hash
-func minNamespace(hash []byte, size namespace.IDSize) []byte {
+// MinNamespace parses the minimum namespace id from a given hash
+func MinNamespace(hash []byte, size namespace.IDSize) []byte {
 	min := make([]byte, 0, size)
 	return append(min, hash[:size]...)
 }
 
-// maxNamespace parses the maximum namespace id from a given hash
-func maxNamespace(hash []byte, size namespace.IDSize) []byte {
+// MaxNamespace parses the maximum namespace id from a given hash
+func MaxNamespace(hash []byte, size namespace.IDSize) []byte {
 	max := make([]byte, 0, size)
 	return append(max, hash[size:size*2]...)
 }
