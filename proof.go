@@ -98,8 +98,8 @@ func NewAbsenceProof(proofStart, proofEnd int, proofNodes [][]byte, leafHash []b
 // is complete and no leaf of that namespace was left out in the proof.
 func (proof Proof) VerifyNamespace(h hash.Hash, nID namespace.ID, data [][]byte, root []byte) bool {
 	nth := NewNmtHasher(h, nID.Size(), proof.isMaxNamespaceIDIgnored)
-	min := namespace.ID(minNamespace(root, nID.Size()))
-	max := namespace.ID(maxNamespace(root, nID.Size()))
+	min := namespace.ID(MinNamespace(root, nID.Size()))
+	max := namespace.ID(MaxNamespace(root, nID.Size()))
 	if nID.Size() != min.Size() || nID.Size() != max.Size() {
 		// conflicting namespace sizes
 		return false
@@ -185,7 +185,7 @@ func (proof Proof) verifyLeafHashes(nth *Hasher, verifyCompleteness bool, nID na
 	if verifyCompleteness {
 		// leftSubtrees contains the subtree roots upto [0, r.Start)
 		for _, subtree := range leftSubtrees {
-			leftSubTreeMax := maxNamespace(subtree, nth.NamespaceSize())
+			leftSubTreeMax := MaxNamespace(subtree, nth.NamespaceSize())
 			if nID.LessOrEqual(namespace.ID(leftSubTreeMax)) {
 				return false
 			}
@@ -193,7 +193,7 @@ func (proof Proof) verifyLeafHashes(nth *Hasher, verifyCompleteness bool, nID na
 		// rightSubtrees only contains the subtrees after [0, r.Start)
 		rightSubtrees := proof.nodes
 		for _, subtree := range rightSubtrees {
-			rightSubTreeMin := minNamespace(subtree, nth.NamespaceSize())
+			rightSubTreeMin := MinNamespace(subtree, nth.NamespaceSize())
 			if namespace.ID(rightSubTreeMin).LessOrEqual(nID) {
 				return false
 			}

@@ -55,8 +55,8 @@ func ExampleNamespacedMerkleTree() {
 	// compute the root
 	root := tree.Root()
 	// the root's min/max namespace is the min and max namespace of all leaves:
-	minNS := minNamespace(root, tree.NamespaceSize())
-	maxNS := maxNamespace(root, tree.NamespaceSize())
+	minNS := MinNamespace(root, tree.NamespaceSize())
+	maxNS := MaxNamespace(root, tree.NamespaceSize())
 	if bytes.Equal(minNS, namespace.ID{0}) {
 		fmt.Printf("Min namespace: %x\n", minNS)
 	}
