@@ -1,4 +1,2 @@
-// Package namespace contains the core namespaced data types:
-// * PrefixedData represents the leaf data that gets pushed to the NMT (data prefixed with a namespace.ID)
-// * IntervalDigest is the result of a namespaced hashing operation (minNs, maxNs, rawRoot).
+// Package namespace contains core namespaced data types.
 package namespace

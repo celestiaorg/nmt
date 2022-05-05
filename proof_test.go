@@ -19,7 +19,7 @@ func TestProof_VerifyNamespace_False(t *testing.T) {
 		generateLeafData(testNidLen, 0, 9, []byte("data"))...,
 	), newNamespaceDataPair([]byte{0, 0, 8}, []byte("last leaf")))
 	for _, d := range data {
-		err := n.Push(namespace.PrefixedData(append(d.ID, d.Data...)))
+		err := n.Push(d.ID, d.Data)
 		if err != nil {
 			t.Fatalf("invalid test setup: error on Push(): %v", err)
 		}

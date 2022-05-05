@@ -39,16 +39,16 @@ func ExampleNamespacedMerkleTree() {
 	// the tree will use this namespace size
 	nidSize := 1
 	// the leaves that will be pushed
-	data := [][]byte{
-		append(namespace.ID{0}, []byte("leaf_0")...),
-		append(namespace.ID{0}, []byte("leaf_1")...),
-		append(namespace.ID{1}, []byte("leaf_2")...),
-		append(namespace.ID{1}, []byte("leaf_3")...)}
+	data := []namespaceDataPair{
+		{namespace.ID{0}, []byte("leaf_0")},
+		{namespace.ID{0}, []byte("leaf_1")},
+		{namespace.ID{1}, []byte("leaf_2")},
+		{namespace.ID{1}, []byte("leaf_3")}}
 	// Init a tree with the namespace size as well as
 	// the underlying hash function:
 	tree := New(sha256.New(), NamespaceIDSize(nidSize))
 	for _, d := range data {
-		if err := tree.Push(d); err != nil {
+		if err := tree.Push(d.ID, d.Data); err != nil {
 			panic(fmt.Sprintf("unexpected error: %v", err))
 		}
 	}
@@ -91,29 +91,29 @@ func ExampleNamespacedMerkleTree() {
 
 func TestNamespacedMerkleTree_Push(t *testing.T) {
 	tests := []struct {
-		name    string
-		data    namespace.PrefixedData
-		wantErr bool
+		name      string
+		nID, data []byte
+		wantErr   bool
 	}{
-		{"1st push: always OK", append([]byte{0, 0, 0}, []byte("dummy data")...), false},
-		{"push with same namespace: OK", append([]byte{0, 0, 0}, []byte("dummy data")...), false},
-		{"push with greater namespace: OK", append([]byte{0, 0, 1}, []byte("dummy data")...), false},
-		{"push with smaller namespace: Err", append([]byte{0, 0, 0}, []byte("dummy data")...), true},
-		{"push with same namespace: Ok", append([]byte{0, 0, 1}, []byte("dummy data")...), false},
-		{"push with greater namespace: Ok", append([]byte{1, 0, 0}, []byte("dummy data")...), false},
-		{"push with smaller namespace: Err", append([]byte{0, 0, 1}, []byte("dummy data")...), true},
-		{"push with smaller namespace: Err", append([]byte{0, 0, 0}, []byte("dummy data")...), true},
-		{"push with smaller namespace: Err", append([]byte{0, 1, 0}, []byte("dummy data")...), true},
-		{"push with same as last namespace: OK", append([]byte{1, 0, 0}, []byte("dummy data")...), false},
-		{"push with greater as last namespace: OK", append([]byte{1, 1, 0}, []byte("dummy data")...), false},
+		{"1st push: always OK", []byte{0, 0, 0}, []byte("dummy data"), false},
+		{"push with same namespace: OK", []byte{0, 0, 0}, []byte("dummy data"), false},
+		{"push with greater namespace: OK", []byte{0, 0, 1}, []byte("dummy data"), false},
+		{"push with smaller namespace: Err", []byte{0, 0, 0}, []byte("dummy data"), true},
+		{"push with same namespace: Ok", []byte{0, 0, 1}, []byte("dummy data"), false},
+		{"push with greater namespace: Ok", []byte{1, 0, 0}, []byte("dummy data"), false},
+		{"push with smaller namespace: Err", []byte{0, 0, 1}, []byte("dummy data"), true},
+		{"push with smaller namespace: Err", []byte{0, 0, 0}, []byte("dummy data"), true},
+		{"push with smaller namespace: Err", []byte{0, 1, 0}, []byte("dummy data"), true},
+		{"push with same as last namespace: OK", []byte{1, 0, 0}, []byte("dummy data"), false},
+		{"push with greater as last namespace: OK", []byte{1, 1, 0}, []byte("dummy data"), false},
 		// This will error, as the NMT will treat the first bytes as the namespace. If the passed data is
 		// too short though, it can't extract the namespace and hence will complain:
-		{"push with wrong namespace size: Err", []byte{1, 1}, true},
+		{"push with wrong namespace size: Err", []byte{1}, []byte{1}, true},
 	}
 	n := New(sha256.New(), NamespaceIDSize(3))
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := n.Push(tt.data); (err != nil) != tt.wantErr {
+			if err := n.Push(tt.nID, tt.data); (err != nil) != tt.wantErr {
 				t.Errorf("Push() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -150,7 +150,7 @@ func TestNamespacedMerkleTreeRoot(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			n := New(sha256.New(), NamespaceIDSize(tt.nidLen))
 			for _, d := range tt.pushedData {
-				if err := n.Push(namespace.PrefixedData(append(d.ID, d.Data...))); err != nil {
+				if err := n.Push(d.ID, d.Data); err != nil {
 					t.Errorf("Push() error = %v, expected no error", err)
 				}
 			}
@@ -240,7 +240,7 @@ func TestNamespacedMerkleTree_ProveNamespace_Ranges_And_Verify(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			n := New(sha256.New(), NamespaceIDSize(tt.nidLen))
 			for _, d := range tt.pushData {
-				err := n.Push(namespace.PrefixedData(append(d.ID, d.Data...)))
+				err := n.Push(d.ID, d.Data)
 				if err != nil {
 					t.Fatalf("invalid test case: %v, error on Push(): %v", tt.name, err)
 				}
@@ -313,126 +313,126 @@ func TestIgnoreMaxNamespace(t *testing.T) {
 	tests := []struct {
 		name               string
 		ignoreMaxNamespace bool
-		pushData           []namespace.PrefixedData8
+		pushData           []namespaceDataPair
 		wantRootMaxNID     namespace.ID
 	}{
 		{"single leaf with MaxNID (ignored)",
 			true,
-			[]namespace.PrefixedData8{namespace.PrefixedData8(append(maxNID, []byte("leaf_1")...))},
+			[]namespaceDataPair{{maxNID, []byte("leaf_1")}},
 			maxNID,
 		},
 		{"single leaf with MaxNID (not ignored)",
 			false,
-			[]namespace.PrefixedData8{namespace.PrefixedData8(append(maxNID, []byte("leaf_1")...))},
+			[]namespaceDataPair{{maxNID, []byte("leaf_1")}},
 			maxNID,
 		},
 		{"two leaves, one with MaxNID (ignored)",
 			true,
-			[]namespace.PrefixedData8{
-				namespace.PrefixedData8(append(secondNID, []byte("leaf_1")...)),
-				namespace.PrefixedData8(append(maxNID, []byte("leaf_2")...)),
+			[]namespaceDataPair{
+				{secondNID, []byte("leaf_1")},
+				{maxNID, []byte("leaf_2")},
 			},
 			secondNID,
 		},
 		{"two leaves, one with MaxNID (not ignored)",
 			false,
-			[]namespace.PrefixedData8{
-				namespace.PrefixedData8(append(secondNID, []byte("leaf_1")...)),
-				namespace.PrefixedData8(append(maxNID, []byte("leaf_2")...)),
+			[]namespaceDataPair{
+				{secondNID, []byte("leaf_1")},
+				{maxNID, []byte("leaf_2")},
 			},
 			maxNID,
 		},
 		{"two leaves with MaxNID (ignored)",
 			true,
-			[]namespace.PrefixedData8{
-				namespace.PrefixedData8(append(maxNID, []byte("leaf_1")...)),
-				namespace.PrefixedData8(append(maxNID, []byte("leaf_2")...)),
+			[]namespaceDataPair{
+				{maxNID, []byte("leaf_1")},
+				{maxNID, []byte("leaf_2")},
 			},
 			maxNID,
 		},
 		{"two leaves with MaxNID (not ignored)",
 			false,
-			[]namespace.PrefixedData8{
-				namespace.PrefixedData8(append(maxNID, []byte("leaf_1")...)),
-				namespace.PrefixedData8(append(maxNID, []byte("leaf_2")...)),
+			[]namespaceDataPair{
+				{maxNID, []byte("leaf_1")},
+				{maxNID, []byte("leaf_2")},
 			},
 			maxNID,
 		},
 		{"two leaves, none with MaxNID (ignored)",
 			true,
-			[]namespace.PrefixedData8{
-				namespace.PrefixedData8(append(minNID, []byte("leaf_1")...)),
-				namespace.PrefixedData8(append(secondNID, []byte("leaf_2")...)),
+			[]namespaceDataPair{
+				{minNID, []byte("leaf_1")},
+				{secondNID, []byte("leaf_2")},
 			},
 			secondNID,
 		},
 		{"two leaves, none with MaxNID (not ignored)",
 			false,
-			[]namespace.PrefixedData8{
-				namespace.PrefixedData8(append(minNID, []byte("leaf_1")...)),
-				namespace.PrefixedData8(append(secondNID, []byte("leaf_2")...)),
+			[]namespaceDataPair{
+				{minNID, []byte("leaf_1")},
+				{secondNID, []byte("leaf_2")},
 			},
 			secondNID,
 		},
 		{"three leaves, one with MaxNID (ignored)",
 			true,
-			[]namespace.PrefixedData8{
-				namespace.PrefixedData8(append(minNID, []byte("leaf_1")...)),
-				namespace.PrefixedData8(append(secondNID, []byte("leaf_2")...)),
-				namespace.PrefixedData8(append(maxNID, []byte("leaf_2")...)),
+			[]namespaceDataPair{
+				{minNID, []byte("leaf_1")},
+				{secondNID, []byte("leaf_2")},
+				{maxNID, []byte("leaf_2")},
 			},
 			secondNID,
 		},
 		{"three leaves, one with MaxNID (not ignored)",
 			false,
-			[]namespace.PrefixedData8{
-				namespace.PrefixedData8(append(minNID, []byte("leaf_1")...)),
-				namespace.PrefixedData8(append(secondNID, []byte("leaf_2")...)),
-				namespace.PrefixedData8(append(maxNID, []byte("leaf_2")...)),
+			[]namespaceDataPair{
+				{minNID, []byte("leaf_1")},
+				{secondNID, []byte("leaf_2")},
+				{maxNID, []byte("leaf_2")},
 			},
 			maxNID,
 		},
 
 		{"4 leaves, none maxNID (ignored)", true,
-			[]namespace.PrefixedData8{
-				namespace.PrefixedData8(append(minNID, []byte("leaf_1")...)),
-				namespace.PrefixedData8(append(minNID, []byte("leaf_2")...)),
-				namespace.PrefixedData8(append(secondNID, []byte("leaf_3")...)),
-				namespace.PrefixedData8(append(thirdNID, []byte("leaf_4")...)),
+			[]namespaceDataPair{
+				{minNID, []byte("leaf_1")},
+				{minNID, []byte("leaf_2")},
+				{secondNID, []byte("leaf_3")},
+				{thirdNID, []byte("leaf_4")},
 			},
 			thirdNID,
 		},
 		{"4 leaves, half maxNID (ignored)",
 			true,
-			[]namespace.PrefixedData8{
-				namespace.PrefixedData8(append(minNID, []byte("leaf_1")...)),
-				namespace.PrefixedData8(append(secondNID, []byte("leaf_2")...)),
-				namespace.PrefixedData8(append(maxNID, []byte("leaf_3")...)),
-				namespace.PrefixedData8(append(maxNID, []byte("leaf_4")...)),
+			[]namespaceDataPair{
+				{minNID, []byte("leaf_1")},
+				{secondNID, []byte("leaf_2")},
+				{maxNID, []byte("leaf_3")},
+				{maxNID, []byte("leaf_4")},
 			},
 			secondNID,
 		},
 		{"4 leaves, half maxNID (not ignored)",
 			false,
-			[]namespace.PrefixedData8{
-				namespace.PrefixedData8(append(minNID, []byte("leaf_1")...)),
-				namespace.PrefixedData8(append(secondNID, []byte("leaf_2")...)),
-				namespace.PrefixedData8(append(maxNID, []byte("leaf_3")...)),
-				namespace.PrefixedData8(append(maxNID, []byte("leaf_4")...)),
+			[]namespaceDataPair{
+				{minNID, []byte("leaf_1")},
+				{secondNID, []byte("leaf_2")},
+				{maxNID, []byte("leaf_3")},
+				{maxNID, []byte("leaf_4")},
 			},
 			maxNID,
 		},
 		{"8 leaves, 4 maxNID (ignored)",
 			true,
-			[]namespace.PrefixedData8{
-				namespace.PrefixedData8(append(minNID, []byte("leaf_1")...)),
-				namespace.PrefixedData8(append(secondNID, []byte("leaf_2")...)),
-				namespace.PrefixedData8(append(thirdNID, []byte("leaf_3")...)),
-				namespace.PrefixedData8(append(thirdNID, []byte("leaf_4")...)),
-				namespace.PrefixedData8(append(maxNID, []byte("leaf_5")...)),
-				namespace.PrefixedData8(append(maxNID, []byte("leaf_6")...)),
-				namespace.PrefixedData8(append(maxNID, []byte("leaf_7")...)),
-				namespace.PrefixedData8(append(maxNID, []byte("leaf_8")...)),
+			[]namespaceDataPair{
+				{minNID, []byte("leaf_1")},
+				{secondNID, []byte("leaf_2")},
+				{thirdNID, []byte("leaf_3")},
+				{thirdNID, []byte("leaf_4")},
+				{maxNID, []byte("leaf_5")},
+				{maxNID, []byte("leaf_6")},
+				{maxNID, []byte("leaf_7")},
+				{maxNID, []byte("leaf_8")},
 			},
 			thirdNID,
 		},
@@ -442,7 +442,7 @@ func TestIgnoreMaxNamespace(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			tree := New(hash, NamespaceIDSize(nidSize), IgnoreMaxNamespace(tc.ignoreMaxNamespace))
 			for _, d := range tc.pushData {
-				if err := tree.Push(namespace.PrefixedData(d)); err != nil {
+				if err := tree.Push(d.ID, d.Data); err != nil {
 					panic("unexpected error")
 				}
 			}
@@ -451,23 +451,23 @@ func TestIgnoreMaxNamespace(t *testing.T) {
 				t.Fatalf("Case: %v, '%v', root.Max() got: %x, want: %x", i, tc.name, gotRootMaxNID, tc.wantRootMaxNID)
 			}
 			for idx, d := range tc.pushData {
-				proof, err := tree.ProveNamespace(d.NamespaceID())
+				proof, err := tree.ProveNamespace(d.ID)
 				if err != nil {
 					t.Fatalf("ProveNamespace() unexpected error: %v", err)
 				}
 				if gotIgnored := proof.IsMaxNamespaceIDIgnored(); gotIgnored != tc.ignoreMaxNamespace {
 					t.Fatalf("Proof.IsMaxNamespaceIDIgnored() got: %v, want: %v", gotIgnored, tc.ignoreMaxNamespace)
 				}
-				data := tree.Get(d.NamespaceID())
-				if !proof.VerifyNamespace(hash, d.NamespaceID(), data, tree.Root()) {
-					t.Errorf("VerifyNamespace() failed on ID: %x", d.NamespaceID())
+				data := tree.Get(d.ID)
+				if !proof.VerifyNamespace(hash, d.ID, data, tree.Root()) {
+					t.Errorf("VerifyNamespace() failed on ID: %x", d.ID)
 				}
 
 				singleProof, err := tree.Prove(idx)
 				if err != nil {
 					t.Fatalf("ProveNamespace() unexpected error: %v", err)
 				}
-				if !singleProof.VerifyInclusion(hash, d.NamespaceID(), d.Data(), tree.Root()) {
+				if !singleProof.VerifyInclusion(hash, d.ID, d.Data, tree.Root()) {
 					t.Errorf("VerifyInclusion() failed on data: %#v with index: %v", d, idx)
 				}
 				if gotIgnored := singleProof.IsMaxNamespaceIDIgnored(); gotIgnored != tc.ignoreMaxNamespace {
@@ -492,7 +492,7 @@ func TestNodeVisitor(t *testing.T) {
 	data := generateRandNamespacedRawData(numLeaves, nidSize, leafSize)
 	n := New(sha256.New(), NamespaceIDSize(nidSize), NodeVisitor(collectNodeHashes))
 	for j := 0; j < numLeaves; j++ {
-		if err := n.Push(data[j]); err != nil {
+		if err := n.Push(data[j][:nidSize], data[j][nidSize:]); err != nil {
 			t.Errorf("err: %v", err)
 		}
 	}
@@ -523,7 +523,7 @@ func TestNamespacedMerkleTree_ProveErrors(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			n := New(sha256.New(), NamespaceIDSize(tt.nidLen), InitialCapacity(len(tt.pushData)))
 			for _, d := range tt.pushData {
-				err := n.Push(namespace.PrefixedData(append(d.ID, d.Data...)))
+				err := n.Push(d.ID, d.Data)
 				if err != nil {
 					t.Fatalf("invalid test case: %v, error on Push(): %v", tt.name, err)
 				}
@@ -604,7 +604,7 @@ func BenchmarkComputeRoot(b *testing.B) {
 			for i := 0; i < b.N; i++ {
 				n := New(sha256.New())
 				for j := 0; j < tt.numLeaves; j++ {
-					if err := n.Push(data[j]); err != nil {
+					if err := n.Push(data[j][:tt.nidSize], data[j][tt.nidSize:]); err != nil {
 						b.Errorf("err: %v", err)
 					}
 				}
@@ -618,7 +618,7 @@ func BenchmarkComputeRoot(b *testing.B) {
 func Test_Root_RaceCondition(t *testing.T) {
 	// this is very similar to: https://github.com/HuobiRDCenter/huobi_Golang/pull/9
 	tree := New(sha256.New())
-	_ = tree.Push([]byte("some data is good enough here"))
+	_ = tree.Push([]byte("nid007"), []byte("some data is good enough here"))
 	numRoutines := 200
 	wg := sync.WaitGroup{}
 	wg.Add(numRoutines)

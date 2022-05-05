@@ -249,14 +249,23 @@ func (n NamespacedMerkleTree) NamespaceSize() namespace.IDSize {
 // Returns an error if the namespace ID size of the input
 // does not match the tree's NamespaceSize() or the leaves are not pushed in
 // order (i.e. lexicographically sorted by namespace ID).
-func (n *NamespacedMerkleTree) Push(namespacedData namespace.PrefixedData) error {
-	nID, err := n.validateAndExtractNamespace(namespacedData)
+func (n *NamespacedMerkleTree) Push(nID namespace.ID, data []byte) error {
+	err := n.validateNamespace(nID)
 	if err != nil {
 		return err
 	}
 
+	// TODO(liamsi): this is bad and lazy! We are copying the nid and data here once instead of just
+	// using the referenced slices we got. Reason is that internally we still treat a leaf as a single slice
+	// of bytes. We can and should fix this. For now we are living with the copying to have the API updated from
+	// Push(prefixedData) to Push(nID, data). See: https://github.com/celestiaorg/nmt/issues/55
+	// We intentionally do the copying here instead of forcing the user to merge (copy) the nid and data
+	// externally (bad UX).
+	leafDataCopy := make([]byte, len(nID)+len(data))
+	copy(leafDataCopy[:len(nID)], nID)
+	copy(leafDataCopy[len(nID):], data)
 	// update relevant "caches":
-	n.leaves = append(n.leaves, namespacedData)
+	n.leaves = append(n.leaves, leafDataCopy)
 	n.updateNamespaceRanges()
 	n.updateMinMaxID(nID)
 	n.rawRoot = nil
@@ -328,17 +337,13 @@ func (n *NamespacedMerkleTree) updateNamespaceRanges() {
 		}
 	}
 }
-func (n *NamespacedMerkleTree) validateAndExtractNamespace(ndata namespace.PrefixedData) (namespace.ID, error) {
+func (n *NamespacedMerkleTree) validateNamespace(nID namespace.ID) error {
 	nidSize := int(n.NamespaceSize())
-	if len(ndata) < nidSize {
-		return nil, fmt.Errorf("%w: got: %v, want >= %v", ErrMismatchedNamespaceSize, len(ndata), nidSize)
-	}
-	nID := namespace.ID(ndata[:n.NamespaceSize()])
 	// ensure pushed data doesn't have a smaller namespace than the previous one:
 	curSize := len(n.leaves)
 	if curSize > 0 {
 		if nID.Less(n.leaves[curSize-1][:nidSize]) {
-			return nil, fmt.Errorf(
+			return fmt.Errorf(
 				"%w: last namespace: %x, pushed: %x",
 				ErrInvalidPushOrder,
 				n.leaves[curSize-1][:nidSize],
@@ -346,7 +351,7 @@ func (n *NamespacedMerkleTree) validateAndExtractNamespace(ndata namespace.Prefi
 			)
 		}
 	}
-	return nID, nil
+	return nil
 }
 
 func (n *NamespacedMerkleTree) updateMinMaxID(id namespace.ID) {
