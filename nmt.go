@@ -120,16 +120,21 @@ func New(h hash.Hash, setters ...Option) *NamespacedMerkleTree {
 // Note this is not really NMT specific but the tree supports inclusions proofs
 // like any vanilla Merkle tree.
 func (n NamespacedMerkleTree) Prove(index int) (Proof, error) {
+	return n.ProveRange(index, index+1)
+}
+
+// ProveRange proves a leaf range [start, end].
+func (n NamespacedMerkleTree) ProveRange(start, end int) (Proof, error) {
 	isMaxNsIgnored := n.treeHasher.IsMaxNamespaceIDIgnored()
 	n.computeLeafHashesIfNecessary()
 	subTreeHasher := internal.NewCachedSubtreeHasher(n.leafHashes, n.treeHasher)
 	// TODO: store nodes and re-use the hashes instead recomputing parts of the tree here
-	proof, err := merkletree.BuildRangeProof(index, index+1, subTreeHasher)
+	proof, err := merkletree.BuildRangeProof(start, end, subTreeHasher)
 	if err != nil {
 		return NewEmptyRangeProof(isMaxNsIgnored), err
 	}
 
-	return NewInclusionProof(index, index+1, proof, isMaxNsIgnored), nil
+	return NewInclusionProof(start, end, proof, isMaxNsIgnored), nil
 }
 
 // ProveNamespace returns a range proof for the given NamespaceID.
