@@ -1,6 +1,7 @@
 package nmt
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"testing"
 
@@ -89,4 +90,71 @@ func rangeProof(t *testing.T, n *NamespacedMerkleTree, start, end int) [][]byte 
 		t.Fatalf("Could not create range proof: %v", err)
 	}
 	return incompleteRange
+}
+
+func TestProof_MultipleLeaves(t *testing.T) {
+	n := New(sha256.New())
+	ns := []byte{1, 2, 3, 4, 5, 6, 7, 8}
+	rawData := [][]byte{
+		bytes.Repeat([]byte{1}, 100),
+		bytes.Repeat([]byte{2}, 100),
+		bytes.Repeat([]byte{3}, 100),
+		bytes.Repeat([]byte{4}, 100),
+		bytes.Repeat([]byte{5}, 100),
+		bytes.Repeat([]byte{6}, 100),
+		bytes.Repeat([]byte{7}, 100),
+		bytes.Repeat([]byte{8}, 100),
+	}
+
+	for _, d := range rawData {
+		err := n.Push(safeAppend(ns, d))
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	type args struct {
+		start, end int
+		root       []byte
+	}
+	tests := []struct {
+		name string
+		args args
+		want bool
+	}{
+		{
+			"3rd through 5th leaf", args{2, 4, n.Root()}, true,
+		},
+		{
+			"single leaf", args{2, 3, n.Root()}, true,
+		},
+		{
+			"first leaf", args{0, 1, n.Root()}, true,
+		},
+		{
+			"most leaves", args{0, 7, n.Root()}, true,
+		},
+		{
+			"most leaves", args{0, 7, bytes.Repeat([]byte{1}, 48)}, false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			proof, err := n.ProveRange(tt.args.start, tt.args.end)
+			if err != nil {
+				t.Fatal(err)
+			}
+			got := proof.VerifyInclusion(sha256.New(), ns, rawData[tt.args.start:tt.args.end], tt.args.root)
+			if got != tt.want {
+				t.Errorf("VerifyInclusion() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func safeAppend(id, data []byte) []byte {
+	return append(append(
+		make([]byte, 0, len(id)+len(data)),
+		id...),
+		data...)
 }
