@@ -277,7 +277,7 @@ func TestNamespacedMerkleTree_ProveNamespace_Ranges_And_Verify(t *testing.T) {
 					if err != nil {
 						t.Fatalf("unexpected error on Prove(): %v", err)
 					}
-					gotChecksOut := gotSingleProof.VerifyInclusion(sha256.New(), data.ID, data.Data, n.Root())
+					gotChecksOut := gotSingleProof.VerifyInclusion(sha256.New(), data.ID, [][]byte{data.Data}, n.Root())
 					if !gotChecksOut {
 						t.Errorf("Proof.VerifyInclusion() gotChecksOut: %v, want: true", gotChecksOut)
 					}
@@ -467,7 +467,7 @@ func TestIgnoreMaxNamespace(t *testing.T) {
 				if err != nil {
 					t.Fatalf("ProveNamespace() unexpected error: %v", err)
 				}
-				if !singleProof.VerifyInclusion(hash, d.NamespaceID(), d.Data(), tree.Root()) {
+				if !singleProof.VerifyInclusion(hash, d.NamespaceID(), [][]byte{d.Data()}, tree.Root()) {
 					t.Errorf("VerifyInclusion() failed on data: %#v with index: %v", d, idx)
 				}
 				if gotIgnored := singleProof.IsMaxNamespaceIDIgnored(); gotIgnored != tc.ignoreMaxNamespace {

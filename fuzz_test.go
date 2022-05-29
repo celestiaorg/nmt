@@ -8,7 +8,7 @@ import (
 
 	"github.com/celestiaorg/nmt"
 	"github.com/celestiaorg/nmt/namespace"
-	"github.com/google/gofuzz"
+	fuzz "github.com/google/gofuzz"
 )
 
 func TestFuzzProveVerifyNameSpace(t *testing.T) {
@@ -72,7 +72,7 @@ func TestFuzzProveVerifyNameSpace(t *testing.T) {
 				if err != nil {
 					t.Fatalf("error on Prove(%v): %v", i, err)
 				}
-				if ok := singleItemProof.VerifyInclusion(hash, data[i][:size], data[i][size:], treeRoot); !ok {
+				if ok := singleItemProof.VerifyInclusion(hash, data[i][:size], [][]byte{data[i][size:]}, treeRoot); !ok {
 					t.Fatalf("expected VerifyInclusion() == true; data = %#v; proof = %#v", data[i], singleItemProof)
 				}
 				leafIdx++

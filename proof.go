@@ -206,10 +206,18 @@ func (proof Proof) verifyLeafHashes(nth *Hasher, verifyCompleteness bool, nID na
 	return bytes.Equal(tree.Root(), root)
 }
 
-func (proof Proof) VerifyInclusion(h hash.Hash, nid namespace.ID, data []byte, root []byte) bool {
+func (proof Proof) VerifyInclusion(h hash.Hash, nid namespace.ID, data [][]byte, root []byte) bool {
 	nth := NewNmtHasher(h, nid.Size(), proof.isMaxNamespaceIDIgnored)
-	leafData := append(nid, data...)
-	return proof.verifyLeafHashes(nth, false, nid, [][]byte{nth.HashLeaf(leafData)}, root)
+	hashes := make([][]byte, len(data))
+	for i, d := range data {
+		leafData := append(append(
+			make([]byte, 0, len(d)+len(nid)),
+			nid...),
+			d...)
+		hashes[i] = nth.HashLeaf(leafData)
+	}
+
+	return proof.verifyLeafHashes(nth, false, nid, hashes, root)
 }
 
 // nextSubtreeSize returns the size of the subtree adjacent to start that does
