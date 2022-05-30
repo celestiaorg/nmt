@@ -209,7 +209,7 @@ func (proof Proof) verifyLeafHashes(nth *Hasher, verifyCompleteness bool, nID na
 // VerifyInclusion checks that the inclusion proof is valid by using leaf data
 // and the provided proof to regenerate and compare the root. Note that the leaf
 // data should not contain the prefixed namespace, unlike the tree.Push method,
-// which takes prefixed data
+// which takes prefixed data. All leaves implicitly have the same namespace ID: `nid`.
 func (proof Proof) VerifyInclusion(h hash.Hash, nid namespace.ID, leaves [][]byte, root []byte) bool {
 	nth := NewNmtHasher(h, nid.Size(), proof.isMaxNamespaceIDIgnored)
 	hashes := make([][]byte, len(leaves))
