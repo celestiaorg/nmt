@@ -153,8 +153,5 @@ func TestProof_MultipleLeaves(t *testing.T) {
 }
 
 func safeAppend(id, data []byte) []byte {
-	return append(append(
-		make([]byte, 0, len(id)+len(data)),
-		id...),
-		data...)
+	return append(append(make([]byte, 0, len(id)+len(data)), id...), data...)
 }

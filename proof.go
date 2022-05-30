@@ -210,10 +210,7 @@ func (proof Proof) VerifyInclusion(h hash.Hash, nid namespace.ID, data [][]byte,
 	nth := NewNmtHasher(h, nid.Size(), proof.isMaxNamespaceIDIgnored)
 	hashes := make([][]byte, len(data))
 	for i, d := range data {
-		leafData := append(append(
-			make([]byte, 0, len(d)+len(nid)),
-			nid...),
-			d...)
+		leafData := append(append(make([]byte, 0, len(d)+len(nid)), nid...), d...)
 		hashes[i] = nth.HashLeaf(leafData)
 	}
 
