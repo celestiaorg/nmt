@@ -39,28 +39,29 @@ func main() {
     // the tree will use this namespace size
     nidSize := 1
     // the leaves that will be pushed
-    data := []namespace.PrefixedData{
-      namespace.PrefixedDataFrom(namespace.ID{0}, []byte("leaf_0")),
-      namespace.PrefixedDataFrom(namespace.ID{0}, []byte("leaf_1")),
-      namespace.PrefixedDataFrom(namespace.ID{1}, []byte("leaf_2")),
-      namespace.PrefixedDataFrom(namespace.ID{1}, []byte("leaf_3")),
-    }
+    data := [][]byte{
+      append(namespace.ID{0}, []byte("leaf_0")...),
+      append(namespace.ID{0}, []byte("leaf_1")...),
+      append(namespace.ID{1}, []byte("leaf_2")...),
+      append(namespace.ID{1}, []byte("leaf_3")...)}
     // Init a tree with the namespace size as well as
     // the underlying hash function:
     tree := New(sha256.New(), NamespaceIDSize(nidSize))
     for _, d := range data {
-      if err := tree.Push(d.NamespaceID(), d.Data()); err != nil {
-        panic("unexpected error")
+      if err := tree.Push(d); err != nil {
+        panic(fmt.Sprintf("unexpected error: %v", err))
       }
     }
     // compute the root
     root := tree.Root()
     // the root's min/max namespace is the min and max namespace of all leaves:
-    if root.Min().Equal(namespace.ID{0}) {
-      fmt.Printf("Min namespace: %x\n", root.Min())
+    minNS := MinNamespace(root, tree.NamespaceSize())
+    maxNS := MaxNamespace(root, tree.NamespaceSize())
+    if bytes.Equal(minNS, namespace.ID{0}) {
+      fmt.Printf("Min namespace: %x\n", minNS)
     }
-    if root.Max().Equal(namespace.ID{1}) {
-      fmt.Printf("Max namespace: %x\n", root.Max())
+    if bytes.Equal(maxNS, namespace.ID{1}) {
+      fmt.Printf("Max namespace: %x\n", maxNS)
     }
 
     // compute proof for namespace 0:
