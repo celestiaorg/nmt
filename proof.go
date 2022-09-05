@@ -140,17 +140,15 @@ func (proof Proof) VerifyNamespace(h hash.Hash, nID namespace.ID, data [][]byte,
 func (proof Proof) verifyLeafHashes(nth *Hasher, verifyCompleteness bool, nID namespace.ID, gotLeafHashes [][]byte, root []byte) bool {
 	var leafIndex uint64
 	leftSubtrees := make([][]byte, 0, len(proof.nodes))
-	consumeUntil := func(end uint64) {
-		for leafIndex != end && len(proof.nodes) > 0 {
-			subtreeSize := nextSubtreeSize(leafIndex, end)
-			// i := bits.TrailingZeros64(uint64(subtreeSize))
-			leftSubtrees = append(leftSubtrees, proof.nodes[0])
-			proof.nodes = proof.nodes[1:]
-			leafIndex += uint64(subtreeSize)
-		}
+
+	// add proof hashes from leaves [0, r.Start)
+	for leafIndex != uint64(proof.Start()) && len(proof.nodes) > 0 {
+		subtreeSize := nextSubtreeSize(leafIndex, uint64(proof.Start()))
+		// i := bits.TrailingZeros64(uint64(subtreeSize))
+		leftSubtrees = append(leftSubtrees, proof.nodes[0])
+		proof.nodes = proof.nodes[1:]
+		leafIndex += uint64(subtreeSize)
 	}
-	// add proof hashes from leaves [leafIndex, r.Start)
-	consumeUntil(uint64(proof.Start()))
 
 	leafIndex += uint64(proof.End() - proof.Start())
 
@@ -177,7 +175,7 @@ func (proof Proof) verifyLeafHashes(nth *Hasher, verifyCompleteness bool, nID na
 	end := proof.end - proof.start
 	rootHash := computeRoot(start, end, nth, gotLeafHashes)
 
-	subTreeHeight := bits.TrailingZeros64(uint64(start))
+	subTreeHeight := bits.TrailingZeros64(uint64(end))
 	subTreeIndex := proof.start
 	for i := 0; i < subTreeHeight; i++ {
 		subTreeIndex /= 2
@@ -197,8 +195,9 @@ func (proof Proof) verifyLeafHashes(nth *Hasher, verifyCompleteness bool, nID na
 				return false
 			}
 			rootHash = nth.HashNode(rootHash, rightSubtrees[0])
-			leftSubtrees = rightSubtrees[1:]
+			rightSubtrees = rightSubtrees[1:]
 		}
+		subTreeIndex /= 2
 		heightLeft--
 	}
 
