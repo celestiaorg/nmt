@@ -167,11 +167,6 @@ func (proof Proof) verifyLeafHashes(nth *Hasher, verifyCompleteness bool, nID na
 		}
 	}
 
-	i := 1
-	for i < proof.end {
-		i *= 2
-	}
-
 	var computeRoot func(start, end int) []byte
 	computeRoot = func(start, end int) []byte {
 		switch end - start {
@@ -184,25 +179,12 @@ func (proof Proof) verifyLeafHashes(nth *Hasher, verifyCompleteness bool, nID na
 				gotLeafHashes = gotLeafHashes[1:]
 				return leafHash
 			}
-
-			if len(proof.nodes) > 0 {
-				val := proof.nodes[0]
-				proof.nodes = proof.nodes[1:]
-				return val
-			}
-
-			return nil
+			return popIfNonEmpty(&proof.nodes)
 		default:
 		}
 
 		if end <= proof.start || start >= proof.end {
-			if len(proof.nodes) > 0 {
-				val := proof.nodes[0]
-				proof.nodes = proof.nodes[1:]
-				return val
-			}
-
-			return nil
+			return popIfNonEmpty(&proof.nodes)
 		}
 
 		k := getSplitPoint(end - start)
@@ -215,6 +197,10 @@ func (proof Proof) verifyLeafHashes(nth *Hasher, verifyCompleteness bool, nID na
 		return hash
 	}
 
+	i := 1
+	for i < proof.end {
+		i *= 2
+	}
 	rootHash := computeRoot(0, i)
 	for len(proof.nodes) > 0 {
 		rootHash = nth.HashNode(rootHash, proof.nodes[0])
@@ -248,4 +234,15 @@ func nextSubtreeSize(start, end uint64) int {
 		return 1 << uint(max)
 	}
 	return 1 << uint(ideal)
+}
+
+// popIfNonEmpty pops the first element off of a slice only if the slice is non empty,
+// else returns a nil slice
+func popIfNonEmpty(s *[][]byte) []byte {
+	if len(*s) != 0 {
+		first := (*s)[0]
+		*s = (*s)[1:]
+		return first
+	}
+	return nil
 }
