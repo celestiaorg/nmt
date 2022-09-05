@@ -211,9 +211,6 @@ func (proof Proof) verifyLeafHashes(nth *Hasher, verifyCompleteness bool, nID na
 		if right == nil {
 			return left
 		}
-		if left == nil {
-			return right
-		}
 		hash := nth.HashNode(left, right)
 		return hash
 	}
