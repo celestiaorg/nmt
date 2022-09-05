@@ -3,10 +3,8 @@ package nmt
 import (
 	"bytes"
 	"hash"
-	"math"
 	"math/bits"
 
-	"github.com/celestiaorg/merkletree"
 	"github.com/celestiaorg/nmt/namespace"
 )
 
@@ -140,29 +138,12 @@ func (proof Proof) VerifyNamespace(h hash.Hash, nID namespace.ID, data [][]byte,
 }
 
 func (proof Proof) verifyLeafHashes(nth *Hasher, verifyCompleteness bool, nID namespace.ID, gotLeafHashes [][]byte, root []byte) bool {
-	// The code below is almost identical to NebulousLabs'
-	// merkletree.VerifyMultiRangeProof.
-	//
-	// We copy and modify it here for two reasons:
-	// - we have the leaf hashes at hand and don't want to construct a merkletree.LeafHasher
-	// - we can now check completeness directly after iterating
-	//   the leaf hashes within the proof range without looping
-	//   through the sub-trees again
-	// orig: https://gitlab.com/NebulousLabs/merkletree/-/blob/master/range.go#L363-417
-
-	// manually build a tree using the proof hashes
-	tree := merkletree.NewFromTreehasher(nth)
 	var leafIndex uint64
 	leftSubtrees := make([][]byte, 0, len(proof.nodes))
 	consumeUntil := func(end uint64) {
 		for leafIndex != end && len(proof.nodes) > 0 {
 			subtreeSize := nextSubtreeSize(leafIndex, end)
-			i := bits.TrailingZeros64(uint64(subtreeSize)) // log2
-			// Note: we do never push the subtrees out of order
-			// and we do not use the proofIndex. Hence,
-			// tree.PushSubTree can not fail here:
-			//nolint:errcheck
-			tree.PushSubTree(i, proof.nodes[0])
+			// i := bits.TrailingZeros64(uint64(subtreeSize))
 			leftSubtrees = append(leftSubtrees, proof.nodes[0])
 			proof.nodes = proof.nodes[1:]
 			leafIndex += uint64(subtreeSize)
@@ -170,17 +151,10 @@ func (proof Proof) verifyLeafHashes(nth *Hasher, verifyCompleteness bool, nID na
 	}
 	// add proof hashes from leaves [leafIndex, r.Start)
 	consumeUntil(uint64(proof.Start()))
-	// add leaf hashes within the proof range
-	for i := proof.Start(); i < proof.End(); i++ {
-		leafHash := gotLeafHashes[0]
-		gotLeafHashes = gotLeafHashes[1:]
-		// tree.PushSubTree can not fail here for same reasons
-		// as in consumeUntil:
-		//nolint:errcheck
-		tree.PushSubTree(0, leafHash)
-	}
+
 	leafIndex += uint64(proof.End() - proof.Start())
 
+	rightSubtrees := proof.nodes
 	// Verify completeness (in case of single leaf proofs we do not need do these checks):
 	if verifyCompleteness {
 		// leftSubtrees contains the subtree roots upto [0, r.Start)
@@ -191,7 +165,6 @@ func (proof Proof) verifyLeafHashes(nth *Hasher, verifyCompleteness bool, nID na
 			}
 		}
 		// rightSubtrees only contains the subtrees after [0, r.Start)
-		rightSubtrees := proof.nodes
 		for _, subtree := range rightSubtrees {
 			rightSubTreeMin := MinNamespace(subtree, nth.NamespaceSize())
 			if namespace.ID(rightSubTreeMin).LessOrEqual(nID) {
@@ -200,10 +173,53 @@ func (proof Proof) verifyLeafHashes(nth *Hasher, verifyCompleteness bool, nID na
 		}
 	}
 
-	// add remaining proof hashes after the last range ends
-	consumeUntil(math.MaxUint64)
+	start := 0
+	end := proof.end - proof.start
+	rootHash := computeRoot(start, end, nth, gotLeafHashes)
 
-	return bytes.Equal(tree.Root(), root)
+	subTreeHeight := bits.TrailingZeros64(uint64(start))
+	subTreeIndex := proof.start
+	for i := 0; i < subTreeHeight; i++ {
+		subTreeIndex /= 2
+	}
+
+	heightLeft := len(leftSubtrees) + len(rightSubtrees)
+	for heightLeft != 0 {
+		if subTreeIndex%2 == 1 {
+			if len(leftSubtrees) == 0 {
+				return false
+			}
+			index := len(leftSubtrees) - 1
+			rootHash = nth.HashNode(leftSubtrees[index], rootHash)
+			leftSubtrees = leftSubtrees[:index]
+		} else {
+			if len(rightSubtrees) == 0 {
+				return false
+			}
+			rootHash = nth.HashNode(rootHash, rightSubtrees[0])
+			leftSubtrees = rightSubtrees[1:]
+		}
+		heightLeft--
+	}
+
+	return bytes.Equal(rootHash, root)
+}
+
+func computeRoot(start, end int, nth *Hasher, leafHashes [][]byte) []byte {
+	switch end - start {
+	case 0:
+		rootHash := nth.EmptyRoot()
+		return rootHash
+	case 1:
+		leafHash := leafHashes[start]
+		return leafHash
+	default:
+		k := getSplitPoint(end - start)
+		left := computeRoot(start, start+k, nth, leafHashes)
+		right := computeRoot(start+k, end, nth, leafHashes)
+		hash := nth.HashNode(left, right)
+		return hash
+	}
 }
 
 // VerifyInclusion checks that the inclusion proof is valid by using leaf data
