@@ -202,9 +202,8 @@ func (proof Proof) verifyLeafHashes(nth *Hasher, verifyCompleteness bool, nID na
 		i *= 2
 	}
 	rootHash := computeRoot(0, i)
-	for len(proof.nodes) > 0 {
-		rootHash = nth.HashNode(rootHash, proof.nodes[0])
-		proof.nodes = proof.nodes[1:]
+	for i := 0; i < len(proof.nodes); i++ {
+		rootHash = nth.HashNode(rootHash, proof.nodes[i])
 	}
 
 	return bytes.Equal(rootHash, root)
