@@ -205,11 +205,12 @@ func (proof Proof) verifyLeafHashes(nth *Hasher, verifyCompleteness bool, nID na
 		return hash
 	}
 
-	leavesSubtreeEstimate := getSplitPoint(proof.end) * 2
-	if leavesSubtreeEstimate < 1 {
-		leavesSubtreeEstimate = 1
+	// estimate the leaf size of the subtree containing the proof range
+	proofRangeSubtreeEstimate := getSplitPoint(proof.end) * 2
+	if proofRangeSubtreeEstimate < 1 {
+		proofRangeSubtreeEstimate = 1
 	}
-	rootHash := computeRoot(0, leavesSubtreeEstimate)
+	rootHash := computeRoot(0, proofRangeSubtreeEstimate)
 	for i := 0; i < len(proof.nodes); i++ {
 		rootHash = nth.HashNode(rootHash, proof.nodes[i])
 	}
