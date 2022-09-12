@@ -169,27 +169,35 @@ func (proof Proof) verifyLeafHashes(nth *Hasher, verifyCompleteness bool, nID na
 
 	var computeRoot func(start, end int) []byte
 	computeRoot = func(start, end int) []byte {
-		switch end - start {
-		case 0:
-			rootHash := nth.EmptyRoot()
-			return rootHash
-		case 1:
+
+		// reached a leaf
+		if end-start == 1 {
+			// if current range overlaps with proof range, pop and return a leaf
 			if proof.start <= start && start < proof.end {
 				leafHash := gotLeafHashes[0]
 				gotLeafHashes = gotLeafHashes[1:]
 				return leafHash
 			}
+
+			// if current range does not overlap with proof range,
+			// pop and return a proof node (leaf) if present,
+			// else return nil because leaf doesn't exist
 			return popIfNonEmpty(&proof.nodes)
-		default:
 		}
 
+		// if current range does not overlap with proof range,
+		// pop and return a proof node if present,
+		// else return nil because subtree doesn't exist
 		if end <= proof.start || start >= proof.end {
 			return popIfNonEmpty(&proof.nodes)
 		}
 
+		// Recursively get left and right subtree
 		k := getSplitPoint(end - start)
 		left := computeRoot(start, start+k)
 		right := computeRoot(start+k, end)
+
+		// only right leaf/subtree can be non-existent
 		if right == nil {
 			return left
 		}
@@ -201,7 +209,6 @@ func (proof Proof) verifyLeafHashes(nth *Hasher, verifyCompleteness bool, nID na
 	if leavesSubtreeEstimate < 1 {
 		leavesSubtreeEstimate = 1
 	}
-
 	rootHash := computeRoot(0, leavesSubtreeEstimate)
 	for i := 0; i < len(proof.nodes); i++ {
 		rootHash = nth.HashNode(rootHash, proof.nodes[i])
