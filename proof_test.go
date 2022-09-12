@@ -74,9 +74,23 @@ func TestProof_VerifyNamespace_False(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// make copy of nodes for mutation check
+			duplicateNodes := make([][]byte, len(tt.proof.nodes))
+			for i := range tt.proof.nodes {
+				duplicateNodes[i] = make([]byte, len(tt.proof.nodes[i]))
+				copy(duplicateNodes[i], tt.proof.nodes[i])
+			}
+
 			got := tt.proof.VerifyNamespace(sha256.New(), tt.args.nID, tt.args.data, tt.args.root)
 			if got != tt.want {
 				t.Errorf("VerifyNamespace() got = %v, want %v", got, tt.want)
+			}
+
+			// check if proof was mutated during verification
+			for i := range tt.proof.nodes {
+				if !bytes.Equal(duplicateNodes[i], tt.proof.nodes[i]) {
+					t.Errorf("VerifyNameSpace() proof got mutated during verification")
+				}
 			}
 		})
 	}

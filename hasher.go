@@ -92,7 +92,8 @@ func (n *Hasher) EmptyRoot() []byte {
 // Hence, the input length has to be greater or equal to the
 // size of the underlying namespace.ID.
 //
-//Note that for leaves minNs = maxNs = ns(leaf) = leaf[:NamespaceLen].
+// Note that for leaves minNs = maxNs = ns(leaf) = leaf[:NamespaceLen].
+//
 //nolint:errcheck
 func (n *Hasher) HashLeaf(leaf []byte) []byte {
 	h := n.Hash
