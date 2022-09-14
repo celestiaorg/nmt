@@ -509,15 +509,14 @@ func TestNodeVisitor(t *testing.T) {
 
 func TestNamespacedMerkleTree_ProveErrors(t *testing.T) {
 	tests := []struct {
-		name      string
-		nidLen    int
-		index     int
-		pushData  []namespaceDataPair
-		wantErr   bool
-		wantPanic bool
+		name     string
+		nidLen   int
+		index    int
+		pushData []namespaceDataPair
+		wantErr  bool
 	}{
-		{"negative index", 1, -1, generateLeafData(1, 0, 10, []byte("_data")), false, true},
-		{"too large index", 1, 11, generateLeafData(1, 0, 10, []byte("_data")), true, false},
+		{"negative index", 1, -1, generateLeafData(1, 0, 10, []byte("_data")), true},
+		{"too large index", 1, 11, generateLeafData(1, 0, 10, []byte("_data")), true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -534,20 +533,10 @@ func TestNamespacedMerkleTree_ProveErrors(t *testing.T) {
 					t.Fatalf("Prove() failed on valid index: %v, err: %v", i, err)
 				}
 			}
-			if tt.wantPanic {
-				shouldPanic(t, func() {
-					_, err := n.Prove(tt.index)
-					if (err != nil) != tt.wantErr {
-						t.Errorf("Prove() error = %v, wantErr %v", err, tt.wantErr)
-						return
-					}
-				})
-			} else {
-				_, err := n.Prove(tt.index)
-				if (err != nil) != tt.wantErr {
-					t.Errorf("Prove() error = %v, wantErr %v", err, tt.wantErr)
-					return
-				}
+			_, err := n.Prove(tt.index)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Prove() error = %v, wantErr %v", err, tt.wantErr)
+				return
 			}
 		})
 	}
