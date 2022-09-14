@@ -10,7 +10,7 @@ import (
 	"github.com/celestiaorg/nmt/namespace"
 )
 
-type TreeHasher interface {
+type treeHasher interface {
 	merkletree.TreeHasher
 	Size() int
 }
@@ -19,7 +19,7 @@ type TreeHasher interface {
 // leaf hashes.
 type cachedSubtreeHasher struct {
 	leafHashes [][]byte
-	TreeHasher
+	treeHasher
 }
 
 // NextSubtreeRoot implements SubtreeHasher.
@@ -27,7 +27,7 @@ func (csh *cachedSubtreeHasher) NextSubtreeRoot(subtreeSize int) ([]byte, error)
 	if len(csh.leafHashes) == 0 {
 		return nil, io.EOF
 	}
-	tree := merkletree.NewFromTreehasher(csh.TreeHasher)
+	tree := merkletree.NewFromTreehasher(csh.treeHasher)
 	for i := 0; i < subtreeSize && len(csh.leafHashes) > 0; i++ {
 		if err := tree.PushSubTree(0, csh.leafHashes[0]); err != nil {
 			return nil, err
@@ -46,12 +46,12 @@ func (csh *cachedSubtreeHasher) Skip(n int) error {
 	return nil
 }
 
-// NewCachedSubtreeHasher creates a CachedSubtreeHasher using the specified
+// newCachedSubtreeHasher creates a CachedSubtreeHasher using the specified
 // leaf hashes and hash function.
-func NewCachedSubtreeHasher(leafHashes [][]byte, h TreeHasher) *cachedSubtreeHasher {
+func newCachedSubtreeHasher(leafHashes [][]byte, h treeHasher) *cachedSubtreeHasher {
 	return &cachedSubtreeHasher{
 		leafHashes: leafHashes,
-		TreeHasher: h,
+		treeHasher: h,
 	}
 }
 
@@ -142,7 +142,7 @@ func TestProof_VerifyNamespace_False(t *testing.T) {
 
 func rangeProof(t *testing.T, n *NamespacedMerkleTree, start, end int) [][]byte {
 	n.computeLeafHashesIfNecessary()
-	subTreeHasher := NewCachedSubtreeHasher(n.leafHashes, n.treeHasher)
+	subTreeHasher := newCachedSubtreeHasher(n.leafHashes, n.treeHasher)
 	incompleteRange, err := merkletree.BuildRangeProof(start, end, subTreeHasher)
 	if err != nil {
 		t.Fatalf("Could not create range proof: %v", err)
