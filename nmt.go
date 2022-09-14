@@ -195,7 +195,7 @@ func (n NamespacedMerkleTree) buildRangeProof(proofStart, proofEnd int) [][]byte
 			return leafHash
 		}
 
-		// Recursively get left and right subtree
+		// recursively get left and right subtree
 		newIncludeNode := includeNode
 		if (end <= proofStart || start >= proofEnd) && includeNode {
 			newIncludeNode = false
@@ -213,7 +213,7 @@ func (n NamespacedMerkleTree) buildRangeProof(proofStart, proofEnd int) [][]byte
 			hash = n.treeHasher.HashNode(left, right)
 		}
 
-		// Highest node in subtree that lies outside proof range
+		// highest node in subtree that lies outside proof range
 		if includeNode && !newIncludeNode {
 			proof = append(proof, hash)
 		}
