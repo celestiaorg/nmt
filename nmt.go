@@ -8,12 +8,11 @@ import (
 	"hash"
 	"math/bits"
 
-	"github.com/celestiaorg/merkletree"
-	"github.com/celestiaorg/nmt/internal"
 	"github.com/celestiaorg/nmt/namespace"
 )
 
 var (
+	ErrInvalidRange            = errors.New("invalid proof range")
 	ErrMismatchedNamespaceSize = errors.New("mismatching namespace sizes")
 	ErrInvalidPushOrder        = errors.New("pushed data has to be lexicographically ordered by namespace IDs")
 	noOp                       = func(hash []byte, children ...[]byte) {}
@@ -127,12 +126,11 @@ func (n NamespacedMerkleTree) Prove(index int) (Proof, error) {
 func (n NamespacedMerkleTree) ProveRange(start, end int) (Proof, error) {
 	isMaxNsIgnored := n.treeHasher.IsMaxNamespaceIDIgnored()
 	n.computeLeafHashesIfNecessary()
-	subTreeHasher := internal.NewCachedSubtreeHasher(n.leafHashes, n.treeHasher)
 	// TODO: store nodes and re-use the hashes instead recomputing parts of the tree here
-	proof, err := merkletree.BuildRangeProof(start, end, subTreeHasher)
-	if err != nil {
-		return NewEmptyRangeProof(isMaxNsIgnored), err
+	if start < 0 || start > end || start == end || end > len(n.leafHashes) {
+		return NewEmptyRangeProof(isMaxNsIgnored), ErrInvalidRange
 	}
+	proof := n.buildRangeProof(start, end)
 
 	return NewInclusionProof(start, end, proof, isMaxNsIgnored), nil
 }
@@ -171,25 +169,66 @@ func (n NamespacedMerkleTree) ProveNamespace(nID namespace.ID) (Proof, error) {
 	// the range it would be in (to generate a proof of absence and to return
 	// the corresponding leaf hashes).
 	n.computeLeafHashesIfNecessary()
-	subTreeHasher := internal.NewCachedSubtreeHasher(n.leafHashes, n.treeHasher)
-	var err error
-	proof, err := merkletree.BuildRangeProof(proofStart, proofEnd, subTreeHasher)
-	if err != nil {
-		// This should never happen.
-		// TODO would be good to back this by more tests and fuzzing.
-		return Proof{}, fmt.Errorf(
-			"unexpected err: %w on nID: %v, range: [%v, %v)",
-			err,
-			nID,
-			proofStart,
-			proofEnd,
-		)
-	}
+	proof := n.buildRangeProof(proofStart, proofEnd)
 
 	if found {
 		return NewInclusionProof(proofStart, proofEnd, proof, isMaxNsIgnored), nil
 	}
 	return NewAbsenceProof(proofStart, proofEnd, proof, n.leafHashes[proofStart], isMaxNsIgnored), nil
+}
+
+func (n NamespacedMerkleTree) buildRangeProof(proofStart, proofEnd int) [][]byte {
+	proof := [][]byte{}
+	var recurse func(start, end int, includeNode bool) []byte
+	recurse = func(start, end int, includeNode bool) []byte {
+		if start >= len(n.leafHashes) {
+			return nil
+		}
+
+		// reached a leaf
+		if end-start == 1 {
+			leafHash := n.leafHashes[start]
+			// if current range does not overlap with proof range, add a node to proofs
+			if (start < proofStart || start >= proofEnd) && includeNode {
+				proof = append(proof, leafHash)
+			}
+			return leafHash
+		}
+
+		// Recursively get left and right subtree
+		newIncludeNode := includeNode
+		if (end <= proofStart || start >= proofEnd) && includeNode {
+			newIncludeNode = false
+		}
+
+		k := getSplitPoint(end - start)
+		left := recurse(start, start+k, newIncludeNode)
+		right := recurse(start+k, end, newIncludeNode)
+
+		// only right leaf/subtree can be non-existent
+		var hash []byte
+		if right == nil {
+			hash = left
+		} else {
+			hash = n.treeHasher.HashNode(left, right)
+		}
+
+		// if current range does not overlap with proof range,
+		// pop and return a proof node if present,
+		// else return nil because subtree doesn't exist
+		if includeNode && !newIncludeNode {
+			proof = append(proof, hash)
+		}
+
+		return hash
+	}
+
+	fullTreeSize := getSplitPoint(len(n.leafHashes)) * 2
+	if fullTreeSize < 1 {
+		fullTreeSize = 1
+	}
+	recurse(0, fullTreeSize, true)
+	return proof
 }
 
 // Get returns leaves for the given namespace.ID.
