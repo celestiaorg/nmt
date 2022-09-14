@@ -213,9 +213,7 @@ func (n NamespacedMerkleTree) buildRangeProof(proofStart, proofEnd int) [][]byte
 			hash = n.treeHasher.HashNode(left, right)
 		}
 
-		// if current range does not overlap with proof range,
-		// pop and return a proof node if present,
-		// else return nil because subtree doesn't exist
+		// Highest node in subtree that lies outside proof range
 		if includeNode && !newIncludeNode {
 			proof = append(proof, hash)
 		}
