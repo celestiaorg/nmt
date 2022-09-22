@@ -127,7 +127,7 @@ func (n NamespacedMerkleTree) ProveRange(start, end int) (Proof, error) {
 	isMaxNsIgnored := n.treeHasher.IsMaxNamespaceIDIgnored()
 	n.computeLeafHashesIfNecessary()
 	// TODO: store nodes and re-use the hashes instead recomputing parts of the tree here
-	if start < 0 || start > end || start == end || end > len(n.leafHashes) {
+	if start < 0 || start >= end || end > len(n.leafHashes) {
 		return NewEmptyRangeProof(isMaxNsIgnored), ErrInvalidRange
 	}
 	proof := n.buildRangeProof(start, end)
