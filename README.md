@@ -28,7 +28,7 @@ The concept was first introduced by [@musalbas] in the LazyLedger [academic pape
 package main
 
 import (
-	"bytes"
+    "bytes"
     "crypto/sha256"
     "fmt"
 
