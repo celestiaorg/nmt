@@ -28,6 +28,7 @@ The concept was first introduced by [@musalbas] in the LazyLedger [academic pape
 package main
 
 import (
+    "bytes"
     "crypto/sha256"
     "fmt"
 
@@ -46,7 +47,7 @@ func main() {
       append(namespace.ID{1}, []byte("leaf_3")...)}
     // Init a tree with the namespace size as well as
     // the underlying hash function:
-    tree := New(sha256.New(), NamespaceIDSize(nidSize))
+    tree := nmt.New(sha256.New(), nmt.NamespaceIDSize(nidSize))
     for _, d := range data {
       if err := tree.Push(d); err != nil {
         panic(fmt.Sprintf("unexpected error: %v", err))
@@ -55,8 +56,8 @@ func main() {
     // compute the root
     root := tree.Root()
     // the root's min/max namespace is the min and max namespace of all leaves:
-    minNS := MinNamespace(root, tree.NamespaceSize())
-    maxNS := MaxNamespace(root, tree.NamespaceSize())
+    minNS := nmt.MinNamespace(root, tree.NamespaceSize())
+    maxNS := nmt.MaxNamespace(root, tree.NamespaceSize())
     if bytes.Equal(minNS, namespace.ID{0}) {
       fmt.Printf("Min namespace: %x\n", minNS)
     }
