@@ -3,13 +3,57 @@ package nmt
 import (
 	"bytes"
 	"crypto/sha256"
+	"io"
 	"testing"
 
 	"github.com/celestiaorg/merkletree"
-
-	"github.com/celestiaorg/nmt/internal"
 	"github.com/celestiaorg/nmt/namespace"
 )
+
+type treeHasher interface {
+	merkletree.TreeHasher
+	Size() int
+}
+
+// CachedSubtreeHasher implements SubtreeHasher using a set of precomputed
+// leaf hashes.
+type cachedSubtreeHasher struct {
+	leafHashes [][]byte
+	treeHasher
+}
+
+// NextSubtreeRoot implements SubtreeHasher.
+func (csh *cachedSubtreeHasher) NextSubtreeRoot(subtreeSize int) ([]byte, error) {
+	if len(csh.leafHashes) == 0 {
+		return nil, io.EOF
+	}
+	tree := merkletree.NewFromTreehasher(csh.treeHasher)
+	for i := 0; i < subtreeSize && len(csh.leafHashes) > 0; i++ {
+		if err := tree.PushSubTree(0, csh.leafHashes[0]); err != nil {
+			return nil, err
+		}
+		csh.leafHashes = csh.leafHashes[1:]
+	}
+	return tree.Root(), nil
+}
+
+// Skip implements SubtreeHasher.
+func (csh *cachedSubtreeHasher) Skip(n int) error {
+	if n > len(csh.leafHashes) {
+		return io.ErrUnexpectedEOF
+	}
+	csh.leafHashes = csh.leafHashes[n:]
+	return nil
+}
+
+// newCachedSubtreeHasher creates a CachedSubtreeHasher using the specified
+// leaf hashes and hash function.
+func newCachedSubtreeHasher(leafHashes [][]byte, h treeHasher) *cachedSubtreeHasher {
+	return &cachedSubtreeHasher{
+		leafHashes: leafHashes,
+		treeHasher: h,
+	}
+}
 
 func TestProof_VerifyNamespace_False(t *testing.T) {
 	const testNidLen = 3
@@ -98,7 +142,7 @@ func TestProof_VerifyNamespace_False(t *testing.T) {
 
 func rangeProof(t *testing.T, n *NamespacedMerkleTree, start, end int) [][]byte {
 	n.computeLeafHashesIfNecessary()
-	subTreeHasher := internal.NewCachedSubtreeHasher(n.leafHashes, n.treeHasher)
+	subTreeHasher := newCachedSubtreeHasher(n.leafHashes, n.treeHasher)
 	incompleteRange, err := merkletree.BuildRangeProof(start, end, subTreeHasher)
 	if err != nil {
 		t.Fatalf("Could not create range proof: %v", err)
