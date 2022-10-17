@@ -71,7 +71,9 @@ func prune(idxStart uint, idxEnd uint, maxWidth uint) [][]int {
 	rightTraversed := false
 
 	for i := treeDepth - 1; i >= 0 && capturedSpan < idxEnd; i-- {
-		nodeSpan := uint(math.Pow(float64(2), float64(treeDepth-i)))
+		// nodeSpan is 2**(treeDepth-i) == 1<<(treeDepth-i)
+		// Please see: https://github.com/celestiaorg/nmt/issues/72
+		nodeSpan := uint(1 << (treeDepth - i))
 		if pathStart[i] == 0 {
 			// if nodespan is less than end index, continue traversing upwards
 			lastNode := nodeSpan + idxStart - 1
