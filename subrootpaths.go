@@ -2,7 +2,6 @@ package nmt
 
 import (
 	"errors"
-	"math"
 	"math/bits"
 )
 
@@ -146,21 +145,18 @@ func GetSubrootPaths(squareSize uint, idxStart uint, shareCount uint) ([][][]int
 		return nil, srpPastSquareSize
 	}
 
-	// adjust for 0 index
-	shareCount = shareCount - 1
-
 	startRow := idxStart / squareSize
 	// Compute ceil((idxStart + shareCount)/squareSize) without overflow.
-	closingRow := (idxStart + shareCount) / squareSize
-	if (idxStart+shareCount)%squareSize != 0 {
+	closingRow := (idxStart + shareCount - 1) / squareSize
+	if (idxStart+shareCount-1)%squareSize != 0 {
 		closingRow++
 	}
 
 	shareStart := idxStart % squareSize
-	shareEnd := (idxStart + shareCount) % squareSize
+	shareEnd := (idxStart + shareCount - 1) % squareSize
 
 	// if the count is one, just return the subdivided start path
-	if shareCount == 0 {
+	if shareCount == 1 {
 		return append(top, append(paths, subdivide(shareStart, squareSize))), nil
 	}
 
