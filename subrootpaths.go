@@ -128,8 +128,6 @@ func GetSubrootPaths(squareSize uint, idxStart uint, shareCount uint) ([][][]int
 	var paths [][]int
 	var top [][][]int
 
-	shares := squareSize * squareSize
-
 	// check squareSize is at least 2 and that it's
 	// a power of 2 by checking that only 1 bit is on
 	if squareSize < 2 || bits.OnesCount(squareSize) != 1 {
@@ -141,6 +139,8 @@ func GetSubrootPaths(squareSize uint, idxStart uint, shareCount uint) ([][][]int
 		return nil, srpInvalidShareCount
 	}
 
+	shares := squareSize * squareSize
+
 	// sanity checking
 	if idxStart >= shares || idxStart+shareCount > shares {
 		return nil, srpPastSquareSize
@@ -149,8 +149,12 @@ func GetSubrootPaths(squareSize uint, idxStart uint, shareCount uint) ([][][]int
 	// adjust for 0 index
 	shareCount = shareCount - 1
 
-	startRow := int(math.Floor(float64(idxStart) / float64(squareSize)))
-	closingRow := int(math.Ceil(float64(idxStart+shareCount) / float64(squareSize)))
+	startRow := idxStart / squareSize
+	// Compute ceil((idxStart + shareCount)/squareSize) without overflow.
+	closingRow := (idxStart + shareCount) / squareSize
+	if (idxStart+shareCount)%squareSize != 0 {
+		closingRow++
+	}
 
 	shareStart := idxStart % squareSize
 	shareEnd := (idxStart + shareCount) % squareSize
@@ -170,7 +174,7 @@ func GetSubrootPaths(squareSize uint, idxStart uint, shareCount uint) ([][][]int
 		left, _ := GetSubrootPaths(squareSize, shareStart, squareSize-shareStart)
 		right, _ := GetSubrootPaths(squareSize, 0, shareEnd+1)
 		top = append(top, left[0])
-		for i := 1; i < (closingRow-startRow)-1; i++ {
+		for i := uint(1); i < (closingRow-startRow)-1; i++ {
 			top = append(top, [][]int{{}})
 		}
 		top = append(top, right[0])
