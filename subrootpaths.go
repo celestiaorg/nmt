@@ -16,7 +16,7 @@ var (
 // this is just a quick function to return that representation as a list of ints
 func subdivide(idxStart uint, width uint) []int {
 	var path []int
-	pathlen := int(math.Log2(float64(width)))
+	pathlen := int(bits.Len(width) - 1)
 	for i := pathlen - 1; i >= 0; i-- {
 		if (idxStart & (1 << i)) == 0 {
 			path = append(path, 0)
@@ -37,9 +37,12 @@ func extractBranch(path []int, index int, offset int, branch int) []int {
 }
 
 func prune(idxStart uint, idxEnd uint, maxWidth uint) [][]int {
-
-	var prunedPaths [][]int
-	var preprocessedPaths [][]int
+	if idxEnd == 0 || maxWidth == 0 {
+		return nil
+	}
+	if idxStart > idxEnd || idxEnd >= maxWidth {
+		return nil
+	}
 
 	pathStart := subdivide(idxStart, maxWidth)
 	pathEnd := subdivide(idxEnd, maxWidth)
@@ -52,6 +55,9 @@ func prune(idxStart uint, idxEnd uint, maxWidth uint) [][]int {
 			return [][]int{pathStart[:len(pathStart)-1]}
 		}
 	}
+
+	var prunedPaths [][]int
+	var preprocessedPaths [][]int
 
 	// if starting share is on an odd index, add that single path and shift it right 1
 	if idxStart%2 == 1 {
