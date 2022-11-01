@@ -133,10 +133,13 @@ func TestPathGeneration(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		paths, err := GetSubrootPaths(tc.input.squareSize, tc.input.startNode, tc.input.length)
-		if !reflect.DeepEqual(pathResult(paths), tc.want) {
-			t.Fatalf(`GetSubrootPaths(%v) = %v, %v, want %v - rationale: %v`, tc.input, paths, err, tc.want, tc.desc)
-		}
+		tc := tc
+		t.Run(tc.desc, func(t *testing.T) {
+			paths, err := GetSubrootPaths(tc.input.squareSize, tc.input.startNode, tc.input.length)
+			if !reflect.DeepEqual(pathResult(paths), tc.want) {
+				t.Fatalf(`GetSubrootPaths(%v) = %v, %v, want %v - rationale: %v`, tc.input, paths, err, tc.want, tc.desc)
+			}
+		})
 	}
 
 }

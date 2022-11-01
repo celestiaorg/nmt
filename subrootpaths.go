@@ -9,6 +9,8 @@ var (
 	srpNotPowerOf2       = errors.New("GetSubrootPaths: Supplied square size is not a power of 2")
 	srpInvalidShareCount = errors.New("GetSubrootPaths: Can't compute path for 0 share count slice")
 	srpPastSquareSize    = errors.New("GetSubrootPaths: Share slice can't be past the square size")
+
+	srpInvalidIdxStartShareCountSum = errors.New("invalid idxStart+shareCount value")
 )
 
 // merkle path to a node is equivalent to the index's binary representation
@@ -123,10 +125,6 @@ func prune(idxStart uint, idxEnd uint, maxWidth uint) [][]int {
 // An empty entry in the top level list means the shares span that entire row and so
 // the root for that segment of shares is equivalent to the row root.
 func GetSubrootPaths(squareSize uint, idxStart uint, shareCount uint) ([][][]int, error) {
-
-	var paths [][]int
-	var top [][][]int
-
 	// check squareSize is at least 2 and that it's
 	// a power of 2 by checking that only 1 bit is on
 	if squareSize < 2 || bits.OnesCount(squareSize) != 1 {
@@ -138,10 +136,15 @@ func GetSubrootPaths(squareSize uint, idxStart uint, shareCount uint) ([][][]int
 		return nil, srpInvalidShareCount
 	}
 
+	isn := idxStart + shareCount
+	if isn < idxStart || isn < shareCount {
+		return nil, srpInvalidIdxStartShareCountSum
+	}
+
 	shares := squareSize * squareSize
 
 	// sanity checking
-	if idxStart >= shares || idxStart+shareCount > shares {
+	if idxStart >= shares || isn > shares {
 		return nil, srpPastSquareSize
 	}
 
@@ -155,6 +158,9 @@ func GetSubrootPaths(squareSize uint, idxStart uint, shareCount uint) ([][][]int
 	shareStart := idxStart % squareSize
 	shareEnd := (idxStart + shareCount - 1) % squareSize
 
+	var paths [][]int
+	var top [][][]int
+
 	// if the count is one, just return the subdivided start path
 	if shareCount == 1 {
 		return append(top, append(paths, subdivide(shareStart, squareSize))), nil
@@ -167,8 +173,15 @@ func GetSubrootPaths(squareSize uint, idxStart uint, shareCount uint) ([][][]int
 		// if the shares span multiple rows, treat it as 2 different path generations,
 		// one from left-most root to end of a row, and one from start of a row to right-most root,
 		// and returning nil lists for the fully covered rows in between
-		left, _ := GetSubrootPaths(squareSize, shareStart, squareSize-shareStart)
-		right, _ := GetSubrootPaths(squareSize, 0, shareEnd+1)
+		left, err := GetSubrootPaths(squareSize, shareStart, squareSize-shareStart)
+		if err != nil {
+			return nil, err
+		}
+		right, err := GetSubrootPaths(squareSize, 0, shareEnd+1)
+		if err != nil {
+			return nil, err
+		}
+
 		top = append(top, left[0])
 		for i := uint(1); i < (closingRow-startRow)-1; i++ {
 			top = append(top, [][]int{{}})
