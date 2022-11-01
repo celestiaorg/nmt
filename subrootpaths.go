@@ -9,8 +9,7 @@ var (
 	srpNotPowerOf2       = errors.New("GetSubrootPaths: Supplied square size is not a power of 2")
 	srpInvalidShareCount = errors.New("GetSubrootPaths: Can't compute path for 0 share count slice")
 	srpPastSquareSize    = errors.New("GetSubrootPaths: Share slice can't be past the square size")
-
-	srpInvalidIdxStartShareCountSum = errors.New("invalid idxStart+shareCount value")
+	srpInvalidIdxEnd     = errors.New("GetSubrootPaths: idxEnd must be larger than idxStart and shareCount")
 )
 
 // merkle path to a node is equivalent to the index's binary representation
@@ -136,15 +135,15 @@ func GetSubrootPaths(squareSize uint, idxStart uint, shareCount uint) ([][][]int
 		return nil, srpInvalidShareCount
 	}
 
-	isn := idxStart + shareCount
-	if isn < idxStart || isn < shareCount {
-		return nil, srpInvalidIdxStartShareCountSum
+	idxEnd := idxStart + shareCount
+	if idxEnd < idxStart || idxEnd < shareCount {
+		return nil, srpInvalidIdxEnd
 	}
 
 	shares := squareSize * squareSize
 
 	// sanity checking
-	if idxStart >= shares || isn > shares {
+	if idxStart >= shares || idxEnd > shares {
 		return nil, srpPastSquareSize
 	}
 
