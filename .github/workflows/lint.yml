@@ -22,6 +22,6 @@ jobs:
             .sum
       - uses: golangci/golangci-lint-action@master
         with:
-          version: v1.28
+          version: v1.47.2
           args: --timeout 10m
         if: env.GIT_DIFF
