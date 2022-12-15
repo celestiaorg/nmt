@@ -43,7 +43,8 @@ func ExampleNamespacedMerkleTree() {
 		append(namespace.ID{0}, []byte("leaf_0")...),
 		append(namespace.ID{0}, []byte("leaf_1")...),
 		append(namespace.ID{1}, []byte("leaf_2")...),
-		append(namespace.ID{1}, []byte("leaf_3")...)}
+		append(namespace.ID{1}, []byte("leaf_3")...),
+	}
 	// Init a tree with the namespace size as well as
 	// the underlying hash function:
 	tree := New(sha256.New(), NamespaceIDSize(nidSize))
@@ -184,57 +185,77 @@ func TestNamespacedMerkleTree_ProveNamespace_Ranges_And_Verify(t *testing.T) {
 		wantProofEnd   int
 		wantFound      bool
 	}{
-		{"found", 1,
+		{
+			"found", 1,
 			generateLeafData(1, 0, 1, []byte("_data")),
 			[]byte{0},
 			0, 1,
-			true},
-		{"not found", 1,
+			true,
+		},
+		{
+			"not found", 1,
 			generateLeafData(1, 0, 1, []byte("_data")),
 			[]byte{1},
 			0, 0,
-			false},
-		{"two leaves and found", 1,
+			false,
+		},
+		{
+			"two leaves and found", 1,
 			append(generateLeafData(1, 0, 1, []byte("_data")), generateLeafData(1, 1, 2, []byte("_data"))...),
 			[]byte{1},
 			1, 2,
-			true},
-		{"two leaves and found2", 1,
+			true,
+		},
+		{
+			"two leaves and found2", 1,
 			repeat(generateLeafData(1, 0, 1, []byte("_data")), 2),
 			[]byte{1},
-			0, 0, false},
-		{"three leaves and found", 1,
+			0, 0, false,
+		},
+		{
+			"three leaves and found", 1,
 			append(repeat(generateLeafData(1, 0, 1, []byte("_data")), 2), generateLeafData(1, 1, 2, []byte("_data"))...),
 			[]byte{1},
 			2, 3,
-			true},
-		{"three leaves and not found but with range", 2,
+			true,
+		},
+		{
+			"three leaves and not found but with range", 2,
 			append(repeat(generateLeafData(2, 0, 1, []byte("_data")), 2), newNamespaceDataPair([]byte{1, 1}, []byte("_data"))),
 			[]byte{0, 1},
 			2, 3,
-			false},
-		{"three leaves and not found but within range", 2,
+			false,
+		},
+		{
+			"three leaves and not found but within range", 2,
 			append(repeat(generateLeafData(2, 0, 1, []byte("_data")), 2), newNamespaceDataPair([]byte{1, 1}, []byte("_data"))),
 			[]byte{0, 1},
 			2, 3,
-			false},
-		{"5 leaves and not found but within range", 2,
+			false,
+		},
+		{
+			"5 leaves and not found but within range", 2,
 			append(generateLeafData(2, 0, 4, []byte("_data")), newNamespaceDataPair([]byte{1, 1}, []byte("_data"))),
 			[]byte{1, 0},
 			4, 5,
-			false},
+			false,
+		},
 		// In the cases (nID < minNID) or (maxNID < nID) we do not generate any proof
 		// and the (minNS, maxNs, root) should be indication enough that nID is not in that range.
-		{"4 leaves, not found and nID < minNID", 2,
+		{
+			"4 leaves, not found and nID < minNID", 2,
 			[]namespaceDataPair{newNamespaceDataPairRaw(2, []byte("01_data")), newNamespaceDataPairRaw(2, []byte("01_data")), newNamespaceDataPairRaw(2, []byte("01_data")), newNamespaceDataPairRaw(2, []byte("11_data"))},
 			[]byte("00"),
 			0, 0,
-			false},
-		{"4 leaves, not found and nID > maxNID ", 2,
+			false,
+		},
+		{
+			"4 leaves, not found and nID > maxNID ", 2,
 			[]namespaceDataPair{newNamespaceDataPairRaw(2, []byte("00_data")), newNamespaceDataPairRaw(2, []byte("00_data")), newNamespaceDataPairRaw(2, []byte("01_data")), newNamespaceDataPairRaw(2, []byte("01_data"))},
 			[]byte("11"),
 			0, 0,
-			false},
+			false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -316,17 +337,20 @@ func TestIgnoreMaxNamespace(t *testing.T) {
 		pushData           []namespace.PrefixedData8
 		wantRootMaxNID     namespace.ID
 	}{
-		{"single leaf with MaxNID (ignored)",
+		{
+			"single leaf with MaxNID (ignored)",
 			true,
 			[]namespace.PrefixedData8{namespace.PrefixedData8(append(maxNID, []byte("leaf_1")...))},
 			maxNID,
 		},
-		{"single leaf with MaxNID (not ignored)",
+		{
+			"single leaf with MaxNID (not ignored)",
 			false,
 			[]namespace.PrefixedData8{namespace.PrefixedData8(append(maxNID, []byte("leaf_1")...))},
 			maxNID,
 		},
-		{"two leaves, one with MaxNID (ignored)",
+		{
+			"two leaves, one with MaxNID (ignored)",
 			true,
 			[]namespace.PrefixedData8{
 				namespace.PrefixedData8(append(secondNID, []byte("leaf_1")...)),
@@ -334,7 +358,8 @@ func TestIgnoreMaxNamespace(t *testing.T) {
 			},
 			secondNID,
 		},
-		{"two leaves, one with MaxNID (not ignored)",
+		{
+			"two leaves, one with MaxNID (not ignored)",
 			false,
 			[]namespace.PrefixedData8{
 				namespace.PrefixedData8(append(secondNID, []byte("leaf_1")...)),
@@ -342,7 +367,8 @@ func TestIgnoreMaxNamespace(t *testing.T) {
 			},
 			maxNID,
 		},
-		{"two leaves with MaxNID (ignored)",
+		{
+			"two leaves with MaxNID (ignored)",
 			true,
 			[]namespace.PrefixedData8{
 				namespace.PrefixedData8(append(maxNID, []byte("leaf_1")...)),
@@ -350,7 +376,8 @@ func TestIgnoreMaxNamespace(t *testing.T) {
 			},
 			maxNID,
 		},
-		{"two leaves with MaxNID (not ignored)",
+		{
+			"two leaves with MaxNID (not ignored)",
 			false,
 			[]namespace.PrefixedData8{
 				namespace.PrefixedData8(append(maxNID, []byte("leaf_1")...)),
@@ -358,7 +385,8 @@ func TestIgnoreMaxNamespace(t *testing.T) {
 			},
 			maxNID,
 		},
-		{"two leaves, none with MaxNID (ignored)",
+		{
+			"two leaves, none with MaxNID (ignored)",
 			true,
 			[]namespace.PrefixedData8{
 				namespace.PrefixedData8(append(minNID, []byte("leaf_1")...)),
@@ -366,7 +394,8 @@ func TestIgnoreMaxNamespace(t *testing.T) {
 			},
 			secondNID,
 		},
-		{"two leaves, none with MaxNID (not ignored)",
+		{
+			"two leaves, none with MaxNID (not ignored)",
 			false,
 			[]namespace.PrefixedData8{
 				namespace.PrefixedData8(append(minNID, []byte("leaf_1")...)),
@@ -374,7 +403,8 @@ func TestIgnoreMaxNamespace(t *testing.T) {
 			},
 			secondNID,
 		},
-		{"three leaves, one with MaxNID (ignored)",
+		{
+			"three leaves, one with MaxNID (ignored)",
 			true,
 			[]namespace.PrefixedData8{
 				namespace.PrefixedData8(append(minNID, []byte("leaf_1")...)),
@@ -383,7 +413,8 @@ func TestIgnoreMaxNamespace(t *testing.T) {
 			},
 			secondNID,
 		},
-		{"three leaves, one with MaxNID (not ignored)",
+		{
+			"three leaves, one with MaxNID (not ignored)",
 			false,
 			[]namespace.PrefixedData8{
 				namespace.PrefixedData8(append(minNID, []byte("leaf_1")...)),
@@ -393,7 +424,8 @@ func TestIgnoreMaxNamespace(t *testing.T) {
 			maxNID,
 		},
 
-		{"4 leaves, none maxNID (ignored)", true,
+		{
+			"4 leaves, none maxNID (ignored)", true,
 			[]namespace.PrefixedData8{
 				namespace.PrefixedData8(append(minNID, []byte("leaf_1")...)),
 				namespace.PrefixedData8(append(minNID, []byte("leaf_2")...)),
@@ -402,7 +434,8 @@ func TestIgnoreMaxNamespace(t *testing.T) {
 			},
 			thirdNID,
 		},
-		{"4 leaves, half maxNID (ignored)",
+		{
+			"4 leaves, half maxNID (ignored)",
 			true,
 			[]namespace.PrefixedData8{
 				namespace.PrefixedData8(append(minNID, []byte("leaf_1")...)),
@@ -412,7 +445,8 @@ func TestIgnoreMaxNamespace(t *testing.T) {
 			},
 			secondNID,
 		},
-		{"4 leaves, half maxNID (not ignored)",
+		{
+			"4 leaves, half maxNID (not ignored)",
 			false,
 			[]namespace.PrefixedData8{
 				namespace.PrefixedData8(append(minNID, []byte("leaf_1")...)),
@@ -422,7 +456,8 @@ func TestIgnoreMaxNamespace(t *testing.T) {
 			},
 			maxNID,
 		},
-		{"8 leaves, 4 maxNID (ignored)",
+		{
+			"8 leaves, 4 maxNID (ignored)",
 			true,
 			[]namespace.PrefixedData8{
 				namespace.PrefixedData8(append(minNID, []byte("leaf_1")...)),
@@ -601,7 +636,6 @@ func BenchmarkComputeRoot(b *testing.B) {
 			}
 		})
 	}
-
 }
 
 func Test_Root_RaceCondition(t *testing.T) {

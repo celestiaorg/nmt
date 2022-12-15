@@ -19,6 +19,7 @@ func (nid ID) LessOrEqual(other ID) bool {
 func (nid ID) Size() IDSize {
 	return IDSize(len(nid))
 }
+
 func (nid ID) String() string {
 	return string(nid)
 }

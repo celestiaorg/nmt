@@ -169,7 +169,6 @@ func (proof Proof) verifyLeafHashes(nth *Hasher, verifyCompleteness bool, nID na
 
 	var computeRoot func(start, end int) []byte
 	computeRoot = func(start, end int) []byte {
-
 		// reached a leaf
 		if end-start == 1 {
 			// if current range overlaps with proof range, pop and return a leaf

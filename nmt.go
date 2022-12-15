@@ -370,6 +370,7 @@ func (n *NamespacedMerkleTree) updateNamespaceRanges() {
 		}
 	}
 }
+
 func (n *NamespacedMerkleTree) validateAndExtractNamespace(ndata namespace.PrefixedData) (namespace.ID, error) {
 	nidSize := int(n.NamespaceSize())
 	if len(ndata) < nidSize {
