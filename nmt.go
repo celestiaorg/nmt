@@ -118,12 +118,12 @@ func New(h hash.Hash, setters ...Option) *NamespacedMerkleTree {
 // Prove leaf at index.
 // Note this is not really NMT specific but the tree supports inclusions proofs
 // like any vanilla Merkle tree.
-func (n NamespacedMerkleTree) Prove(index int) (Proof, error) {
+func (n *NamespacedMerkleTree) Prove(index int) (Proof, error) {
 	return n.ProveRange(index, index+1)
 }
 
 // ProveRange proves a leaf range [start, end].
-func (n NamespacedMerkleTree) ProveRange(start, end int) (Proof, error) {
+func (n *NamespacedMerkleTree) ProveRange(start, end int) (Proof, error) {
 	isMaxNsIgnored := n.treeHasher.IsMaxNamespaceIDIgnored()
 	n.computeLeafHashesIfNecessary()
 	// TODO: store nodes and re-use the hashes instead recomputing parts of the tree here
@@ -149,7 +149,7 @@ func (n NamespacedMerkleTree) ProveRange(start, end int) (Proof, error) {
 // In the case (nID < minNID) or (maxNID < nID) we do not
 // generate any proof and we return an empty range (0,0) to
 // indicate that this namespace is not contained in the tree.
-func (n NamespacedMerkleTree) ProveNamespace(nID namespace.ID) (Proof, error) {
+func (n *NamespacedMerkleTree) ProveNamespace(nID namespace.ID) (Proof, error) {
 	isMaxNsIgnored := n.treeHasher.IsMaxNamespaceIDIgnored()
 	// In the cases (nID < minNID) or (maxNID < nID),
 	// return empty range and no proof:
@@ -177,7 +177,7 @@ func (n NamespacedMerkleTree) ProveNamespace(nID namespace.ID) (Proof, error) {
 	return NewAbsenceProof(proofStart, proofEnd, proof, n.leafHashes[proofStart], isMaxNsIgnored), nil
 }
 
-func (n NamespacedMerkleTree) buildRangeProof(proofStart, proofEnd int) [][]byte {
+func (n *NamespacedMerkleTree) buildRangeProof(proofStart, proofEnd int) [][]byte {
 	proof := [][]byte{}
 	var recurse func(start, end int, includeNode bool) []byte
 	recurse = func(start, end int, includeNode bool) []byte {
@@ -230,7 +230,7 @@ func (n NamespacedMerkleTree) buildRangeProof(proofStart, proofEnd int) [][]byte
 }
 
 // Get returns leaves for the given namespace.ID.
-func (n NamespacedMerkleTree) Get(nID namespace.ID) [][]byte {
+func (n *NamespacedMerkleTree) Get(nID namespace.ID) [][]byte {
 	_, start, end := n.foundInRange(nID)
 	return n.leaves[start:end]
 }
@@ -238,13 +238,13 @@ func (n NamespacedMerkleTree) Get(nID namespace.ID) [][]byte {
 // GetWithProof is a convenience method returns leaves for the given namespace.ID
 // together with the proof for that namespace. It returns the same result
 // as calling the combination of Get(nid) and ProveNamespace(nid).
-func (n NamespacedMerkleTree) GetWithProof(nID namespace.ID) ([][]byte, Proof, error) {
+func (n *NamespacedMerkleTree) GetWithProof(nID namespace.ID) ([][]byte, Proof, error) {
 	data := n.Get(nID)
 	proof, err := n.ProveNamespace(nID)
 	return data, proof, err
 }
 
-func (n NamespacedMerkleTree) calculateAbsenceIndex(nID namespace.ID) int {
+func (n *NamespacedMerkleTree) calculateAbsenceIndex(nID namespace.ID) int {
 	nidSize := n.treeHasher.NamespaceSize()
 	var prevLeaf []byte
 
@@ -283,7 +283,7 @@ func (n *NamespacedMerkleTree) foundInRange(nID namespace.ID) (bool, int, int) {
 
 // NamespaceSize returns the underlying namespace size. Note that
 // all namespaced data is expected to have the same namespace size.
-func (n NamespacedMerkleTree) NamespaceSize() namespace.IDSize {
+func (n *NamespacedMerkleTree) NamespaceSize() namespace.IDSize {
 	return n.treeHasher.NamespaceSize()
 }
 
@@ -305,7 +305,7 @@ func (n *NamespacedMerkleTree) Push(namespacedData namespace.PrefixedData) error
 	return nil
 }
 
-// Return the namespaced Merkle Tree's root with the minimum and maximum
+// Root returns the namespaced Merkle Tree's root with the minimum and maximum
 // namespace. min || max || hashDigest
 func (n *NamespacedMerkleTree) Root() []byte {
 	if n.rawRoot == nil {
@@ -314,7 +314,7 @@ func (n *NamespacedMerkleTree) Root() []byte {
 	return n.rawRoot
 }
 
-func (n NamespacedMerkleTree) computeRoot(start, end int) []byte {
+func (n *NamespacedMerkleTree) computeRoot(start, end int) []byte {
 	switch end - start {
 	case 0:
 		rootHash := n.treeHasher.EmptyRoot()
@@ -370,6 +370,7 @@ func (n *NamespacedMerkleTree) updateNamespaceRanges() {
 		}
 	}
 }
+
 func (n *NamespacedMerkleTree) validateAndExtractNamespace(ndata namespace.PrefixedData) (namespace.ID, error) {
 	nidSize := int(n.NamespaceSize())
 	if len(ndata) < nidSize {

@@ -14,7 +14,6 @@ type pathSpan struct {
 type pathResult [][][]int
 
 func TestArgValidation(t *testing.T) {
-
 	type test struct {
 		input pathSpan
 		want  error
@@ -38,7 +37,6 @@ func TestArgValidation(t *testing.T) {
 }
 
 func TestPathGeneration(t *testing.T) {
-
 	type test struct {
 		input pathSpan
 		want  pathResult
@@ -142,5 +140,4 @@ func TestPathGeneration(t *testing.T) {
 			}
 		})
 	}
-
 }
