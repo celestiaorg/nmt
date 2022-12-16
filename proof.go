@@ -104,9 +104,14 @@ func (proof Proof) VerifyNamespace(h hash.Hash, nID namespace.ID, data [][]byte,
 	}
 
 	isEmptyRange := proof.start == proof.end
-	// empty range, proof, and data: always checks out
 	if len(data) == 0 && isEmptyRange && len(proof.nodes) == 0 {
-		return true
+		// empty proofs are always rejected unless nID is outside the range of namespaces covered by the root
+		// we special case the empty root, since it purports to cover the zero namespace but does not actually
+		// include any such nodes
+		if nID.Less(min) || max.Less(nID) || bytes.Equal(root, nth.EmptyRoot()) {
+			return true
+		}
+		return false
 	}
 	gotLeafHashes := make([][]byte, 0, len(data))
 	nIDLen := nID.Size()

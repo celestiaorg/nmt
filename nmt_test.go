@@ -596,6 +596,58 @@ func TestNamespacedMerkleTree_calculateAbsenceIndex_Panic(t *testing.T) {
 	}
 }
 
+// This test checks for a regression of https://github.com/celestiaorg/nmt/issues/86
+func TestNMT_absenceProofOfZeroNamespace_InEmptyTree(t *testing.T) {
+	tree := New(sha256.New(), NamespaceIDSize(1))
+	root := tree.Root()
+	emptyleaves, proof, err := tree.GetWithProof(namespace.ID{0})
+	if err != nil {
+		t.Fatalf("GetWithProof()  could not get namespace{0}. err: %v ", err)
+	}
+	if len(emptyleaves) != 0 {
+		t.Fatalf("Get(namespace.ID{0}) should have returned no leaves but returned %v", emptyleaves)
+	}
+	if !proof.VerifyNamespace(sha256.New(), namespace.ID{0}, emptyleaves, root) {
+		t.Fatalf("Could not verify proof of absence of namespace zero in empty tree")
+	}
+}
+
+// This test checks for a regression of https://github.com/celestiaorg/nmt/issues/86
+func TestNMT_forgedNamespaceEmptinessProof(t *testing.T) {
+	data := [][]byte{
+		append(namespace.ID{1}, []byte("leaf_0")...),
+		append(namespace.ID{1}, []byte("leaf_1")...),
+		append(namespace.ID{2}, []byte("leaf_2")...),
+		append(namespace.ID{2}, []byte("leaf_3")...)}
+	// Init a tree with the namespace size as well as
+	// the underlying hash function:
+	tree := New(sha256.New(), NamespaceIDSize(1))
+	for _, d := range data {
+		if err := tree.Push(d); err != nil {
+			panic(fmt.Sprintf("unexpected error: %v", err))
+		}
+	}
+
+	root := tree.Root()
+	actualLeaves := tree.Get(namespace.ID{1})
+	if len(actualLeaves) == 0 {
+		t.Fatalf("Get(namespace.ID{1}) should have returned two leaves but returned none.")
+	}
+
+	forgedProof := Proof{
+		start:                   0,
+		end:                     0,
+		nodes:                   [][]byte{},
+		leafHash:                []byte{},
+		isMaxNamespaceIDIgnored: true,
+	}
+
+	forgedProofSuccess := forgedProof.VerifyNamespace(sha256.New(), namespace.ID{1}, [][]byte{}, root)
+	if forgedProofSuccess {
+		t.Fatalf("Successfully verified proof that non-empty namespace was empty")
+	}
+}
+
 func TestInvalidOptions(t *testing.T) {
 	shouldPanic(t, func() {
 		_ = New(sha256.New(), InitialCapacity(-1))
