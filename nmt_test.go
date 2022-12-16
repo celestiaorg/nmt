@@ -642,8 +642,8 @@ func TestNMT_forgedNamespaceEmptinessProof(t *testing.T) {
 		isMaxNamespaceIDIgnored: true,
 	}
 
-	forged_proof_succes := forgedProof.VerifyNamespace(sha256.New(), namespace.ID{1}, [][]byte{}, root)
-	if forged_proof_succes {
+	forgedProofSuccess := forgedProof.VerifyNamespace(sha256.New(), namespace.ID{1}, [][]byte{}, root)
+	if forgedProofSuccess {
 		t.Fatalf("Successfully verified proof that non-empty namespace was empty")
 	}
 }
