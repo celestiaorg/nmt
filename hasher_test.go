@@ -7,7 +7,16 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/celestiaorg/nmt/namespace"
+)
+
+const (
+	hashSize  = sha256.Size + (2 * DefaultNamespaceIDLen)
+	leafSize  = DefaultNamespaceIDLen + DefaultShareSize
+	innerSize = 2 * hashSize
 )
 
 func Test_namespacedTreeHasher_HashLeaf(t *testing.T) {
@@ -40,7 +49,7 @@ func Test_namespacedTreeHasher_HashLeaf(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			n := NewNmtHasher(sha256.New(), tt.nsLen, false)
+			n := NewNmtHasher(sha256.New(), tt.nsLen, DefaultShareSize, false)
 			if got := n.HashLeaf(tt.leaf); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("HashLeaf() = %v, want %v", got, tt.want)
 			}
@@ -97,7 +106,7 @@ func Test_namespacedTreeHasher_HashNode(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			n := NewNmtHasher(sha256.New(), tt.nidLen, false)
+			n := NewNmtHasher(sha256.New(), tt.nidLen, DefaultShareSize, false)
 			if got := n.HashNode(tt.children.l, tt.children.r); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("HashNode() = %v, want %v", got, tt.want)
 			}
@@ -164,4 +173,83 @@ func sum(hash crypto.Hash, data ...[]byte) []byte {
 	}
 
 	return h.Sum(nil)
+}
+
+func TestNamespaceHasherWrite(t *testing.T) {
+	tt := []struct {
+		name         string
+		expectedSize int
+		writtenSize  int
+	}{
+		{
+			"Leaf",
+			leafSize,
+			leafSize,
+		},
+		{
+			"Inner",
+			innerSize,
+			innerSize,
+		},
+	}
+
+	for _, ts := range tt {
+		t.Run("Success"+ts.name, func(t *testing.T) {
+			h := defaultHasher
+			h.Reset()
+			n, err := h.Write(make([]byte, ts.writtenSize))
+			assert.NoError(t, err)
+			assert.Equal(t, ts.expectedSize, n)
+			assert.Equal(t, ts.expectedSize, len(h.data))
+		})
+	}
+
+	t.Run("ErrorSecondWrite", func(t *testing.T) {
+		h := defaultHasher
+		h.Reset()
+		n, err := h.Write(make([]byte, leafSize))
+		assert.NoError(t, err)
+		assert.Equal(t, leafSize, n)
+
+		require.Panics(t, func() {
+			_, _ = h.Write(make([]byte, leafSize))
+		})
+	})
+
+	t.Run("ErrorIncorrectSize", func(t *testing.T) {
+		h := defaultHasher
+		h.Reset()
+		n, err := h.Write(make([]byte, 13))
+		assert.Error(t, err)
+		assert.Equal(t, 0, n)
+	})
+}
+
+func TestNamespaceHasherSum(t *testing.T) {
+	tt := []struct {
+		name         string
+		expectedSize int
+		writtenSize  int
+	}{
+		{
+			"Leaf",
+			hashSize,
+			leafSize,
+		},
+		{
+			"Inner",
+			hashSize,
+			innerSize,
+		},
+	}
+
+	for _, ts := range tt {
+		t.Run("Success"+ts.name, func(t *testing.T) {
+			h := defaultHasher
+			h.Reset()
+			_, _ = h.Write(make([]byte, ts.writtenSize))
+			sum := h.Sum(nil)
+			assert.Equal(t, len(sum), ts.expectedSize)
+		})
+	}
 }

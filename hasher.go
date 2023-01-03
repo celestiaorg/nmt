@@ -3,6 +3,7 @@ package nmt
 import (
 	"bytes"
 	"crypto/sha256"
+	"fmt"
 	"hash"
 
 	"github.com/celestiaorg/nmt/namespace"
@@ -11,13 +12,13 @@ import (
 const (
 	LeafPrefix = 0
 	NodePrefix = 1
-
-	DefaultNamespaceIDLen = 8
 )
+
+var _ hash.Hash = (*Hasher)(nil)
 
 // defaultHasher uses sha256 as a base-hasher, 8 bytes
 // for the namespace IDs and ignores the maximum possible namespace.
-var defaultHasher = NewNmtHasher(sha256.New(), DefaultNamespaceIDLen, true)
+var defaultHasher = NewNmtHasher(sha256.New(), DefaultNamespaceIDLen, DefaultShareSize, true)
 
 // Sha256Namespace8FlaggedLeaf uses sha256 as a base-hasher, 8 bytes
 // for the namespace IDs and ignores the maximum possible namespace.
@@ -46,7 +47,7 @@ func Sha256Namespace8FlaggedLeaf(namespacedData []byte) []byte {
 // The output will also be of length 2*DefaultNamespaceIDLen+sha256.Size = 48 bytes.
 func Sha256Namespace8FlaggedInner(leftRight []byte) []byte {
 	const flagLen = DefaultNamespaceIDLen * 2
-	sha256Len := defaultHasher.Size()
+	sha256Len := defaultHasher.baseHasher.Size()
 	left := leftRight[:flagLen+sha256Len]
 	right := leftRight[flagLen+sha256Len:]
 
@@ -54,11 +55,15 @@ func Sha256Namespace8FlaggedInner(leftRight []byte) []byte {
 }
 
 type Hasher struct {
-	hash.Hash
+	baseHasher   hash.Hash
 	NamespaceLen namespace.IDSize
+	shareSize    int
 
 	ignoreMaxNs      bool
 	precomputedMaxNs namespace.ID
+
+	tp   byte   // keeps type of NMT node to be hashed
+	data []byte // written data of the NMT node
 }
 
 func (n *Hasher) IsMaxNamespaceIDIgnored() bool {
@@ -69,18 +74,76 @@ func (n *Hasher) NamespaceSize() namespace.IDSize {
 	return n.NamespaceLen
 }
 
-func NewNmtHasher(baseHasher hash.Hash, nidLen namespace.IDSize, ignoreMaxNamespace bool) *Hasher {
+func NewNmtHasher(baseHasher hash.Hash, nidLen namespace.IDSize, shareSize int, ignoreMaxNamespace bool) *Hasher {
 	return &Hasher{
-		Hash:             baseHasher,
-		NamespaceLen:     nidLen,
+		baseHasher:   baseHasher,
+		NamespaceLen: nidLen,
+		shareSize:    shareSize,
+
 		ignoreMaxNs:      ignoreMaxNamespace,
 		precomputedMaxNs: bytes.Repeat([]byte{0xFF}, int(nidLen)),
 	}
 }
 
+// Size returns the number of bytes Sum will return.
+func (n *Hasher) Size() int {
+	return n.baseHasher.Size() + int(n.NamespaceLen)*2
+}
+
+// Write writes the namespaced data to be hashed.
+//
+// Requires data of fixed size to match leaf or inner NMT nodes.
+// Only a single write is allowed.
+func (n *Hasher) Write(data []byte) (int, error) {
+	if n.data != nil {
+		panic("only a single Write is allowed")
+	}
+
+	ln := len(data)
+	switch ln {
+	default:
+		return 0, fmt.Errorf("invalid data size written to the hasher, len: %v", ln)
+	// inner nodes are made up of the nmt hashes of the left and right children
+	case n.Size() * 2:
+		n.tp = NodePrefix
+	// leaf nodes contain the namespace length and a share
+	case int(n.NamespaceLen) + n.shareSize:
+		n.tp = LeafPrefix
+	}
+
+	n.data = data
+	return ln, nil
+}
+
+// Sum computes the hash.
+// Does not append the given suffix, violating the interface.
+func (n *Hasher) Sum([]byte) []byte {
+	switch n.tp {
+	case LeafPrefix:
+		return n.HashLeaf(n.data)
+	case NodePrefix:
+		flagLen := int(n.NamespaceLen) * 2
+		sha256Len := n.Size()
+		return n.HashNode(n.data[:flagLen+sha256Len], n.data[flagLen+sha256Len:])
+	default:
+		panic("nmt node type wasn't set")
+	}
+}
+
+// Reset resets the Hash to its initial state.
+func (n *Hasher) Reset() {
+	n.tp, n.data = 255, nil // reset with an invalid node type, as zero value is a valid Leaf
+	n.baseHasher.Reset()
+}
+
+// BlockSize returns the hash's underlying block size.
+func (n *Hasher) BlockSize() int {
+	return n.baseHasher.BlockSize()
+}
+
 func (n *Hasher) EmptyRoot() []byte {
 	emptyNs := bytes.Repeat([]byte{0}, int(n.NamespaceLen))
-	h := n.Sum(nil)
+	h := n.baseHasher.Sum(nil)
 	digest := append(append(emptyNs, emptyNs...), h...)
 
 	return digest
@@ -96,11 +159,11 @@ func (n *Hasher) EmptyRoot() []byte {
 //
 //nolint:errcheck
 func (n *Hasher) HashLeaf(leaf []byte) []byte {
-	h := n.Hash
+	h := n.baseHasher
 	h.Reset()
 
 	nID := leaf[:n.NamespaceLen]
-	resLen := int(2*n.NamespaceLen) + n.Hash.Size()
+	resLen := int(2*n.NamespaceLen) + n.baseHasher.Size()
 	res := append(append(make([]byte, 0, resLen), nID...), nID...)
 	// h(0x00, d.namespaceID, d.rawData)
 	data := append(append(make([]byte, 0, len(leaf)+1), LeafPrefix), leaf...)
@@ -113,7 +176,7 @@ func (n *Hasher) HashLeaf(leaf []byte) []byte {
 // left and right child node bytes, including their respective min and max namespace IDs:
 // left = left.Min() || left.Max() || l.Hash().
 func (n *Hasher) HashNode(l, r []byte) []byte {
-	h := n.Hash
+	h := n.baseHasher
 	h.Reset()
 
 	// the actual hash result of the children got extended (or flagged) by their
