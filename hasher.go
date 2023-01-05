@@ -3,7 +3,6 @@ package nmt
 import (
 	"bytes"
 	"crypto/sha256"
-	"fmt"
 	"hash"
 
 	"github.com/celestiaorg/nmt/namespace"
@@ -18,7 +17,7 @@ var _ hash.Hash = (*Hasher)(nil)
 
 // defaultHasher uses sha256 as a base-hasher, 8 bytes
 // for the namespace IDs and ignores the maximum possible namespace.
-var defaultHasher = NewNmtHasher(sha256.New(), DefaultNamespaceIDLen, DefaultShareSize, true)
+var defaultHasher = NewNmtHasher(sha256.New(), DefaultNamespaceIDLen, true)
 
 // Sha256Namespace8FlaggedLeaf uses sha256 as a base-hasher, 8 bytes
 // for the namespace IDs and ignores the maximum possible namespace.
@@ -57,7 +56,6 @@ func Sha256Namespace8FlaggedInner(leftRight []byte) []byte {
 type Hasher struct {
 	baseHasher   hash.Hash
 	NamespaceLen namespace.IDSize
-	shareSize    int
 
 	ignoreMaxNs      bool
 	precomputedMaxNs namespace.ID
@@ -74,12 +72,10 @@ func (n *Hasher) NamespaceSize() namespace.IDSize {
 	return n.NamespaceLen
 }
 
-func NewNmtHasher(baseHasher hash.Hash, nidLen namespace.IDSize, shareSize int, ignoreMaxNamespace bool) *Hasher {
+func NewNmtHasher(baseHasher hash.Hash, nidLen namespace.IDSize, ignoreMaxNamespace bool) *Hasher {
 	return &Hasher{
-		baseHasher:   baseHasher,
-		NamespaceLen: nidLen,
-		shareSize:    shareSize,
-
+		baseHasher:       baseHasher,
+		NamespaceLen:     nidLen,
 		ignoreMaxNs:      ignoreMaxNamespace,
 		precomputedMaxNs: bytes.Repeat([]byte{0xFF}, int(nidLen)),
 	}
@@ -101,13 +97,11 @@ func (n *Hasher) Write(data []byte) (int, error) {
 
 	ln := len(data)
 	switch ln {
-	default:
-		return 0, fmt.Errorf("invalid data size written to the hasher, len: %v", ln)
 	// inner nodes are made up of the nmt hashes of the left and right children
 	case n.Size() * 2:
 		n.tp = NodePrefix
 	// leaf nodes contain the namespace length and a share
-	case int(n.NamespaceLen) + n.shareSize:
+	default:
 		n.tp = LeafPrefix
 	}
 

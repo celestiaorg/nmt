@@ -95,8 +95,7 @@ func NewAbsenceProof(proofStart, proofEnd int, proofNodes [][]byte, leafHash []b
 // the provided data in the tree. Additionally, it verifies that the namespace
 // is complete and no leaf of that namespace was left out in the proof.
 func (proof Proof) VerifyNamespace(h hash.Hash, nID namespace.ID, data [][]byte, root []byte) bool {
-	// passed ShareSize is not important here, as we are not calling hash.Hash primitives
-	nth := NewNmtHasher(h, nID.Size(), DefaultShareSize, proof.isMaxNamespaceIDIgnored)
+	nth := NewNmtHasher(h, nID.Size(), proof.isMaxNamespaceIDIgnored)
 	min := namespace.ID(MinNamespace(root, nID.Size()))
 	max := namespace.ID(MaxNamespace(root, nID.Size()))
 	if nID.Size() != min.Size() || nID.Size() != max.Size() {
@@ -228,8 +227,7 @@ func (proof Proof) verifyLeafHashes(nth *Hasher, verifyCompleteness bool, nID na
 // data should not contain the prefixed namespace, unlike the tree.Push method,
 // which takes prefixed data. All leaves implicitly have the same namespace ID: `nid`.
 func (proof Proof) VerifyInclusion(h hash.Hash, nid namespace.ID, leaves [][]byte, root []byte) bool {
-	// passed ShareSize is not important here, as we are not calling hash.Hash primitives
-	nth := NewNmtHasher(h, nid.Size(), DefaultShareSize, proof.isMaxNamespaceIDIgnored)
+	nth := NewNmtHasher(h, nid.Size(), proof.isMaxNamespaceIDIgnored)
 	hashes := make([][]byte, len(leaves))
 	for i, d := range leaves {
 		leafData := append(append(make([]byte, 0, len(d)+len(nid)), nid...), d...)

@@ -15,7 +15,7 @@ import (
 
 const (
 	hashSize  = sha256.Size + (2 * DefaultNamespaceIDLen)
-	leafSize  = DefaultNamespaceIDLen + DefaultShareSize
+	leafSize  = DefaultNamespaceIDLen + 512
 	innerSize = 2 * hashSize
 )
 
@@ -49,7 +49,7 @@ func Test_namespacedTreeHasher_HashLeaf(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			n := NewNmtHasher(sha256.New(), tt.nsLen, DefaultShareSize, false)
+			n := NewNmtHasher(sha256.New(), tt.nsLen, false)
 			if got := n.HashLeaf(tt.leaf); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("HashLeaf() = %v, want %v", got, tt.want)
 			}
@@ -106,7 +106,7 @@ func Test_namespacedTreeHasher_HashNode(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			n := NewNmtHasher(sha256.New(), tt.nidLen, DefaultShareSize, false)
+			n := NewNmtHasher(sha256.New(), tt.nidLen, false)
 			if got := n.HashNode(tt.children.l, tt.children.r); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("HashNode() = %v, want %v", got, tt.want)
 			}
@@ -214,14 +214,6 @@ func TestNamespaceHasherWrite(t *testing.T) {
 		require.Panics(t, func() {
 			_, _ = h.Write(make([]byte, leafSize))
 		})
-	})
-
-	t.Run("ErrorIncorrectSize", func(t *testing.T) {
-		h := defaultHasher
-		h.Reset()
-		n, err := h.Write(make([]byte, 13))
-		assert.Error(t, err)
-		assert.Equal(t, 0, n)
 	})
 }
 

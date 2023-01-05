@@ -13,7 +13,6 @@ import (
 
 const (
 	DefaultNamespaceIDLen = 8
-	DefaultShareSize      = 512
 	DefaultCapacity       = 128
 )
 
@@ -55,17 +54,6 @@ func NamespaceIDSize(size int) Option {
 	}
 	return func(opts *Options) {
 		opts.NamespaceIDSize = namespace.IDSize(size)
-	}
-}
-
-// ShareSize sets the share size (in bytes) used by leaf nodes of this tree.
-// Defaults to 512 bytes.
-func ShareSize(size int) Option {
-	if size < 0 {
-		panic("Got invalid share size. Expected int greater or equal than 0.")
-	}
-	return func(opts *Options) {
-		opts.ShareSize = size
 	}
 }
 
@@ -114,7 +102,6 @@ func New(h hash.Hash, setters ...Option) *NamespacedMerkleTree {
 	opts := &Options{
 		InitialCapacity:    DefaultCapacity,
 		NamespaceIDSize:    DefaultNamespaceIDLen,
-		ShareSize:          DefaultShareSize,
 		IgnoreMaxNamespace: true,
 		NodeVisitor:        noOp,
 	}
@@ -122,7 +109,7 @@ func New(h hash.Hash, setters ...Option) *NamespacedMerkleTree {
 	for _, setter := range setters {
 		setter(opts)
 	}
-	treeHasher := NewNmtHasher(h, opts.NamespaceIDSize, opts.ShareSize, opts.IgnoreMaxNamespace)
+	treeHasher := NewNmtHasher(h, opts.NamespaceIDSize, opts.IgnoreMaxNamespace)
 	return &NamespacedMerkleTree{
 		treeHasher:      treeHasher,
 		visit:           opts.NodeVisitor,
