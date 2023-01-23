@@ -11,6 +11,11 @@ import (
 	"github.com/celestiaorg/nmt/namespace"
 )
 
+const (
+	DefaultNamespaceIDLen = 8
+	DefaultCapacity       = 128
+)
+
 var (
 	ErrInvalidRange            = errors.New("invalid proof range")
 	ErrMismatchedNamespaceSize = errors.New("mismatching namespace sizes")
@@ -94,8 +99,8 @@ type NamespacedMerkleTree struct {
 func New(h hash.Hash, setters ...Option) *NamespacedMerkleTree {
 	// default options:
 	opts := &Options{
-		InitialCapacity:    128,
-		NamespaceIDSize:    8,
+		InitialCapacity:    DefaultCapacity,
+		NamespaceIDSize:    DefaultNamespaceIDLen,
 		IgnoreMaxNamespace: true,
 		NodeVisitor:        noOp,
 	}

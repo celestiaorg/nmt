@@ -7,7 +7,16 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/celestiaorg/nmt/namespace"
+)
+
+const (
+	hashSize  = sha256.Size + (2 * DefaultNamespaceIDLen)
+	leafSize  = DefaultNamespaceIDLen + 512
+	innerSize = 2 * hashSize
 )
 
 func Test_namespacedTreeHasher_HashLeaf(t *testing.T) {
@@ -164,4 +173,75 @@ func sum(hash crypto.Hash, data ...[]byte) []byte {
 	}
 
 	return h.Sum(nil)
+}
+
+func TestNamespaceHasherWrite(t *testing.T) {
+	tt := []struct {
+		name         string
+		expectedSize int
+		writtenSize  int
+	}{
+		{
+			"Leaf",
+			leafSize,
+			leafSize,
+		},
+		{
+			"Inner",
+			innerSize,
+			innerSize,
+		},
+	}
+
+	for _, ts := range tt {
+		t.Run("Success"+ts.name, func(t *testing.T) {
+			h := defaultHasher
+			h.Reset()
+			n, err := h.Write(make([]byte, ts.writtenSize))
+			assert.NoError(t, err)
+			assert.Equal(t, ts.expectedSize, n)
+			assert.Equal(t, ts.expectedSize, len(h.data))
+		})
+	}
+
+	t.Run("ErrorSecondWrite", func(t *testing.T) {
+		h := defaultHasher
+		h.Reset()
+		n, err := h.Write(make([]byte, leafSize))
+		assert.NoError(t, err)
+		assert.Equal(t, leafSize, n)
+
+		require.Panics(t, func() {
+			_, _ = h.Write(make([]byte, leafSize))
+		})
+	})
+}
+
+func TestNamespaceHasherSum(t *testing.T) {
+	tt := []struct {
+		name         string
+		expectedSize int
+		writtenSize  int
+	}{
+		{
+			"Leaf",
+			hashSize,
+			leafSize,
+		},
+		{
+			"Inner",
+			hashSize,
+			innerSize,
+		},
+	}
+
+	for _, ts := range tt {
+		t.Run("Success"+ts.name, func(t *testing.T) {
+			h := defaultHasher
+			h.Reset()
+			_, _ = h.Write(make([]byte, ts.writtenSize))
+			sum := h.Sum(nil)
+			assert.Equal(t, len(sum), ts.expectedSize)
+		})
+	}
 }
