@@ -28,7 +28,6 @@ type NodeVisitorFn = func(hash []byte, children ...[]byte)
 type Options struct {
 	InitialCapacity    int
 	NamespaceIDSize    namespace.IDSize
-	ShareSize          int
 	IgnoreMaxNamespace bool
 	NodeVisitor        NodeVisitorFn
 }
