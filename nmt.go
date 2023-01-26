@@ -82,8 +82,11 @@ type NamespacedMerkleTree struct {
 	// store leaf hashes whenever computed (via Root() or via computeLeafHashesIfNecessary)
 	leafHashes [][]byte
 
-	// this can be used to efficiently lookup the range for an
+	// this can be used to efficiently look up the range for an
 	// existing namespace without iterating through the leaves
+	// the map key is the string representation of a namespace.ID  and
+	// the leafRange indicates the starting position and ending position of
+	// the leaves matching that namespace ID in the tree
 	namespaceRanges map[string]leafRange
 	minNID          namespace.ID
 	maxNID          namespace.ID
@@ -105,6 +108,7 @@ func New(h hash.Hash, setters ...Option) *NamespacedMerkleTree {
 		NodeVisitor:        noOp,
 	}
 
+	// TODO [Me] ?
 	for _, setter := range setters {
 		setter(opts)
 	}
@@ -159,9 +163,12 @@ func (n *NamespacedMerkleTree) ProveNamespace(nID namespace.ID) (Proof, error) {
 	// In the cases (nID < minNID) or (maxNID < nID),
 	// return empty range and no proof:
 	if nID.Less(n.minNID) || n.maxNID.Less(nID) {
+		// TODO [Me] Shouldn't we instead return the first or the last node in the tree as the exclusion proof
+		// TODO [Me] although I think this current logic is based on the premise that the root of the tree is trusted
 		return NewEmptyRangeProof(isMaxNsIgnored), nil
 	}
 
+	// find the range of indices of leaves with the given nID
 	found, proofStart, proofEnd := n.foundInRange(nID)
 	if !found {
 		// To generate a proof for an absence we calculate the
@@ -170,11 +177,11 @@ func (n *NamespacedMerkleTree) ProveNamespace(nID namespace.ID) (Proof, error) {
 		proofStart = n.calculateAbsenceIndex(nID)
 		proofEnd = proofStart + 1
 	}
-	// At this point we either found the namespace in the tree or calculated
+	// At this point we either found leaves with the namespace nID in the tree or calculated
 	// the range it would be in (to generate a proof of absence and to return
 	// the corresponding leaf hashes).
-	n.computeLeafHashesIfNecessary()
-	proof := n.buildRangeProof(proofStart, proofEnd)
+	n.computeLeafHashesIfNecessary()                 // TODO [Me] Why it is needed?
+	proof := n.buildRangeProof(proofStart, proofEnd) // TODO [Me] check whether the position of nodes are included in the proof and also verified later in the verification part
 
 	if found {
 		return NewInclusionProof(proofStart, proofEnd, proof, isMaxNsIgnored), nil
@@ -182,6 +189,7 @@ func (n *NamespacedMerkleTree) ProveNamespace(nID namespace.ID) (Proof, error) {
 	return NewAbsenceProof(proofStart, proofEnd, proof, n.leafHashes[proofStart], isMaxNsIgnored), nil
 }
 
+// TODO [Me] add a function description about how to parse the output [][]byte
 func (n *NamespacedMerkleTree) buildRangeProof(proofStart, proofEnd int) [][]byte {
 	proof := [][]byte{}
 	var recurse func(start, end int, includeNode bool) []byte
@@ -408,7 +416,7 @@ func (n *NamespacedMerkleTree) updateMinMaxID(id namespace.ID) {
 	}
 }
 
-// computes the leaf hashes if not already done in a previously call
+// computes the leaf hashes if not already done in a previous call
 // of NamespacedMerkleTree.Root()
 func (n *NamespacedMerkleTree) computeLeafHashesIfNecessary() {
 	if len(n.leafHashes) < len(n.leaves) {

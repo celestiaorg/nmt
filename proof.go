@@ -27,7 +27,7 @@ type Proof struct {
 	leafHash []byte
 	// isMaxNamespaceIDIgnored is set to true if the tree from which
 	// this Proof was generated from is initialized with
-	// Options.IgnoreMaxNamespace == true.
+	// Options.IgnoreMaxNamespace == true. // TODO [Me]? not sure about the usage of this
 	isMaxNamespaceIDIgnored bool
 }
 
