@@ -277,6 +277,8 @@ func (n *NamespacedMerkleTree) calculateAbsenceIndex(nID namespace.ID) int {
 	panic("calculateAbsenceIndex() called although (nID < minNID) or (maxNID < nID) for provided nID")
 }
 
+// foundInRange returns true, together with the starting and ending indices of the leaves in the name space tree whose namespace ID matches the given nID.
+// if no leaves is found, foundInRange returns false.
 func (n *NamespacedMerkleTree) foundInRange(nID namespace.ID) (bool, int, int) {
 	// This is a faster version of this code snippet:
 	// https://github.com/celestiaorg/celestiaorg-prototype/blob/2aeca6f55ad389b9d68034a0a7038f80a8d2982e/simpleblock.go#L106-L117
