@@ -720,7 +720,7 @@ func shouldPanic(t *testing.T, f func()) {
 }
 
 // generates a consecutive range of leaf data
-// starting from namespace zero+start till zero+end,
+// starting from namespace zero+nsStartIdx till zero+nsEndIdx-1,
 // where zero := 0*nsLen interpreted Uvarint
 func generateLeafData(nsLen uint8, nsStartIdx, nsEndIdx int, data []byte) []namespaceDataPair {
 	if nsEndIdx >= math.MaxUint8*int(nsLen) {
