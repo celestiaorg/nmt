@@ -96,7 +96,7 @@ func NewAbsenceProof(proofStart, proofEnd int, proofNodes [][]byte, leafHash []b
 // is complete and no leaf of that namespace was left out in the proof.
 // leafs contain leaves within the nID
 // TODO [ME] describe the parameters: proof is the range proof
-func (proof Proof) VerifyNamespace(h hash.Hash, nID namespace.ID, leafs [][]byte, root []byte) bool {
+func (proof Proof) VerifyNamespace(h hash.Hash, nID namespace.ID, leaves [][]byte, root []byte) bool {
 	// TODO [Me] what is this check for?
 	nth := NewNmtHasher(h, nID.Size(), proof.isMaxNamespaceIDIgnored)
 	min := namespace.ID(MinNamespace(root, nID.Size()))
@@ -107,7 +107,7 @@ func (proof Proof) VerifyNamespace(h hash.Hash, nID namespace.ID, leafs [][]byte
 	}
 
 	isEmptyRange := proof.start == proof.end
-	if len(leafs) == 0 && isEmptyRange && len(proof.nodes) == 0 {
+	if len(leaves) == 0 && isEmptyRange && len(proof.nodes) == 0 {
 		// TODO ]Me] never saw proof.nodes been assigned in the code
 		// empty proofs are always rejected unless nID is outside the range of namespaces covered by the root
 		// we special case the empty root, since it purports to cover the zero namespace but does not actually
@@ -117,25 +117,27 @@ func (proof Proof) VerifyNamespace(h hash.Hash, nID namespace.ID, leafs [][]byte
 		}
 		return false
 	}
-	gotLeafHashes := make([][]byte, 0, len(leafs))
+	// TODO [Me] the number of leaves should match the proof range end-start
+	gotLeafHashes := make([][]byte, 0, len(leaves))
 	nIDLen := nID.Size()
 	if proof.IsOfAbsence() {
 		gotLeafHashes = append(gotLeafHashes, proof.leafHash)
 	} else {
-		// collect leaf hashes from provided leafs and
+		// collect leaf hashes from provided leaves and
 		// do some sanity checks:
 		hashLeafFunc := nth.HashLeaf
-		for _, gotLeaf := range leafs {
+		for _, gotLeaf := range leaves {
+			// TODO [Me] can be converted to something like isNameSpaceIDPrefixed()
 			if len(gotLeaf) < int(nIDLen) {
 				// conflicting namespace sizes
 				return false
 			}
-			gotLeafNid := namespace.ID(gotLeaf[:nIDLen])
+			gotLeafNid := namespace.ID(gotLeaf[:nIDLen]) // TODO [Me] a helper function
 			if !gotLeafNid.Equal(nID) {
-				// conflicting namespace IDs in leafs
+				// conflicting namespace IDs in leaves
 				return false
 			}
-			leafData := append(gotLeafNid, gotLeaf[nIDLen:]...)
+			leafData := append(gotLeafNid, gotLeaf[nIDLen:]...) // TODO why not just passing the leaf? isn't it the same?
 			gotLeafHashes = append(gotLeafHashes, hashLeafFunc(leafData))
 		}
 	}
@@ -146,7 +148,7 @@ func (proof Proof) VerifyNamespace(h hash.Hash, nID namespace.ID, leafs [][]byte
 	return proof.verifyLeafHashes(nth, true, nID, gotLeafHashes, root)
 }
 
-func (proof Proof) verifyLeafHashes(nth *Hasher, verifyCompleteness bool, nID namespace.ID, gotLeafHashes [][]byte, root []byte) bool {
+func (proof Proof) verifyLeafHashes(nth *Hasher, verifyCompleteness bool, nID namespace.ID, leafHashes [][]byte, root []byte) bool {
 	var leafIndex uint64
 	leftSubtrees := make([][]byte, 0, len(proof.nodes))
 
@@ -182,8 +184,8 @@ func (proof Proof) verifyLeafHashes(nth *Hasher, verifyCompleteness bool, nID na
 		if end-start == 1 {
 			// if current range overlaps with proof range, pop and return a leaf
 			if proof.start <= start && start < proof.end {
-				leafHash := gotLeafHashes[0]
-				gotLeafHashes = gotLeafHashes[1:]
+				leafHash := leafHashes[0]
+				leafHashes = leafHashes[1:]
 				return leafHash
 			}
 
