@@ -94,7 +94,10 @@ func NewAbsenceProof(proofStart, proofEnd int, proofNodes [][]byte, leafHash []b
 // VerifyNamespace verifies a whole namespace, i.e. it verifies inclusion of
 // the provided data in the tree. Additionally, it verifies that the namespace
 // is complete and no leaf of that namespace was left out in the proof.
-func (proof Proof) VerifyNamespace(h hash.Hash, nID namespace.ID, data [][]byte, root []byte) bool {
+// leafs contain leaves within the nID
+// TODO [ME] describe the parameters: proof is the range proof
+func (proof Proof) VerifyNamespace(h hash.Hash, nID namespace.ID, leafs [][]byte, root []byte) bool {
+	// TODO [Me] what is this check for?
 	nth := NewNmtHasher(h, nID.Size(), proof.isMaxNamespaceIDIgnored)
 	min := namespace.ID(MinNamespace(root, nID.Size()))
 	max := namespace.ID(MaxNamespace(root, nID.Size()))
@@ -104,7 +107,8 @@ func (proof Proof) VerifyNamespace(h hash.Hash, nID namespace.ID, data [][]byte,
 	}
 
 	isEmptyRange := proof.start == proof.end
-	if len(data) == 0 && isEmptyRange && len(proof.nodes) == 0 {
+	if len(leafs) == 0 && isEmptyRange && len(proof.nodes) == 0 {
+		// TODO ]Me] never saw proof.nodes been assigned in the code
 		// empty proofs are always rejected unless nID is outside the range of namespaces covered by the root
 		// we special case the empty root, since it purports to cover the zero namespace but does not actually
 		// include any such nodes
@@ -113,22 +117,22 @@ func (proof Proof) VerifyNamespace(h hash.Hash, nID namespace.ID, data [][]byte,
 		}
 		return false
 	}
-	gotLeafHashes := make([][]byte, 0, len(data))
+	gotLeafHashes := make([][]byte, 0, len(leafs))
 	nIDLen := nID.Size()
 	if proof.IsOfAbsence() {
 		gotLeafHashes = append(gotLeafHashes, proof.leafHash)
 	} else {
-		// collect leaf hashes from provided data and
+		// collect leaf hashes from provided leafs and
 		// do some sanity checks:
 		hashLeafFunc := nth.HashLeaf
-		for _, gotLeaf := range data {
+		for _, gotLeaf := range leafs {
 			if len(gotLeaf) < int(nIDLen) {
 				// conflicting namespace sizes
 				return false
 			}
 			gotLeafNid := namespace.ID(gotLeaf[:nIDLen])
 			if !gotLeafNid.Equal(nID) {
-				// conflicting namespace IDs in data
+				// conflicting namespace IDs in leafs
 				return false
 			}
 			leafData := append(gotLeafNid, gotLeaf[nIDLen:]...)

@@ -6,6 +6,7 @@ package namespace
 // Go's type system does not allow enforcing the structure we want:
 // [namespaceID, rawData ...], especially as this type does not expect any
 // particular size for the namespace.
+// TODO [Me] Shouldn't we specify that the first 8 bytes represent the namespace.ID
 type PrefixedData []byte
 
 // PrefixedData8 like PrefixedData is just a slice of bytes.

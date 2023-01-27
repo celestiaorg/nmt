@@ -190,18 +190,22 @@ func (n *NamespacedMerkleTree) ProveNamespace(nID namespace.ID) (Proof, error) {
 }
 
 // TODO [Me] add a function description about how to parse the output [][]byte
+// proofEnd is non-inclusive
 func (n *NamespacedMerkleTree) buildRangeProof(proofStart, proofEnd int) [][]byte {
-	proof := [][]byte{}
+	// TODO a more secure way would be to make it slice of fixed size arrays i.e., the hash output size
+	proof := [][]byte{} // it is the list of nodes hashes (as byte slices) with no index
 	var recurse func(start, end int, includeNode bool) []byte
+	// TODO [Me] what is the range of start and end
+	//
 	recurse = func(start, end int, includeNode bool) []byte {
-		if start >= len(n.leafHashes) {
+		if start >= len(n.leafHashes) { // TODO [Me] why against leafHashes? and not leaves?
 			return nil
 		}
 
 		// reached a leaf
 		if end-start == 1 {
 			leafHash := n.leafHashes[start]
-			// if current range does not overlap with proof range, add a node to proofs
+			// if the current leaf node does not belong to the leaves of the proof range
 			if (start < proofStart || start >= proofEnd) && includeNode {
 				proof = append(proof, leafHash)
 			}
@@ -210,6 +214,7 @@ func (n *NamespacedMerkleTree) buildRangeProof(proofStart, proofEnd int) [][]byt
 
 		// recursively get left and right subtree
 		newIncludeNode := includeNode
+		// if the search range is outside the proof range
 		if (end <= proofStart || start >= proofEnd) && includeNode {
 			newIncludeNode = false
 		}
@@ -227,6 +232,7 @@ func (n *NamespacedMerkleTree) buildRangeProof(proofStart, proofEnd int) [][]byt
 		}
 
 		// highest node in subtree that lies outside proof range
+		// TODO [Me] the parent covered a range, but this subtree has nothing, so it is a sibling
 		if includeNode && !newIncludeNode {
 			proof = append(proof, hash)
 		}
@@ -419,6 +425,7 @@ func (n *NamespacedMerkleTree) updateMinMaxID(id namespace.ID) {
 // computes the leaf hashes if not already done in a previous call
 // of NamespacedMerkleTree.Root()
 func (n *NamespacedMerkleTree) computeLeafHashesIfNecessary() {
+	// check whether all the hash of all the existing leaves are available
 	if len(n.leafHashes) < len(n.leaves) {
 		n.leafHashes = make([][]byte, len(n.leaves))
 		for i, leaf := range n.leaves {

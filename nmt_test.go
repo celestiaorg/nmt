@@ -493,8 +493,8 @@ func TestIgnoreMaxNamespace(t *testing.T) {
 				if gotIgnored := proof.IsMaxNamespaceIDIgnored(); gotIgnored != tc.ignoreMaxNamespace {
 					t.Fatalf("Proof.IsMaxNamespaceIDIgnored() got: %v, want: %v", gotIgnored, tc.ignoreMaxNamespace)
 				}
-				data := tree.Get(d.NamespaceID())
-				if !proof.VerifyNamespace(hash, d.NamespaceID(), data, tree.Root()) {
+				leaves := tree.Get(d.NamespaceID())
+				if !proof.VerifyNamespace(hash, d.NamespaceID(), leaves, tree.Root()) {
 					t.Errorf("VerifyNamespace() failed on ID: %x", d.NamespaceID())
 				}
 
@@ -503,7 +503,7 @@ func TestIgnoreMaxNamespace(t *testing.T) {
 					t.Fatalf("ProveNamespace() unexpected error: %v", err)
 				}
 				if !singleProof.VerifyInclusion(hash, d.NamespaceID(), [][]byte{d.Data()}, tree.Root()) {
-					t.Errorf("VerifyInclusion() failed on data: %#v with index: %v", d, idx)
+					t.Errorf("VerifyInclusion() failed on leaves: %#v with index: %v", d, idx)
 				}
 				if gotIgnored := singleProof.IsMaxNamespaceIDIgnored(); gotIgnored != tc.ignoreMaxNamespace {
 					t.Fatalf("Proof.IsMaxNamespaceIDIgnored() got: %v, want: %v", gotIgnored, tc.ignoreMaxNamespace)
