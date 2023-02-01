@@ -207,31 +207,53 @@ func (n *NamespacedMerkleTree) buildRangeProof(proofStart, proofEnd int) [][]byt
 	// TODO a more secure way would be to make it slice of fixed size arrays i.e., the hash output size
 	proof := [][]byte{} // it is the list of nodes hashes (as byte slices) with no index
 	var recurse func(start, end int, includeNode bool) []byte
-	// TODO [Me] what is the range of start and end
-	//
+
+	// start, end are indices of leaves in the tree hence they should be within the size of the tree i.e.,
+	// less than or equal to the len(n.leaves)
+	// this recursive algorithm is inspired by RFC6962 https://www.rfc-editor.org/rfc/rfc6962#section-2.1
+	// includeNode indicates whether the hash of the current subtree (covering the supplied range i.e., [start, end)) or
+	// one of its constituent subtrees should be part of the proof
 	recurse = func(start, end int, includeNode bool) []byte {
 		if start >= len(n.leafHashes) { // TODO [Me] why against leafHashes? and not leaves?
+			// TODO [Me] Why there is no check for the end index?
 			return nil
 		}
 
 		// reached a leaf
 		if end-start == 1 {
 			leafHash := n.leafHashes[start]
-			// if the current leaf node does not belong to the leaves of the proof range
+			// if the index of the leaf node is out of the queried range i.e., [proofStart, proofEnd]
+			// and if the leaf is required as part of the proof i.e., includeNode == true
 			if (start < proofStart || start >= proofEnd) && includeNode {
+				// add the leafHash to the proof
 				proof = append(proof, leafHash)
 			}
+			// if the index of the leaf is within the queried range i.e., [proofStart, proofEnd] OR
+			// if the leaf is not required as part of the proof i.e., includeNode == false
 			return leafHash
 		}
 
-		// recursively get left and right subtree
+
+		// newIncludeNode indicates whether one of the subtrees of the current subtree [start, end)
+		// may have an overlap with the queried proof range i.e., [proofStart, proofEnd)
 		newIncludeNode := includeNode
-		// if the search range is outside the proof range
-		if (end <= proofStart || start >= proofEnd) && includeNode {
+		// check whether the subtree representing the [start, end) range of leaves has overlap with the
+		// queried proof range i.e., [proofStart, proofEnd)
+		// if not
+		if (end <= proofStart || start >= proofEnd) && includeNode { //TODO [Me] the `&& includeNode` seems ineffective and unnecessary
+			// setting newIncludeNode to false indicates that non of the subtrees (left and right) of the current
+			// subtree are required for the proof
+			// because the range of the leaves they cover have no overlap with the
+			// queried proof range i.e., [proofStart, proofEnd)
 			newIncludeNode = false
 		}
 
+		// TODO [Me] Optimization idea: if includeNode is true and [start, end) are within the [proofStart, proofEnd), then we do not need to
+		// TODO [Me] split further, as neither the current subtree nor any of its left and right subtrees are needed for the proof
+		
+		// recursively get left and right subtree
 		k := getSplitPoint(end - start)
+
 		left := recurse(start, start+k, newIncludeNode)
 		right := recurse(start+k, end, newIncludeNode)
 
@@ -243,8 +265,7 @@ func (n *NamespacedMerkleTree) buildRangeProof(proofStart, proofEnd int) [][]byt
 			hash = n.treeHasher.HashNode(left, right)
 		}
 
-		// highest node in subtree that lies outside proof range
-		// TODO [Me] the parent covered a range, but this subtree has nothing, so it is a sibling
+		// if the hash of the subtree representing [start, end) should be part of the proof but not its left and right subtrees
 		if includeNode && !newIncludeNode {
 			proof = append(proof, hash)
 		}
