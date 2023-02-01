@@ -167,8 +167,8 @@ func (n *NamespacedMerkleTree) ProveNamespace(nID namespace.ID) (Proof, error) {
 	// case 1)
 	// In the cases (n.nID < minNID) or (n.maxNID < nID),
 	// return empty range and no proof
-	if nID.Less(n.minNID) || n.maxNID.Less(nID) { // TODO [Me] we could move this part inside the foundInRange function
-		// TODO [Me] Shouldn't we instead return the first or the last node in the tree as the exclusion proof
+	if nID.Less(n.minNID) || n.maxNID.Less(nID) { // TODO [Me] we could move this entire if block inside the `foundInRange` function
+		// TODO [Me] Shouldn't we instead return the first or the last node in the tree as the exclusion proof?
 		// TODO [Me] although I think this current logic is based on the premise that the root of the tree is trusted
 		return NewEmptyRangeProof(isMaxNsIgnored), nil
 	}
@@ -181,7 +181,7 @@ func (n *NamespacedMerkleTree) ProveNamespace(nID namespace.ID) (Proof, error) {
 		// To generate a proof for an absence we calculate the
 		// position of the leaf that is in the place of where
 		// the namespace would be in:
-		proofStart = n.calculateAbsenceIndex(nID) // TODO [Me] this could simply return the range, to avoid the line below
+		proofStart = n.calculateAbsenceIndex(nID) // TODO [Me] this could simply return a range, to avoid the line below
 		proofEnd = proofStart + 1
 	}
 
@@ -190,14 +190,16 @@ func (n *NamespacedMerkleTree) ProveNamespace(nID namespace.ID) (Proof, error) {
 	// the range it would be in (to generate a proof of absence and to return
 	// the corresponding leaf hashes).
 	n.computeLeafHashesIfNecessary()                 // TODO [Me] Why it is needed? cannot we make sure the leaves hashes are calculated as soon as a data is pushed to the tree?
-	proof := n.buildRangeProof(proofStart, proofEnd) // TODO [Me] check whether the position of nodes are included in the proof and also verified later in the verification part
+	proof := n.buildRangeProof(proofStart, proofEnd)
 
 	if found {
 		return NewInclusionProof(proofStart, proofEnd, proof, isMaxNsIgnored), nil
 	}
-	// TODO [Me] the underlying struct type for both inclusion and absence proofs are the same,
-	// TODO [Me] the only distinction is in the presence of the leafHash, we may want to actually add an extra field to the Proof
-	// TODO [Me] that indicates whether the proof if for inclusion or for absence
+	// TODO [Me] the underlying struct type for both inclusion and absence proofs are the same, i.e., `Proof`
+	// TODO [Me] the only distinction is in the presence/absence of the `leafHash`,
+	// TODO [Me] the interpretation of the `Proof` then may be a bit non-trivial
+	// TODO [Me] however, we may want to actually add an extra field to the `Proof`
+	// TODO [Me] that indicates whether the proof is for inclusion or for absence
 
 	return NewAbsenceProof(proofStart, proofEnd, proof, n.leafHashes[proofStart], isMaxNsIgnored), nil
 }
