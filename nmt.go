@@ -99,6 +99,7 @@ type NamespacedMerkleTree struct {
 // and for the given namespace size (number of bytes).
 // If the namespace size is 0 this corresponds to a regular non-namespaced
 // Merkle tree.
+// TODO [Me] Why not using a fixed namespace size? i.e., the DefaultNamespaceIDLen, is the variable size for the space efficiency?
 func New(h hash.Hash, setters ...Option) *NamespacedMerkleTree {
 	// default options:
 	opts := &Options{
@@ -108,7 +109,6 @@ func New(h hash.Hash, setters ...Option) *NamespacedMerkleTree {
 		NodeVisitor:        noOp,
 	}
 
-	// TODO [Me] ?
 	for _, setter := range setters {
 		setter(opts)
 	}
@@ -119,6 +119,7 @@ func New(h hash.Hash, setters ...Option) *NamespacedMerkleTree {
 		leaves:          make([][]byte, 0, opts.InitialCapacity),
 		leafHashes:      make([][]byte, 0, opts.InitialCapacity),
 		namespaceRanges: make(map[string]leafRange),
+		// TODO [Me] Shouldn't minNID be populated by `0x00`?
 		minNID:          bytes.Repeat([]byte{0xFF}, int(opts.NamespaceIDSize)),
 		maxNID:          bytes.Repeat([]byte{0x00}, int(opts.NamespaceIDSize)),
 	}
