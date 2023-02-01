@@ -128,8 +128,8 @@ func New(h hash.Hash, setters ...Option) *NamespacedMerkleTree {
 // Prove leaf at index.
 // Note this is not really NMT specific but the tree supports inclusions proofs
 // like any vanilla Merkle tree.
-// Proof contains the Audit path for a leaf at the given index
-// Prove is a thin wrapper around the ProveRange which constructs the correct range for the given leaf index
+// the returned Proof contains the audit path for a leaf at the given index
+// Prove is a thin wrapper around the ProveRange and constructs the correct range for the given leaf index
 func (n *NamespacedMerkleTree) Prove(index int) (Proof, error) {
 	return n.ProveRange(index, index+1)
 }
