@@ -15,7 +15,7 @@ import (
 type Proof struct {
 	// start index of this proof.
 	start int
-	// end index of this proof.
+	// end index of this proof, non-inclusive.
 	end int
 	// Nodes that together with the corresponding leaf values
 	// can be used to recompute the root and verify this proof.
@@ -36,7 +36,7 @@ func (proof Proof) Start() int {
 	return proof.start
 }
 
-// End index of this proof.
+// End index of this proof, non-inclusive.
 func (proof Proof) End() int {
 	return proof.end
 }
@@ -101,6 +101,7 @@ func (proof Proof) VerifyNamespace(h hash.Hash, nID namespace.ID, leaves [][]byt
 	nth := NewNmtHasher(h, nID.Size(), proof.isMaxNamespaceIDIgnored)
 	min := namespace.ID(MinNamespace(root, nID.Size()))
 	max := namespace.ID(MaxNamespace(root, nID.Size()))
+	// TODO [Me] this never happens, the min and max are exactly nID.Size() bytes
 	if nID.Size() != min.Size() || nID.Size() != max.Size() {
 		// conflicting namespace sizes
 		return false
@@ -148,8 +149,11 @@ func (proof Proof) VerifyNamespace(h hash.Hash, nID namespace.ID, leaves [][]byt
 	return proof.verifyLeafHashes(nth, true, nID, gotLeafHashes, root)
 }
 
+// verifyLeafHashes checks whether all the leaves matching the namespace ID nID are covered by the proof if verifyCompleteness is set to true
 func (proof Proof) verifyLeafHashes(nth *Hasher, verifyCompleteness bool, nID namespace.ID, leafHashes [][]byte, root []byte) bool {
 	var leafIndex uint64
+	// TODO [Me] Why called leftSubtrees?
+	// leftSubtrees is to be populated by the subtree roots upto [0, r.Start)
 	leftSubtrees := make([][]byte, 0, len(proof.nodes))
 
 	nodes := proof.nodes
@@ -168,7 +172,7 @@ func (proof Proof) verifyLeafHashes(nth *Hasher, verifyCompleteness bool, nID na
 				return false
 			}
 		}
-		// rightSubtrees only contains the subtrees after [0, r.Start)
+		// rightSubtrees only contains the subtrees after [0, r.end)
 		rightSubtrees := nodes
 		for _, subtree := range rightSubtrees {
 			rightSubTreeMin := MinNamespace(subtree, nth.NamespaceSize())
@@ -242,11 +246,14 @@ func (proof Proof) VerifyInclusion(h hash.Hash, nid namespace.ID, leaves [][]byt
 
 	return proof.verifyLeafHashes(nth, false, nid, hashes, root)
 }
-
-// nextSubtreeSize returns the size of the subtree adjacent to start that does
+// nextSubtreeSize returns the size of the highest left subtree in the tree whose leaves have no overlap with [start, end)
+// nextSubtreeSize returns the number of leaves of the subtree adjacent to start that does
 // not overlap end.
+// start and end contain the position of a leaf in the tree
 func nextSubtreeSize(start, end uint64) int {
+	// the highest left subtree
 	ideal := bits.TrailingZeros64(start)
+	// number of bits required to represent end-start
 	max := bits.Len64(end-start) - 1
 	if ideal > max {
 		return 1 << uint(max)

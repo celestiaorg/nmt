@@ -127,11 +127,13 @@ func New(h hash.Hash, setters ...Option) *NamespacedMerkleTree {
 // Prove leaf at index.
 // Note this is not really NMT specific but the tree supports inclusions proofs
 // like any vanilla Merkle tree.
+// Proof contains the Audit path for a leaf at the given index
+// Prove is a thin wrapper around the ProveRange which constructs the correct range for the given leaf index
 func (n *NamespacedMerkleTree) Prove(index int) (Proof, error) {
 	return n.ProveRange(index, index+1)
 }
 
-// ProveRange proves a leaf range [start, end].
+// ProveRange returns the audit path for the supplied range of leaves i.e., [start, end).
 func (n *NamespacedMerkleTree) ProveRange(start, end int) (Proof, error) {
 	isMaxNsIgnored := n.treeHasher.IsMaxNamespaceIDIgnored()
 	n.computeLeafHashesIfNecessary()
@@ -146,23 +148,25 @@ func (n *NamespacedMerkleTree) ProveRange(start, end int) (Proof, error) {
 
 // ProveNamespace returns a range proof for the given NamespaceID.
 //
-// In case the underlying tree contains leaves with the given namespace
-// their start and end index will be returned together with a range proof and
-// the found leaves. In that case the returned leafHash will be nil.
+// case 1) In the case (nID < n.minNID) or (n.maxNID < nID) we do not
+// generate any range proof, instead we return an empty range (0,0) to
+// indicate that this namespace is not contained in the tree.
 //
-// If the tree does not have any entries with the given Namespace ID,
+// case 2) If the tree does not have any entries with the given Namespace ID,
 // but the namespace is within the range of the tree's min and max namespace,
 // this will be proven by returning the (namespaced or rather flagged)
 // hash of the leaf that is in the range instead of the namespace.
 //
-// In the case (nID < minNID) or (maxNID < nID) we do not
-// generate any proof and we return an empty range (0,0) to
-// indicate that this namespace is not contained in the tree.
+// case 3) In case the underlying tree contains leaves with the given namespace
+// their start and end index will be returned together with a range proof and
+// the found leaves. In that case the leafHash field of the returned Proof will be nil.
+//
 func (n *NamespacedMerkleTree) ProveNamespace(nID namespace.ID) (Proof, error) {
 	isMaxNsIgnored := n.treeHasher.IsMaxNamespaceIDIgnored()
-	// In the cases (nID < minNID) or (maxNID < nID),
-	// return empty range and no proof:
-	if nID.Less(n.minNID) || n.maxNID.Less(nID) {
+	// case 1)
+	// In the cases (n.nID < minNID) or (n.maxNID < nID),
+	// return empty range and no proof
+	if nID.Less(n.minNID) || n.maxNID.Less(nID) { // TODO [Me] we could move this part inside the foundInRange function
 		// TODO [Me] Shouldn't we instead return the first or the last node in the tree as the exclusion proof
 		// TODO [Me] although I think this current logic is based on the premise that the root of the tree is trusted
 		return NewEmptyRangeProof(isMaxNsIgnored), nil
@@ -170,22 +174,30 @@ func (n *NamespacedMerkleTree) ProveNamespace(nID namespace.ID) (Proof, error) {
 
 	// find the range of indices of leaves with the given nID
 	found, proofStart, proofEnd := n.foundInRange(nID)
+
+	// case 2)
 	if !found {
 		// To generate a proof for an absence we calculate the
 		// position of the leaf that is in the place of where
 		// the namespace would be in:
-		proofStart = n.calculateAbsenceIndex(nID)
+		proofStart = n.calculateAbsenceIndex(nID) // TODO [Me] this could simply return the range, to avoid the line below
 		proofEnd = proofStart + 1
 	}
+
+	// case 3)
 	// At this point we either found leaves with the namespace nID in the tree or calculated
 	// the range it would be in (to generate a proof of absence and to return
 	// the corresponding leaf hashes).
-	n.computeLeafHashesIfNecessary()                 // TODO [Me] Why it is needed?
+	n.computeLeafHashesIfNecessary()                 // TODO [Me] Why it is needed? cannot we make sure the leaves hashes are calculated as soon as a data is pushed to the tree?
 	proof := n.buildRangeProof(proofStart, proofEnd) // TODO [Me] check whether the position of nodes are included in the proof and also verified later in the verification part
 
 	if found {
 		return NewInclusionProof(proofStart, proofEnd, proof, isMaxNsIgnored), nil
 	}
+	// TODO [Me] the underlying struct type for both inclusion and absence proofs are the same,
+	// TODO [Me] the only distinction is in the presence of the leafHash, we may want to actually add an extra field to the Proof
+	// TODO [Me] that indicates whether the proof if for inclusion or for absence
+
 	return NewAbsenceProof(proofStart, proofEnd, proof, n.leafHashes[proofStart], isMaxNsIgnored), nil
 }
 
@@ -293,6 +305,8 @@ func (n *NamespacedMerkleTree) calculateAbsenceIndex(nID namespace.ID) int {
 
 // foundInRange returns true, together with the starting and ending indices of the leaves in the name space tree whose namespace ID matches the given nID.
 // if no leaves is found, foundInRange returns false.
+// Note that the ending index is non-inclusive
+// TODO [Me] we could also incorporate the logic to handle out of range
 func (n *NamespacedMerkleTree) foundInRange(nID namespace.ID) (bool, int, int) {
 	// This is a faster version of this code snippet:
 	// https://github.com/celestiaorg/celestiaorg-prototype/blob/2aeca6f55ad389b9d68034a0a7038f80a8d2982e/simpleblock.go#L106-L117
