@@ -248,9 +248,9 @@ func (n *NamespacedMerkleTree) buildRangeProof(proofStart, proofEnd int) [][]byt
 			newIncludeNode = false
 		}
 
-		// TODO [Me] Optimization idea: if includeNode is true and [start, end) are within the [proofStart, proofEnd), then we do not need to
+		// TODO [Me] Optimization idea: if includeNode is true and [start, end) are within the [proofStart, proofEnd) range, then we do not need to
 		// TODO [Me] split further, as neither the current subtree nor any of its left and right subtrees are needed for the proof
-		
+
 		// recursively get left and right subtree
 		k := getSplitPoint(end - start)
 
@@ -355,6 +355,7 @@ func (n *NamespacedMerkleTree) Push(namespacedData namespace.PrefixedData) error
 
 	// update relevant "caches":
 	n.leaves = append(n.leaves, namespacedData)
+	// TODO [Me] why not calculating the hash right away and add it to n.leafHashes
 	n.updateNamespaceRanges()
 	n.updateMinMaxID(nID)
 	n.rawRoot = nil
