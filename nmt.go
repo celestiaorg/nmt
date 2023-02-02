@@ -166,7 +166,6 @@ func (n *NamespacedMerkleTree) ProveRange(start, end int) (Proof, error) {
 // case 3) In case the underlying tree contains leaves with the given namespace
 // their start and end index will be returned together with a range proof and
 // the found leaves. In that case the leafHash field of the returned Proof will be nil.
-//
 func (n *NamespacedMerkleTree) ProveNamespace(nID namespace.ID) (Proof, error) {
 	isMaxNsIgnored := n.treeHasher.IsMaxNamespaceIDIgnored()
 	// case 1)
