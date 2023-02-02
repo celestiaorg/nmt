@@ -95,7 +95,6 @@ func NewAbsenceProof(proofStart, proofEnd int, proofNodes [][]byte, leafHash []b
 // the provided data in the tree. Additionally, it verifies that the namespace
 // is complete and no leaf of that namespace was left out in the proof.
 // leafs contain leaves within the nID
-// TODO [ME] describe the parameters: proof is the range proof
 func (proof Proof) VerifyNamespace(h hash.Hash, nID namespace.ID, leaves [][]byte, root []byte) bool {
 	// TODO [Me] what is this check for?
 	nth := NewNmtHasher(h, nID.Size(), proof.isMaxNamespaceIDIgnored)
