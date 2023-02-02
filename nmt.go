@@ -149,13 +149,16 @@ func (n *NamespacedMerkleTree) ProveRange(start, end int) (Proof, error) {
 
 // ProveNamespace returns a range proof for the given NamespaceID.
 //
-// case 1) In the case (nID < n.minNID) or (n.maxNID < nID) we do not
-// generate any range proof, instead we return an empty range (0,0) to
-// indicate that this namespace is not contained in the tree.
+// case 1) If the namespace nID is out of the range of the tree's min and max namespace
+// i.e., (nID < n.minNID) or (n.maxNID < nID)
+//  we do not generate any range proof, instead we return an empty Proof with the range (0,0) i.e.,
+// Proof.start = 0 and Proof.end = 0
+// to indicate that this namespace is not contained in the tree.
 //
-// case 2) If the tree does not have any entries with the given Namespace ID,
-// but the namespace is within the range of the tree's min and max namespace,
-// this will be proven by returning the (namespaced or rather flagged)
+// case 2) If the namespace nID is within the range of the tree's min and max namespace
+// i.e., n.minNID<= n.ID <=n.maxNID
+// and the tree does not have any entries with the given Namespace ID nID,
+// this will be proven by returning the inclusion/range Proof of the (namespaced or rather flagged)
 // hash of the leaf that is in the range instead of the namespace.
 //
 // case 3) In case the underlying tree contains leaves with the given namespace
@@ -299,6 +302,9 @@ func (n *NamespacedMerkleTree) GetWithProof(nID namespace.ID) ([][]byte, Proof, 
 	return data, proof, err
 }
 
+// return the index of a leaf with the largest namespace ID which is smaller than nID
+// in case there are multiple leaves with this property, then the index of the highest one
+// is returned
 func (n *NamespacedMerkleTree) calculateAbsenceIndex(nID namespace.ID) int {
 	nidSize := n.treeHasher.NamespaceSize()
 	var prevLeaf []byte
