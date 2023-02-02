@@ -302,7 +302,7 @@ func (n *NamespacedMerkleTree) GetWithProof(nID namespace.ID) ([][]byte, Proof, 
 	return data, proof, err
 }
 
-// return the index of a leaf with the largest namespace ID which is smaller than nID
+// calculateAbsenceIndex returns the index of a leaf with the largest namespace ID which is smaller than nID
 // in case there are multiple leaves with this property, then the index of the highest one
 // is returned
 func (n *NamespacedMerkleTree) calculateAbsenceIndex(nID namespace.ID) int {
