@@ -108,7 +108,6 @@ func (proof Proof) VerifyNamespace(h hash.Hash, nID namespace.ID, leaves [][]byt
 
 	isEmptyRange := proof.start == proof.end
 	if len(leaves) == 0 && isEmptyRange && len(proof.nodes) == 0 {
-		// TODO ]Me] never saw proof.nodes been assigned in the code
 		// empty proofs are always rejected unless nID is outside the range of namespaces covered by the root
 		// we special case the empty root, since it purports to cover the zero namespace but does not actually
 		// include any such nodes
@@ -117,7 +116,7 @@ func (proof Proof) VerifyNamespace(h hash.Hash, nID namespace.ID, leaves [][]byt
 		}
 		return false
 	}
-	// TODO [Me] the number of leaves should match the proof range end-start
+	// TODO [Me] we could also check whether the number of leaves match the proof range end-start and make an early return if not
 	gotLeafHashes := make([][]byte, 0, len(leaves))
 	nIDLen := nID.Size()
 	if proof.IsOfAbsence() {
