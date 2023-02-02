@@ -208,7 +208,6 @@ func (n *NamespacedMerkleTree) ProveNamespace(nID namespace.ID) (Proof, error) {
 	return NewAbsenceProof(proofStart, proofEnd, proof, n.leafHashes[proofStart], isMaxNsIgnored), nil
 }
 
-// TODO [Me] add a function description about how to parse the output [][]byte
 // buildRangeProof returns the nodes (as byte slices) in the audit path(inclusion/range proof/ siblings) of the supplied range i.e.,
 // [proofStart, proofEnd) where proofEnd is non-inclusive
 // The nodes are ordered according to in order traversal of the namespaced tree (TODO [Me] I need to double-check the order)
