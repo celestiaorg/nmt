@@ -209,7 +209,9 @@ func (n *NamespacedMerkleTree) ProveNamespace(nID namespace.ID) (Proof, error) {
 }
 
 // TODO [Me] add a function description about how to parse the output [][]byte
-// proofEnd is non-inclusive
+// buildRangeProof returns the nodes (as byte slices) in the audit path(inclusion/range proof/ siblings) of the supplied range i.e.,
+// [proofStart, proofEnd) where proofEnd is non-inclusive
+// The nodes are ordered according to in order traversal of the namespaced tree (TODO [Me] I need to double-check the order)
 func (n *NamespacedMerkleTree) buildRangeProof(proofStart, proofEnd int) [][]byte {
 	// TODO a more secure way would be to make it slice of fixed size arrays i.e., the hash output size
 	proof := [][]byte{} // it is the list of nodes hashes (as byte slices) with no index
