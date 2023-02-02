@@ -244,10 +244,9 @@ func (proof Proof) VerifyInclusion(h hash.Hash, nid namespace.ID, leaves [][]byt
 
 	return proof.verifyLeafHashes(nth, false, nid, hashes, root)
 }
-// nextSubtreeSize returns the size of the highest left subtree in the tree whose leaves have no overlap with [start, end)
+
 // nextSubtreeSize returns the number of leaves of the subtree adjacent to start that does
 // not overlap end.
-// start and end contain the position of a leaf in the tree
 func nextSubtreeSize(start, end uint64) int {
 	// the highest left subtree
 	ideal := bits.TrailingZeros64(start)
