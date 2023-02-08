@@ -170,7 +170,7 @@ func (proof Proof) verifyLeafHashes(nth *Hasher, verifyCompleteness bool, nID na
 				return false
 			}
 		}
-		// rightSubtrees only contains the subtrees after [0, r.end)
+		// rightSubtrees only contains the subtrees after [0, r.End)
 		rightSubtrees := nodes
 		for _, subtree := range rightSubtrees {
 			rightSubTreeMin := MinNamespace(subtree, nth.NamespaceSize())
