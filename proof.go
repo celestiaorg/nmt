@@ -62,7 +62,7 @@ func (proof Proof) LeafHash() []byte {
 	return proof.leafHash
 }
 
-// IsNonEmptyRange returns if this proof contains a valid,
+// IsNonEmptyRange returns true if this proof contains a valid,
 // non-empty proof range.
 func (proof Proof) IsNonEmptyRange() bool {
 	return proof.start >= 0 && proof.start < proof.end
@@ -116,10 +116,10 @@ func (proof Proof) VerifyNamespace(h hash.Hash, nID namespace.ID, leaves [][]byt
 		}
 		return false
 	}
-	// TODO [Me] we could also check whether the number of leaves match the proof range end-start and make an early return if not
 	gotLeafHashes := make([][]byte, 0, len(leaves))
 	nIDLen := nID.Size()
 	if proof.IsOfAbsence() {
+		// TODO [Me] the proof.leafHash.minNs < proof.leafHash.maxNs should be checked i.e., it is a well-formed nmt Node, if this does not hold, we can make an early return
 		gotLeafHashes = append(gotLeafHashes, proof.leafHash)
 	} else {
 		// collect leaf hashes from provided leaves and
@@ -137,10 +137,12 @@ func (proof Proof) VerifyNamespace(h hash.Hash, nID namespace.ID, leaves [][]byt
 				return false
 			}
 			leafData := append(gotLeafNid, gotLeaf[nIDLen:]...) // TODO why not just passing the leaf? isn't it the same?
+			// hash the leaf data
 			gotLeafHashes = append(gotLeafHashes, hashLeafFunc(leafData))
 		}
 	}
-	if !proof.IsOfAbsence() && len(gotLeafHashes) != (proof.End()-proof.Start()) {
+	// check whether the number of leaves match the proof range end-start and make an early return if not
+	if !proof.IsOfAbsence() && len(gotLeafHashes) != (proof.End()-proof.Start()) { // TODO [Me] this i.e., len(gotLeafHashes) != (proof.End()-proof.Start()) should hold even if proof.IsOfAbsence() is true
 		return false
 	}
 	// with verifyCompleteness set to true:
@@ -161,7 +163,10 @@ func (proof Proof) verifyLeafHashes(nth *Hasher, verifyCompleteness bool, nID na
 		nodes = nodes[1:]
 		leafIndex += uint64(subtreeSize)
 	}
+	// rightSubtrees only contains the subtrees after r.End
+	rightSubtrees := nodes
 
+	// TODO [Me] verifyCompleteness can be a helper function, for improved readability and unit-testing
 	if verifyCompleteness {
 		// leftSubtrees contains the subtree roots upto [0, r.Start)
 		for _, subtree := range leftSubtrees {
@@ -170,8 +175,6 @@ func (proof Proof) verifyLeafHashes(nth *Hasher, verifyCompleteness bool, nID na
 				return false
 			}
 		}
-		// rightSubtrees only contains the subtrees after [0, r.End)
-		rightSubtrees := nodes
 		for _, subtree := range rightSubtrees {
 			rightSubTreeMin := MinNamespace(subtree, nth.NamespaceSize())
 			if namespace.ID(rightSubTreeMin).LessOrEqual(nID) {
@@ -184,15 +187,16 @@ func (proof Proof) verifyLeafHashes(nth *Hasher, verifyCompleteness bool, nID na
 	computeRoot = func(start, end int) []byte {
 		// reached a leaf
 		if end-start == 1 {
-			// if current range overlaps with proof range, pop and return a leaf
+			// if the leaf index falls within the proof range, pop and return a leaf
 			if proof.start <= start && start < proof.end {
 				leafHash := leafHashes[0]
+				// advance leafHashes
 				leafHashes = leafHashes[1:]
 				return leafHash
 			}
 
-			// if current range does not overlap with proof range,
-			// pop and return a proof node (leaf) if present,
+			// if current range does not overlap with the proof range,
+			// pop and return a proof node (which in this case is a leaf) if present,
 			// else return nil because leaf doesn't exist
 			return popIfNonEmpty(&proof.nodes)
 		}

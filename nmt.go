@@ -404,7 +404,7 @@ func (n *NamespacedMerkleTree) computeRoot(start, end int) []byte {
 	}
 }
 
-// getSplitPoint returns the largest power of 2 less than length
+// getSplitPoint returns the largest power of 2 less than the length
 func getSplitPoint(length int) int {
 	if length < 1 {
 		panic("Trying to split a tree with size < 1")
