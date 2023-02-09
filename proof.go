@@ -8,26 +8,30 @@ import (
 	"github.com/celestiaorg/nmt/namespace"
 )
 
-// Proof represents proof of a namespace.ID in an NMT.
+// Proof represents a namespace proof of a namespace.ID in an NMT.
 // In case this proof proves the absence of a namespace.ID
 // in a tree it also contains the leaf hashes of the range
 // where that namespace would be.
 type Proof struct {
-	// start index of this proof.
+	// start index of the leaves that match the queried namespace.ID.
 	start int
-	// end index of this proof, non-inclusive.
+	// end index (non-inclusive) of the leaves that match the queried namespace.ID.
 	end int
-	// Nodes that together with the corresponding leaf values
-	// can be used to recompute the root and verify this proof.
+	// nodes hold the tree nodes necessary for the Merkle range proof of `[start, end)` in the order of an in-order traversal of the tree.
+	// in specific, nodes contain: 1) the namespaced hash of the left siblings for the Merkle inclusion proof of the `start` leaf
+	// 2) the namespaced hash of the right siblings of the Merkle inclusion proof of  the `end` leaf
 	nodes [][]byte
 	// leafHash are nil if the namespace is present in the NMT.
 	// In case the namespace to be proved is in the min/max range of
 	// the tree but absent, this will contain the leaf hash
 	// necessary to verify the proof of absence.
+	// leafHash contains a tree leaf that 1) its namespace ID is the largest namespace ID less than nid and 2) the child to the left of it is smaller than the nid 3) the child to the right of it is larger than nid.
 	leafHash []byte
 	// isMaxNamespaceIDIgnored is set to true if the tree from which
 	// this Proof was generated from is initialized with
-	// Options.IgnoreMaxNamespace == true. // TODO [Me]? not sure about the usage of this
+	// Options.IgnoreMaxNamespace == true.
+	// the major impact of the `IgnoreMaxNamespace` flag is on how namespace ID range of intermediate tree nodes are calculated based on their children
+	// for more details see the HashNode method of the Hasher
 	isMaxNamespaceIDIgnored bool
 }
 
@@ -91,11 +95,22 @@ func NewAbsenceProof(proofStart, proofEnd int, proofNodes [][]byte, leafHash []b
 	return Proof{proofStart, proofEnd, proofNodes, leafHash, ignoreMaxNamespace}
 }
 
-// VerifyNamespace verifies a whole namespace, i.e. it verifies inclusion of
-// the provided data in the tree. Additionally, it verifies that the namespace
-// is complete and no leaf of that namespace was left out in the proof.
-// leafs contain leaves within the nID
-func (proof Proof) VerifyNamespace(h hash.Hash, nID namespace.ID, leaves [][]byte, root []byte) bool {
+// VerifyNamespace verifies a whole namespace, i.e. 1) it verifies inclusion of
+// the provided `data` in the tree (or the `proof.leafHash` in case of absence proof) 2) it verifies that the namespace
+// is complete i.e., the data items matching the namespace ID `nID`  are within the range [`proof.start`, `proof.end`)
+// hence no data of that namespace was left out in the `proof`.
+// VerifyNamespace deems an empty `proof` valid if the queried `nID` falls outside the namespace range of the supplied `root` or if the `root` is empty
+//
+// `h` MUST be the same as the underlying hash function used to generate the proof. Otherwise, the verification will fail.
+// `nID` is the namespace ID for which the namespace `proof` is generated.
+// `data` contains the namespaced data (but not namespace hash) underlying the leaves of the tree in the range of [`proof.start`, `proof.end`). For an absence `proof`, the `data` is empty.
+//
+// `data` items MUST be ordered according to their index in the tree, with `data[0]` corresponding to the namespaced data at index `start`,
+//
+//	and the last element in `data` corresponding to the data item at index `end-1` of the tree.
+//
+// `root` is the root of the NMT against which the `proof` is verified.
+func (proof Proof) VerifyNamespace(h hash.Hash, nID namespace.ID, data [][]byte, root []byte) bool {
 	// TODO [Me] what is this check for?
 	nth := NewNmtHasher(h, nID.Size(), proof.isMaxNamespaceIDIgnored)
 	min := namespace.ID(MinNamespace(root, nID.Size()))
@@ -107,7 +122,7 @@ func (proof Proof) VerifyNamespace(h hash.Hash, nID namespace.ID, leaves [][]byt
 	}
 
 	isEmptyRange := proof.start == proof.end
-	if len(leaves) == 0 && isEmptyRange && len(proof.nodes) == 0 {
+	if len(data) == 0 && isEmptyRange && len(proof.nodes) == 0 {
 		// empty proofs are always rejected unless nID is outside the range of namespaces covered by the root
 		// we special case the empty root, since it purports to cover the zero namespace but does not actually
 		// include any such nodes
@@ -116,16 +131,16 @@ func (proof Proof) VerifyNamespace(h hash.Hash, nID namespace.ID, leaves [][]byt
 		}
 		return false
 	}
-	gotLeafHashes := make([][]byte, 0, len(leaves))
+	gotLeafHashes := make([][]byte, 0, len(data))
 	nIDLen := nID.Size()
 	if proof.IsOfAbsence() {
 		// TODO [Me] the proof.leafHash.minNs < proof.leafHash.maxNs should be checked i.e., it is a well-formed nmt Node, if this does not hold, we can make an early return
 		gotLeafHashes = append(gotLeafHashes, proof.leafHash)
 	} else {
-		// collect leaf hashes from provided leaves and
+		// collect leaf hashes from provided data and
 		// do some sanity checks:
 		hashLeafFunc := nth.HashLeaf
-		for _, gotLeaf := range leaves {
+		for _, gotLeaf := range data {
 			// TODO [Me] can be converted to something like isNameSpaceIDPrefixed()
 			if len(gotLeaf) < int(nIDLen) {
 				// conflicting namespace sizes
@@ -133,7 +148,7 @@ func (proof Proof) VerifyNamespace(h hash.Hash, nID namespace.ID, leaves [][]byt
 			}
 			gotLeafNid := namespace.ID(gotLeaf[:nIDLen]) // TODO [Me] a helper function
 			if !gotLeafNid.Equal(nID) {
-				// conflicting namespace IDs in leaves
+				// conflicting namespace IDs in data
 				return false
 			}
 			leafData := append(gotLeafNid, gotLeaf[nIDLen:]...) // TODO why not just passing the leaf? isn't it the same?
@@ -141,7 +156,7 @@ func (proof Proof) VerifyNamespace(h hash.Hash, nID namespace.ID, leaves [][]byt
 			gotLeafHashes = append(gotLeafHashes, hashLeafFunc(leafData))
 		}
 	}
-	// check whether the number of leaves match the proof range end-start and make an early return if not
+	// check whether the number of data match the proof range end-start and make an early return if not
 	if !proof.IsOfAbsence() && len(gotLeafHashes) != (proof.End()-proof.Start()) { // TODO [Me] this i.e., len(gotLeafHashes) != (proof.End()-proof.Start()) should hold even if proof.IsOfAbsence() is true
 		return false
 	}
