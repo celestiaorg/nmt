@@ -1,4 +1,5 @@
 // Package nmt contains an NMT implementation.
+// TODO put a link to the specification.
 package nmt
 
 import (
@@ -26,8 +27,13 @@ var (
 type NodeVisitorFn = func(hash []byte, children ...[]byte)
 
 type Options struct {
-	InitialCapacity    int
-	NamespaceIDSize    namespace.IDSize
+	// InitialCapacity indicates the initial number of leaves in the tree
+	InitialCapacity int
+	// the size of namespace ID in bytes
+	NamespaceIDSize namespace.IDSize
+	// the major impact of the `IgnoreMaxNamespace` flag is on how namespace ID range of intermediate tree nodes are calculated based on their children
+	// in this case, the maximum namespace ID is treated differently
+	// for more details see the HashNode method of the Hasher
 	IgnoreMaxNamespace bool
 	NodeVisitor        NodeVisitorFn
 }
@@ -88,8 +94,10 @@ type NamespacedMerkleTree struct {
 	// the leafRange indicates the starting position and ending position of
 	// the leaves matching that namespace ID in the tree
 	namespaceRanges map[string]leafRange
-	minNID          namespace.ID
-	maxNID          namespace.ID
+	// the minimum namespace ID of the leaves
+	minNID namespace.ID
+	// the maximum namespace ID of the leaves
+	maxNID namespace.ID
 
 	// cache the root
 	rawRoot []byte
@@ -99,7 +107,6 @@ type NamespacedMerkleTree struct {
 // and for the given namespace size (number of bytes).
 // If the namespace size is 0 this corresponds to a regular non-namespaced
 // Merkle tree.
-// TODO [Me] Why not using a fixed namespace size? i.e., the DefaultNamespaceIDLen, is the variable size for the space efficiency?
 func New(h hash.Hash, setters ...Option) *NamespacedMerkleTree {
 	// default options:
 	opts := &Options{
@@ -119,7 +126,6 @@ func New(h hash.Hash, setters ...Option) *NamespacedMerkleTree {
 		leaves:          make([][]byte, 0, opts.InitialCapacity),
 		leafHashes:      make([][]byte, 0, opts.InitialCapacity),
 		namespaceRanges: make(map[string]leafRange),
-		// TODO [Me] Shouldn't minNID be populated by `0x00`?
 		minNID:          bytes.Repeat([]byte{0xFF}, int(opts.NamespaceIDSize)),
 		maxNID:          bytes.Repeat([]byte{0x00}, int(opts.NamespaceIDSize)),
 	}
@@ -151,7 +157,9 @@ func (n *NamespacedMerkleTree) ProveRange(start, end int) (Proof, error) {
 //
 // case 1) If the namespace nID is out of the range of the tree's min and max namespace
 // i.e., (nID < n.minNID) or (n.maxNID < nID)
-//  we do not generate any range proof, instead we return an empty Proof with the range (0,0) i.e.,
+//
+//	we do not generate any range proof, instead we return an empty Proof with the range (0,0) i.e.,
+//
 // Proof.start = 0 and Proof.end = 0
 // to indicate that this namespace is not contained in the tree.
 //
@@ -193,7 +201,7 @@ func (n *NamespacedMerkleTree) ProveNamespace(nID namespace.ID) (Proof, error) {
 	// At this point we either found leaves with the namespace nID in the tree or calculated
 	// the range it would be in (to generate a proof of absence and to return
 	// the corresponding leaf hashes).
-	n.computeLeafHashesIfNecessary()                 // TODO [Me] Why it is needed? cannot we make sure the leaves hashes are calculated as soon as a data is pushed to the tree?
+	n.computeLeafHashesIfNecessary() // TODO [Me] Why it is needed? cannot we make sure the leaves hashes are calculated as soon as a data is pushed to the tree?
 	proof := n.buildRangeProof(proofStart, proofEnd)
 
 	if found {
@@ -240,7 +248,6 @@ func (n *NamespacedMerkleTree) buildRangeProof(proofStart, proofEnd int) [][]byt
 			// if the leaf is not required as part of the proof i.e., includeNode == false
 			return leafHash
 		}
-
 
 		// newIncludeNode indicates whether one of the subtrees of the current subtree [start, end)
 		// may have an overlap with the queried proof range i.e., [proofStart, proofEnd)
@@ -304,9 +311,9 @@ func (n *NamespacedMerkleTree) GetWithProof(nID namespace.ID) ([][]byte, Proof, 
 	return data, proof, err
 }
 
-// calculateAbsenceIndex returns the index of a leaf with the largest namespace ID which is smaller than nID
-// in case there are multiple leaves with this property, then the index of the highest one
-// is returned
+// calculateAbsenceIndex returns the index of a leaf of the tree that
+// 1) its namespace ID is the largest namespace ID less than nid and 2) the namespace ID of the leaf to the left of it is smaller than
+// the nid 3) the namespace ID of the leaf to the right of it is larger than nid.
 func (n *NamespacedMerkleTree) calculateAbsenceIndex(nID namespace.ID) int {
 	nidSize := n.treeHasher.NamespaceSize()
 	var prevLeaf []byte
@@ -353,10 +360,10 @@ func (n *NamespacedMerkleTree) NamespaceSize() namespace.IDSize {
 	return n.treeHasher.NamespaceSize()
 }
 
-// Push adds data with the corresponding namespace ID to the tree.
-// Returns an error if the namespace ID size of the input
-// does not match the tree's NamespaceSize() or the leaves are not pushed in
-// order (i.e. lexicographically sorted by namespace ID).
+// Push adds a namespaced data to the tree.
+// The first `n.NamespaceSize()` bytes of namespacedData is treated as its namespace ID.
+// Push returns an error if the namespaced data is not namespace-prefixed (i.e., its size is smaller than the tree's NamespaceSize), or
+// if it is not pushed in ascending order based on the namespace ID compared to the previously inserted data (i.e., it is not lexicographically sorted by namespace ID).
 func (n *NamespacedMerkleTree) Push(namespacedData namespace.PrefixedData) error {
 	nID, err := n.validateAndExtractNamespace(namespacedData)
 	if err != nil {
@@ -372,8 +379,9 @@ func (n *NamespacedMerkleTree) Push(namespacedData namespace.PrefixedData) error
 	return nil
 }
 
-// Root returns the namespaced Merkle Tree's root with the minimum and maximum
-// namespace. min || max || hashDigest
+// Root calculates the namespaced Merkle Tree's root based on the data that has been added through the use of the Push method.
+// the returned byte slice is of size 2* n.NamespaceSize + the underlying hash output size, and should be parsed as
+// min namespace ID of the root || max namespace ID of the root || root hashDigest
 func (n *NamespacedMerkleTree) Root() []byte {
 	if n.rawRoot == nil {
 		n.rawRoot = n.computeRoot(0, len(n.leaves))
@@ -381,6 +389,7 @@ func (n *NamespacedMerkleTree) Root() []byte {
 	return n.rawRoot
 }
 
+// computeRoot calculates the namespace Merkle root for a tree/sub-tree that encompasses the leaves within the range of [start, end).
 func (n *NamespacedMerkleTree) computeRoot(start, end int) []byte {
 	switch end - start {
 	case 0:
@@ -405,6 +414,7 @@ func (n *NamespacedMerkleTree) computeRoot(start, end int) []byte {
 }
 
 // getSplitPoint returns the largest power of 2 less than the length
+// at a high level, it returns the size of the left child in a full Merkle tree root that has length number of leaves.
 func getSplitPoint(length int) int {
 	if length < 1 {
 		panic("Trying to split a tree with size < 1")
@@ -438,6 +448,10 @@ func (n *NamespacedMerkleTree) updateNamespaceRanges() {
 	}
 }
 
+// validateAndExtractNamespace verifies whether ndata is a valid namespace-prefixe data, and returns its namespace ID.
+// The first `n.NamespaceSize()` bytes of namespacedData is treated as its namespace ID.
+// validateAndExtractNamespace returns an error if the namespaced data is not namespace-prefixed (i.e., its size is smaller than the tree's NamespaceSize),
+// or if its namespace ID is smaller than the last leaf data in the tree (i.e., the n.leaves should be sorted in ascending order by their namespace ID).
 func (n *NamespacedMerkleTree) validateAndExtractNamespace(ndata namespace.PrefixedData) (namespace.ID, error) {
 	nidSize := int(n.NamespaceSize())
 	if len(ndata) < nidSize {
@@ -481,16 +495,18 @@ func (n *NamespacedMerkleTree) computeLeafHashesIfNecessary() {
 }
 
 type leafRange struct {
-	start, end uint64
+	start, end uint64 // end is non-inclusive
 }
 
-// MinNamespace parses the minimum namespace id from a given hash
+// MinNamespace extracts the minimum namespace ID from a given namespace hash, which is
+// formatted as: minimum namespace ID || maximum namespace ID || hash digest.
 func MinNamespace(hash []byte, size namespace.IDSize) []byte {
 	min := make([]byte, 0, size)
 	return append(min, hash[:size]...)
 }
 
-// MaxNamespace parses the maximum namespace id from a given hash
+// MaxNamespace extracts the maximum namespace ID from a given namespace hash, which is
+// formatted as: minimum namespace ID || maximum namespace ID || hash digest.
 func MaxNamespace(hash []byte, size namespace.IDSize) []byte {
 	max := make([]byte, 0, size)
 	return append(max, hash[size:size*2]...)

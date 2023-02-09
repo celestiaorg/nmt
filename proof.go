@@ -30,8 +30,6 @@ type Proof struct {
 	// isMaxNamespaceIDIgnored is set to true if the tree from which
 	// this Proof was generated from is initialized with
 	// Options.IgnoreMaxNamespace == true.
-	// the major impact of the `IgnoreMaxNamespace` flag is on how namespace ID range of intermediate tree nodes are calculated based on their children
-	// for more details see the HashNode method of the Hasher
 	isMaxNamespaceIDIgnored bool
 }
 
