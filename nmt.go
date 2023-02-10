@@ -229,7 +229,6 @@ func (n *NamespacedMerkleTree) ProveNamespace(nID namespace.ID) (Proof, error) {
 // [proofStart, proofEnd) where proofEnd is non-inclusive.
 // The nodes are ordered according to in order traversal of the namespaced tree.
 func (n *NamespacedMerkleTree) buildRangeProof(proofStart, proofEnd int) [][]byte {
-	// TODO a more secure way would be to make it slice of fixed size arrays i.e., the hash output size
 	proof := [][]byte{} // it is the list of nodes hashes (as byte slices) with no index
 	var recurse func(start, end int, includeNode bool) []byte
 
