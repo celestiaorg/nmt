@@ -82,14 +82,19 @@ func NewEmptyRangeProof(ignoreMaxNamespace bool) Proof {
 
 // NewInclusionProof constructs a proof that proves that a namespace.ID
 // is included in an NMT.
-func NewInclusionProof(proofStart, proofEnd int, proofNodes [][]byte, ignoreMaxNamespace bool) Proof {
+func NewInclusionProof(
+	proofStart, proofEnd int, proofNodes [][]byte, ignoreMaxNamespace bool
+) Proof {
 	return Proof{proofStart, proofEnd, proofNodes, nil, ignoreMaxNamespace}
 }
 
 // NewAbsenceProof constructs a proof that proves that a namespace.ID
 // falls within the range of an NMT but no leaf with that namespace.ID is
 // included.
-func NewAbsenceProof(proofStart, proofEnd int, proofNodes [][]byte, leafHash []byte, ignoreMaxNamespace bool) Proof {
+func NewAbsenceProof(
+	proofStart, proofEnd int, proofNodes [][]byte, leafHash []byte,
+	ignoreMaxNamespace bool
+) Proof {
 	return Proof{proofStart, proofEnd, proofNodes, leafHash, ignoreMaxNamespace}
 }
 
@@ -108,12 +113,12 @@ func NewAbsenceProof(proofStart, proofEnd int, proofNodes [][]byte, leafHash []b
 //	and the last element in `data` corresponding to the data item at index `end-1` of the tree.
 //
 // `root` is the root of the NMT against which the `proof` is verified.
-func (proof Proof) VerifyNamespace(h hash.Hash, nID namespace.ID, data [][]byte, root []byte) bool {
-	// TODO [Me] what is this check for?
+func (proof Proof) VerifyNamespace(
+	h hash.Hash, nID namespace.ID, data [][]byte, root []byte
+) bool {
 	nth := NewNmtHasher(h, nID.Size(), proof.isMaxNamespaceIDIgnored)
 	min := namespace.ID(MinNamespace(root, nID.Size()))
 	max := namespace.ID(MaxNamespace(root, nID.Size()))
-	// TODO [Me] this never happens, the min and max are exactly nID.Size() bytes
 	if nID.Size() != min.Size() || nID.Size() != max.Size() {
 		// conflicting namespace sizes
 		return false
@@ -124,7 +129,9 @@ func (proof Proof) VerifyNamespace(h hash.Hash, nID namespace.ID, data [][]byte,
 		// empty proofs are always rejected unless nID is outside the range of namespaces covered by the root
 		// we special case the empty root, since it purports to cover the zero namespace but does not actually
 		// include any such nodes
-		if nID.Less(min) || max.Less(nID) || bytes.Equal(root, nth.EmptyRoot()) {
+		if nID.Less(min) || max.Less(nID) || bytes.Equal(
+			root, nth.EmptyRoot()
+		) {
 			return true
 		}
 		return false
@@ -132,30 +139,30 @@ func (proof Proof) VerifyNamespace(h hash.Hash, nID namespace.ID, data [][]byte,
 	gotLeafHashes := make([][]byte, 0, len(data))
 	nIDLen := nID.Size()
 	if proof.IsOfAbsence() {
-		// TODO [Me] the proof.leafHash.minNs < proof.leafHash.maxNs should be checked i.e., it is a well-formed nmt Node, if this does not hold, we can make an early return
 		gotLeafHashes = append(gotLeafHashes, proof.leafHash)
 	} else {
 		// collect leaf hashes from provided data and
 		// do some sanity checks:
 		hashLeafFunc := nth.HashLeaf
 		for _, gotLeaf := range data {
-			// TODO [Me] can be converted to something like isNameSpaceIDPrefixed()
 			if len(gotLeaf) < int(nIDLen) {
 				// conflicting namespace sizes
 				return false
 			}
-			gotLeafNid := namespace.ID(gotLeaf[:nIDLen]) // TODO [Me] a helper function
+			gotLeafNid := namespace.ID(gotLeaf[:nIDLen])
 			if !gotLeafNid.Equal(nID) {
 				// conflicting namespace IDs in data
 				return false
 			}
-			leafData := append(gotLeafNid, gotLeaf[nIDLen:]...) // TODO why not just passing the leaf? isn't it the same?
+			leafData := append(
+				gotLeafNid, gotLeaf[nIDLen:]...
+			)
 			// hash the leaf data
 			gotLeafHashes = append(gotLeafHashes, hashLeafFunc(leafData))
 		}
 	}
 	// check whether the number of data match the proof range end-start and make an early return if not
-	if !proof.IsOfAbsence() && len(gotLeafHashes) != (proof.End()-proof.Start()) { // TODO [Me] this i.e., len(gotLeafHashes) != (proof.End()-proof.Start()) should hold even if proof.IsOfAbsence() is true
+	if !proof.IsOfAbsence() && len(gotLeafHashes) != (proof.End()-proof.Start()) {
 		return false
 	}
 	// with verifyCompleteness set to true:
@@ -163,9 +170,11 @@ func (proof Proof) VerifyNamespace(h hash.Hash, nID namespace.ID, data [][]byte,
 }
 
 // verifyLeafHashes checks whether all the leaves matching the namespace ID nID are covered by the proof if verifyCompleteness is set to true
-func (proof Proof) verifyLeafHashes(nth *Hasher, verifyCompleteness bool, nID namespace.ID, leafHashes [][]byte, root []byte) bool {
+func (proof Proof) verifyLeafHashes(
+	nth *Hasher, verifyCompleteness bool, nID namespace.ID, leafHashes [][]byte,
+	root []byte
+) bool {
 	var leafIndex uint64
-	// TODO [Me] Why called leftSubtrees?
 	// leftSubtrees is to be populated by the subtree roots upto [0, r.Start)
 	leftSubtrees := make([][]byte, 0, len(proof.nodes))
 
@@ -179,7 +188,6 @@ func (proof Proof) verifyLeafHashes(nth *Hasher, verifyCompleteness bool, nID na
 	// rightSubtrees only contains the subtrees after r.End
 	rightSubtrees := nodes
 
-	// TODO [Me] verifyCompleteness can be a helper function, for improved readability and unit-testing
 	if verifyCompleteness {
 		// leftSubtrees contains the subtree roots upto [0, r.Start)
 		for _, subtree := range leftSubtrees {
@@ -251,11 +259,15 @@ func (proof Proof) verifyLeafHashes(nth *Hasher, verifyCompleteness bool, nID na
 // and the provided proof to regenerate and compare the root. Note that the leaf
 // data should not contain the prefixed namespace, unlike the tree.Push method,
 // which takes prefixed data. All leaves implicitly have the same namespace ID: `nid`.
-func (proof Proof) VerifyInclusion(h hash.Hash, nid namespace.ID, leaves [][]byte, root []byte) bool {
+func (proof Proof) VerifyInclusion(
+	h hash.Hash, nid namespace.ID, leaves [][]byte, root []byte
+) bool {
 	nth := NewNmtHasher(h, nid.Size(), proof.isMaxNamespaceIDIgnored)
 	hashes := make([][]byte, len(leaves))
 	for i, d := range leaves {
-		leafData := append(append(make([]byte, 0, len(d)+len(nid)), nid...), d...)
+		leafData := append(
+			append(make([]byte, 0, len(d)+len(nid)), nid...), d...
+		)
 		hashes[i] = nth.HashLeaf(leafData)
 	}
 
