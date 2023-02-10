@@ -80,6 +80,8 @@ type NamespacedMerkleTree struct {
 	// currently, only leaves and leafHashes are stored:
 	leaves [][]byte
 	// store leaf hashes whenever computed (via Root() or via computeLeafHashesIfNecessary)
+	// TODO [Me] we need to check whether leafHashes are not redunduntly
+	//  computed
 	leafHashes [][]byte
 
 	// this can be used to efficiently look up the range for an
@@ -120,8 +122,8 @@ func New(h hash.Hash, setters ...Option) *NamespacedMerkleTree {
 		leafHashes:      make([][]byte, 0, opts.InitialCapacity),
 		namespaceRanges: make(map[string]leafRange),
 		// TODO [Me] Shouldn't minNID be populated by `0x00`?
-		minNID:          bytes.Repeat([]byte{0xFF}, int(opts.NamespaceIDSize)),
-		maxNID:          bytes.Repeat([]byte{0x00}, int(opts.NamespaceIDSize)),
+		minNID: bytes.Repeat([]byte{0xFF}, int(opts.NamespaceIDSize)),
+		maxNID: bytes.Repeat([]byte{0x00}, int(opts.NamespaceIDSize)),
 	}
 }
 
@@ -193,11 +195,13 @@ func (n *NamespacedMerkleTree) ProveNamespace(nID namespace.ID) (Proof, error) {
 	// At this point we either found leaves with the namespace nID in the tree or calculated
 	// the range it would be in (to generate a proof of absence and to return
 	// the corresponding leaf hashes).
-	n.computeLeafHashesIfNecessary()                 // TODO [Me] Why it is needed? cannot we make sure the leaves hashes are calculated as soon as a data is pushed to the tree?
+	n.computeLeafHashesIfNecessary() // TODO [Me] Why it is needed? cannot we make sure the leaves hashes are calculated as soon as a data is pushed to the tree?
 	proof := n.buildRangeProof(proofStart, proofEnd)
 
 	if found {
-		return NewInclusionProof(proofStart, proofEnd, proof, isMaxNsIgnored), nil
+		return NewInclusionProof(
+			proofStart, proofEnd, proof, isMaxNsIgnored
+		), nil
 	}
 	// TODO [Me] the underlying struct type for both inclusion and absence proofs are the same, i.e., `Proof`
 	// TODO [Me] the only distinction is in the presence/absence of the `leafHash`,
@@ -205,7 +209,9 @@ func (n *NamespacedMerkleTree) ProveNamespace(nID namespace.ID) (Proof, error) {
 	// TODO [Me] however, we may want to actually add an extra field to the `Proof`
 	// TODO [Me] that indicates whether the proof is for inclusion or for absence
 
-	return NewAbsenceProof(proofStart, proofEnd, proof, n.leafHashes[proofStart], isMaxNsIgnored), nil
+	return NewAbsenceProof(
+		proofStart, proofEnd, proof, n.leafHashes[proofStart], isMaxNsIgnored
+	), nil
 }
 
 // buildRangeProof returns the nodes (as byte slices) in the range proof of the supplied range i.e.,
@@ -241,14 +247,13 @@ func (n *NamespacedMerkleTree) buildRangeProof(proofStart, proofEnd int) [][]byt
 			return leafHash
 		}
 
-
 		// newIncludeNode indicates whether one of the subtrees of the current subtree [start, end)
 		// may have an overlap with the queried proof range i.e., [proofStart, proofEnd)
 		newIncludeNode := includeNode
 		// check whether the subtree representing the [start, end) range of leaves has overlap with the
 		// queried proof range i.e., [proofStart, proofEnd)
 		// if not
-		if (end <= proofStart || start >= proofEnd) && includeNode { //TODO [Me] the `&& includeNode` seems ineffective and unnecessary
+		if (end <= proofStart || start >= proofEnd) && includeNode { // TODO [Me] the `&& includeNode` seems ineffective and unnecessary
 			// setting newIncludeNode to false indicates that non of the subtrees (left and right) of the current
 			// subtree are required for the proof
 			// because the range of the leaves they cover have no overlap with the
@@ -298,7 +303,9 @@ func (n *NamespacedMerkleTree) Get(nID namespace.ID) [][]byte {
 // GetWithProof is a convenience method returns leaves for the given namespace.ID
 // together with the proof for that namespace. It returns the same result
 // as calling the combination of Get(nid) and ProveNamespace(nid).
-func (n *NamespacedMerkleTree) GetWithProof(nID namespace.ID) ([][]byte, Proof, error) {
+func (n *NamespacedMerkleTree) GetWithProof(nID namespace.ID) (
+	[][]byte, Proof, error
+) {
 	data := n.Get(nID)
 	proof, err := n.ProveNamespace(nID)
 	return data, proof, err
@@ -389,6 +396,12 @@ func (n *NamespacedMerkleTree) computeRoot(start, end int) []byte {
 		return rootHash
 	case 1:
 		leafHash := n.treeHasher.HashLeaf(n.leaves[start])
+		// TODO [Me] how do we know which leaves are already hashed and
+		//  inserted into n.leafHashes? it might be the case that the tree
+		//  has 10 leaves, but we run computeRoot(0,1) for 10 times,
+		//  hence the leafHashes gets populated by the hash of the first leaf
+		//  only. I think leaves should be hashed as soon as they get
+		//  inserted to the tree via Push method.
 		if len(n.leafHashes) < len(n.leaves) {
 			n.leafHashes = append(n.leafHashes, leafHash)
 		}
@@ -438,10 +451,15 @@ func (n *NamespacedMerkleTree) updateNamespaceRanges() {
 	}
 }
 
-func (n *NamespacedMerkleTree) validateAndExtractNamespace(ndata namespace.PrefixedData) (namespace.ID, error) {
+func (n *NamespacedMerkleTree) validateAndExtractNamespace(ndata namespace.PrefixedData) (
+	namespace.ID, error
+) {
 	nidSize := int(n.NamespaceSize())
 	if len(ndata) < nidSize {
-		return nil, fmt.Errorf("%w: got: %v, want >= %v", ErrMismatchedNamespaceSize, len(ndata), nidSize)
+		return nil, fmt.Errorf(
+			"%w: got: %v, want >= %v", ErrMismatchedNamespaceSize, len(ndata),
+			nidSize
+		)
 	}
 	nID := namespace.ID(ndata[:n.NamespaceSize()])
 	// ensure pushed data doesn't have a smaller namespace than the previous one:
