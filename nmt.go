@@ -191,9 +191,7 @@ func (n *NamespacedMerkleTree) ProveNamespace(nID namespace.ID) (Proof, error) {
 	// case 1)
 	// In the cases (n.nID < minNID) or (n.maxNID < nID),
 	// return empty range and no proof
-	if nID.Less(n.minNID) || n.maxNID.Less(nID) { // TODO [Me] we could move this entire if block inside the `foundInRange` function
-		// TODO [Me] Shouldn't we instead return the first or the last node in the tree as the exclusion proof?
-		// TODO [Me] although I think this current logic is based on the premise that the root of the tree is trusted
+	if nID.Less(n.minNID) || n.maxNID.Less(nID) {
 		return NewEmptyRangeProof(isMaxNsIgnored), nil
 	}
 
@@ -205,7 +203,7 @@ func (n *NamespacedMerkleTree) ProveNamespace(nID namespace.ID) (Proof, error) {
 		// To generate a proof for an absence we calculate the
 		// position of the leaf that is in the place of where
 		// the namespace would be in:
-		proofStart = n.calculateAbsenceIndex(nID) // TODO [Me] this could simply return a range, to avoid the line below
+		proofStart = n.calculateAbsenceIndex(nID)
 		proofEnd = proofStart + 1
 	}
 
@@ -213,7 +211,7 @@ func (n *NamespacedMerkleTree) ProveNamespace(nID namespace.ID) (Proof, error) {
 	// At this point we either found leaves with the namespace nID in the tree or calculated
 	// the range it would be in (to generate a proof of absence and to return
 	// the corresponding leaf hashes).
-	n.computeLeafHashesIfNecessary() // TODO [Me] Why it is needed? cannot we make sure the leaves hashes are calculated as soon as a data is pushed to the tree?
+	n.computeLeafHashesIfNecessary()
 	proof := n.buildRangeProof(proofStart, proofEnd)
 
 	if found {
@@ -221,11 +219,6 @@ func (n *NamespacedMerkleTree) ProveNamespace(nID namespace.ID) (Proof, error) {
 			proofStart, proofEnd, proof, isMaxNsIgnored
 		), nil
 	}
-	// TODO [Me] the underlying struct type for both inclusion and absence proofs are the same, i.e., `Proof`
-	// TODO [Me] the only distinction is in the presence/absence of the `leafHash`,
-	// TODO [Me] the interpretation of the `Proof` then may be a bit non-trivial
-	// TODO [Me] however, we may want to actually add an extra field to the `Proof`
-	// TODO [Me] that indicates whether the proof is for inclusion or for absence
 
 	return NewAbsenceProof(
 		proofStart, proofEnd, proof, n.leafHashes[proofStart], isMaxNsIgnored
@@ -234,7 +227,7 @@ func (n *NamespacedMerkleTree) ProveNamespace(nID namespace.ID) (Proof, error) {
 
 // buildRangeProof returns the nodes (as byte slices) in the range proof of the supplied range i.e.,
 // [proofStart, proofEnd) where proofEnd is non-inclusive.
-// The nodes are ordered according to in order traversal of the namespaced tree. (TODO [Me] I need to double-check the order)
+// The nodes are ordered according to in order traversal of the namespaced tree.
 func (n *NamespacedMerkleTree) buildRangeProof(proofStart, proofEnd int) [][]byte {
 	// TODO a more secure way would be to make it slice of fixed size arrays i.e., the hash output size
 	proof := [][]byte{} // it is the list of nodes hashes (as byte slices) with no index
@@ -246,8 +239,7 @@ func (n *NamespacedMerkleTree) buildRangeProof(proofStart, proofEnd int) [][]byt
 	// includeNode indicates whether the hash of the current subtree (covering the supplied range i.e., [start, end)) or
 	// one of its constituent subtrees should be part of the proof
 	recurse = func(start, end int, includeNode bool) []byte {
-		if start >= len(n.leafHashes) { // TODO [Me] why against leafHashes? and not leaves?
-			// TODO [Me] Why there is no check for the end index?
+		if start >= len(n.leafHashes) {
 			return nil
 		}
 
@@ -271,16 +263,13 @@ func (n *NamespacedMerkleTree) buildRangeProof(proofStart, proofEnd int) [][]byt
 		// check whether the subtree representing the [start, end) range of leaves has overlap with the
 		// queried proof range i.e., [proofStart, proofEnd)
 		// if not
-		if (end <= proofStart || start >= proofEnd) && includeNode { // TODO [Me] the `&& includeNode` seems ineffective and unnecessary
+		if (end <= proofStart || start >= proofEnd) && includeNode {
 			// setting newIncludeNode to false indicates that non of the subtrees (left and right) of the current
 			// subtree are required for the proof
 			// because the range of the leaves they cover have no overlap with the
 			// queried proof range i.e., [proofStart, proofEnd)
 			newIncludeNode = false
 		}
-
-		// TODO [Me] Optimization idea: if includeNode is true and [start, end) are within the [proofStart, proofEnd) range, then we do not need to
-		// TODO [Me] split further, as neither the current subtree nor any of its left and right subtrees are needed for the proof
 
 		// recursively get left and right subtree
 		k := getSplitPoint(end - start)
@@ -390,7 +379,6 @@ func (n *NamespacedMerkleTree) Push(namespacedData namespace.PrefixedData) error
 
 	// update relevant "caches":
 	n.leaves = append(n.leaves, namespacedData)
-	// TODO [Me] why not calculating the hash right away and add it to n.leafHashes
 	n.updateNamespaceRanges()
 	n.updateMinMaxID(nID)
 	n.rawRoot = nil
