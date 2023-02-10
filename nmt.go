@@ -31,21 +31,13 @@ type Options struct {
 	InitialCapacity int
 	// the size of namespace ID in bytes
 	NamespaceIDSize namespace.IDSize
-	// The IgnoreMaxNamespace flag affects the calculation of the namespace ID
-	// range for intermediate tree nodes.
-	// This flag indicates that the maximum possible namespace ID, i.e.,
-	// the value equivalent to "NamespaceIDSize" bytes of 0xFF should be
-	// ignored if possible. That is for a given NMT node "n" with left
-	// and  right children "l" and "r", respectively,
-	// the maximum namespace ID of "n" (i.e. "n.maxNID") is found by taking the
-	// maximum value among the namespace IDs available in the range of its left
-	// and right children (i.e. "max(l.minNID, l.maxNID , r.minNID,
-	// r.maxNID)") which is not equal to the maximum possible namespace ID
-	// value.
-	//	If such a namespace ID does not exist,
-	//	then the maximum possible namespace ID value i.e.,
-	//	max(l.minNID, l.maxNID , r.minNID, r.maxNID)") will be used as normal.
-	//	For further details, refer to the "HashNode" method in the "Hasher".
+	// The "IgnoreMaxNamespace" flag influences the calculation of the
+	// namespace ID range for intermediate nodes in the tree.
+	// This flag signals that, when determining the upper limit of the
+	// namespace ID range for a tree node, the maximum possible namespace ID
+	// (equivalent to "NamespaceIDSize" bytes of 0xFF, or 2^NamespaceIDSize-1)
+	// should be omitted if feasible. For a more in-depth understanding of
+	// this field, refer to the "HashNode" method in the "Hasher.
 	IgnoreMaxNamespace bool
 	NodeVisitor        NodeVisitorFn
 }
