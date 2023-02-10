@@ -240,14 +240,10 @@ func (n *NamespacedMerkleTree) ProveNamespace(nID namespace.ID) (Proof, error) {
 	proof := n.buildRangeProof(proofStart, proofEnd)
 
 	if found {
-		return NewInclusionProof(
-			proofStart, proofEnd, proof, isMaxNsIgnored
-		), nil
+		return NewInclusionProof(proofStart, proofEnd, proof, isMaxNsIgnored), nil
 	}
 
-	return NewAbsenceProof(
-		proofStart, proofEnd, proof, n.leafHashes[proofStart], isMaxNsIgnored
-	), nil
+	return NewAbsenceProof(proofStart, proofEnd, proof, n.leafHashes[proofStart], isMaxNsIgnored), nil
 }
 
 // buildRangeProof returns the nodes (as byte slices) in the range proof of the supplied range i.e.,
@@ -334,9 +330,7 @@ func (n *NamespacedMerkleTree) Get(nID namespace.ID) [][]byte {
 // GetWithProof is a convenience method returns leaves for the given namespace.ID
 // together with the proof for that namespace. It returns the same result
 // as calling the combination of Get(nid) and ProveNamespace(nid).
-func (n *NamespacedMerkleTree) GetWithProof(nID namespace.ID) (
-	[][]byte, Proof, error
-) {
+func (n *NamespacedMerkleTree) GetWithProof(nID namespace.ID) ([][]byte, Proof, error) {
 	data := n.Get(nID)
 	proof, err := n.ProveNamespace(nID)
 	return data, proof, err
@@ -493,15 +487,10 @@ func (n *NamespacedMerkleTree) updateNamespaceRanges() {
 // (i.e., its size is smaller than the tree's NamespaceSize),
 // or if its namespace ID is smaller than the last leaf data in the tree
 // (i.e., the n.leaves should be sorted in ascending order by their namespace ID).
-func (n *NamespacedMerkleTree) validateAndExtractNamespace(ndata namespace.PrefixedData) (
-	namespace.ID, error
-) {
+func (n *NamespacedMerkleTree) validateAndExtractNamespace(ndata namespace.PrefixedData) (namespace.ID, error) {
 	nidSize := int(n.NamespaceSize())
 	if len(ndata) < nidSize {
-		return nil, fmt.Errorf(
-			"%w: got: %v, want >= %v", ErrMismatchedNamespaceSize, len(ndata),
-			nidSize
-		)
+		return nil, fmt.Errorf("%w: got: %v, want >= %v", ErrMismatchedNamespaceSize, len(ndata), nidSize)
 	}
 	nID := namespace.ID(ndata[:n.NamespaceSize()])
 	// ensure pushed data doesn't have a smaller namespace than the previous one:

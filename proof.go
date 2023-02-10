@@ -94,18 +94,14 @@ func NewEmptyRangeProof(ignoreMaxNamespace bool) Proof {
 // NewInclusionProof constructs a proof that proves that a namespace.ID
 // is included in an NMT.
 func NewInclusionProof(
-	proofStart, proofEnd int, proofNodes [][]byte, ignoreMaxNamespace bool
-) Proof {
+	proofStart, proofEnd int, proofNodes [][]byte, ignoreMaxNamespace bool) Proof {
 	return Proof{proofStart, proofEnd, proofNodes, nil, ignoreMaxNamespace}
 }
 
 // NewAbsenceProof constructs a proof that proves that a namespace.ID
 // falls within the range of an NMT but no leaf with that namespace.ID is
 // included.
-func NewAbsenceProof(
-	proofStart, proofEnd int, proofNodes [][]byte, leafHash []byte,
-	ignoreMaxNamespace bool
-) Proof {
+func NewAbsenceProof(proofStart, proofEnd int, proofNodes [][]byte, leafHash []byte, ignoreMaxNamespace bool) Proof {
 	return Proof{proofStart, proofEnd, proofNodes, leafHash, ignoreMaxNamespace}
 }
 
@@ -117,18 +113,16 @@ func NewAbsenceProof(
 //
 // `h` MUST be the same as the underlying hash function used to generate the proof. Otherwise, the verification will fail.
 // `nID` is the namespace ID for which the namespace `proof` is generated.
-// `data` contains the namespaced data items (
-// but not namespace hash) underlying the leaves of the tree in the range of
+// `data` contains the namespaced data items (but not namespace hash)  underlying the leaves of the tree in the range of
 // [`proof.start`, `proof.end`). For an absence `proof`, the `data` is empty.
-// `data` items MUST be ordered according to their index in the tree,
-// with `data[0]` corresponding to the namespaced data at index `start`,
+// `data` items MUST be ordered according to their index in the tree, with `data[0]` corresponding to the namespaced data at index `start`,
+//
 //	and the last element in `data` corresponding to the data item at index
 //	`end-1` of the tree.
 //
 // `root` is the root of the NMT against which the `proof` is verified.
 func (proof Proof) VerifyNamespace(
-	h hash.Hash, nID namespace.ID, data [][]byte, root []byte
-) bool {
+	h hash.Hash, nID namespace.ID, data [][]byte, root []byte) bool {
 	nth := NewNmtHasher(h, nID.Size(), proof.isMaxNamespaceIDIgnored)
 	min := namespace.ID(MinNamespace(root, nID.Size()))
 	max := namespace.ID(MaxNamespace(root, nID.Size()))
@@ -142,9 +136,7 @@ func (proof Proof) VerifyNamespace(
 		// empty proofs are always rejected unless nID is outside the range of namespaces covered by the root
 		// we special case the empty root, since it purports to cover the zero namespace but does not actually
 		// include any such nodes
-		if nID.Less(min) || max.Less(nID) || bytes.Equal(
-			root, nth.EmptyRoot()
-		) {
+		if nID.Less(min) || max.Less(nID) || bytes.Equal(root, nth.EmptyRoot()) {
 			return true
 		}
 		return false
@@ -168,7 +160,7 @@ func (proof Proof) VerifyNamespace(
 				return false
 			}
 			leafData := append(
-				gotLeafNid, gotLeaf[nIDLen:]...
+				gotLeafNid, gotLeaf[nIDLen:]...,
 			)
 			// hash the leaf data
 			gotLeafHashes = append(gotLeafHashes, hashLeafFunc(leafData))
@@ -184,10 +176,7 @@ func (proof Proof) VerifyNamespace(
 }
 
 // verifyLeafHashes checks whether all the leaves matching the namespace ID nID are covered by the proof if verifyCompleteness is set to true
-func (proof Proof) verifyLeafHashes(
-	nth *Hasher, verifyCompleteness bool, nID namespace.ID, leafHashes [][]byte,
-	root []byte
-) bool {
+func (proof Proof) verifyLeafHashes(nth *Hasher, verifyCompleteness bool, nID namespace.ID, leafHashes [][]byte, root []byte) bool {
 	var leafIndex uint64
 	// leftSubtrees is to be populated by the subtree roots upto [0, r.Start)
 	leftSubtrees := make([][]byte, 0, len(proof.nodes))
@@ -273,14 +262,12 @@ func (proof Proof) verifyLeafHashes(
 // and the provided proof to regenerate and compare the root. Note that the leaf
 // data should not contain the prefixed namespace, unlike the tree.Push method,
 // which takes prefixed data. All leaves implicitly have the same namespace ID: `nid`.
-func (proof Proof) VerifyInclusion(
-	h hash.Hash, nid namespace.ID, leaves [][]byte, root []byte
-) bool {
+func (proof Proof) VerifyInclusion(h hash.Hash, nid namespace.ID, leaves [][]byte, root []byte) bool {
 	nth := NewNmtHasher(h, nid.Size(), proof.isMaxNamespaceIDIgnored)
 	hashes := make([][]byte, len(leaves))
 	for i, d := range leaves {
 		leafData := append(
-			append(make([]byte, 0, len(d)+len(nid)), nid...), d...
+			append(make([]byte, 0, len(d)+len(nid)), nid...), d...,
 		)
 		hashes[i] = nth.HashLeaf(leafData)
 	}
