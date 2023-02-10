@@ -143,16 +143,29 @@ func New(h hash.Hash, setters ...Option) *NamespacedMerkleTree {
 	}
 }
 
-// Prove leaf at index.
-// Note this is not really NMT specific but the tree supports inclusions proofs
+// Prove returns a NMT inclusion proof for the leaf at the supplied
+// index. Note this is not really NMT specific but the tree supports inclusions proofs
 // like any vanilla Merkle tree.
-// the returned Proof contains the audit path for a leaf at the given index
-// Prove is a thin wrapper around the ProveRange and constructs the correct range for the given leaf index
+// Prove is a thin wrapper around the ProveRange
 func (n *NamespacedMerkleTree) Prove(index int) (Proof, error) {
 	return n.ProveRange(index, index+1)
 }
 
-// ProveRange returns the audit path for the supplied range of leaves i.e., [start, end).
+// ProveRange returns a Merkle inclusion proof for a specified range of leaves,
+// from start to end exclusive. The returned Proof structure contains the nodes
+// field, which holds the necessary tree nodes for the Merkle range proof in an
+// in-order traversal order. These nodes include the namespaced hash of the left
+// siblings for the proof of the leaf at index start, and the namespaced hash of
+// the right siblings for the proof of the leaf at index end.
+//
+// If the specified range [satrt,
+// end) exceeds the current range of leaves in the tree,
+// an empty Proof will be returned.
+//
+// The isMaxNamespaceIDIgnored field of the Proof reflects the ignoreMaxNs field
+// of n.treeHasher. When set to true, this indicates that the proof was generated
+// using a modified version of the namespace hash with a custom namespace ID range calculation.
+// For more information on this, please refer to the HashNode method in the Hasher.
 func (n *NamespacedMerkleTree) ProveRange(start, end int) (Proof, error) {
 	isMaxNsIgnored := n.treeHasher.IsMaxNamespaceIDIgnored()
 	n.computeLeafHashesIfNecessary()
