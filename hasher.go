@@ -72,9 +72,7 @@ func (n *Hasher) NamespaceSize() namespace.IDSize {
 	return n.NamespaceLen
 }
 
-func NewNmtHasher(
-	baseHasher hash.Hash, nidLen namespace.IDSize, ignoreMaxNamespace bool
-) *Hasher {
+func NewNmtHasher(baseHasher hash.Hash, nidLen namespace.IDSize, ignoreMaxNamespace bool) *Hasher {
 	return &Hasher{
 		baseHasher:       baseHasher,
 		NamespaceLen:     nidLen,
@@ -120,9 +118,7 @@ func (n *Hasher) Sum([]byte) []byte {
 	case NodePrefix:
 		flagLen := int(n.NamespaceLen) * 2
 		sha256Len := n.Size()
-		return n.HashNode(
-			n.data[:flagLen+sha256Len], n.data[flagLen+sha256Len:]
-		)
+		return n.HashNode(n.data[:flagLen+sha256Len], n.data[flagLen+sha256Len:])
 	default:
 		panic("nmt node type wasn't set")
 	}
@@ -210,16 +206,7 @@ func (n *Hasher) HashNode(left, right []byte) []byte {
 
 	// Note this seems a little faster than calling several Write()s on the
 	// underlying Hash function (see: https://github.com/google/trillian/pull/1503):
-	data := append(
-		append(
-			append(
-				make([]byte, 0, 1+len(left)+len(right)),
-				NodePrefix
-			),
-			left...
-		),
-		right...
-	)
+	data := append(append(append(make([]byte, 0, 1+len(left)+len(right)), NodePrefix), left...), right...)
 	//nolint:errcheck
 	h.Write(data)
 	return h.Sum(res)
