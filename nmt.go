@@ -160,7 +160,8 @@ func (n *NamespacedMerkleTree) Prove(index int) (Proof, error) {
 //
 // If the specified range [satrt,
 // end) exceeds the current range of leaves in the tree,
-// an empty Proof will be returned.
+// ProveRange returns an error together with an empty Proof with empty nodes and
+// start and end fields set to 0.
 //
 // The isMaxNamespaceIDIgnored field of the Proof reflects the ignoreMaxNs field
 // of n.treeHasher. When set to true, this indicates that the proof was generated
@@ -182,9 +183,8 @@ func (n *NamespacedMerkleTree) ProveRange(start, end int) (Proof, error) {
 //
 // case 1) If the namespace nID is out of the range of the tree's min and max namespace
 // i.e., (nID < n.minNID) or (n.maxNID < nID)
-//
-//	we do not generate any range proof, instead we return an empty Proof with the range (0,0) i.e.,
-//
+// ProveNamespace returns an error and does not generate any range proof,
+// instead it returns an empty Proof with empty nodes and the range (0,0) i.e.,
 // Proof.start = 0 and Proof.end = 0
 // to indicate that this namespace is not contained in the tree.
 //
@@ -192,13 +192,24 @@ func (n *NamespacedMerkleTree) ProveRange(start, end int) (Proof, error) {
 // i.e., n.minNID<= n.ID <=n.maxNID
 // and the tree does not have any entries with the given Namespace ID nID,
 // this will be proven by returning the inclusion/range Proof of the (namespaced or rather flagged)
-// hash of the leaf of the tree with the largest namespace ID that is smaller than nID.
-// if there are multiple of such leaves, then the proof is done w.r.t. to the one with the highest index
+// hash of the leaf of the tree 1) with the largest namespace ID that is
+// smaller than nID and 2) the child to the left of it is smaller than the nid 3) the child to
+// the right of it is larger than nid.
+// The nodes field of the returned Proof structure is populated with the Merkle inclusion proof.
 // the leafHash field of the returned Proof will contain the namespaced hash of such leaf.
+// The start and end fields of the Proof are set to the indices of the identified leaf.
+// The start field is set to the index of the leaf, and the end field is set to the index of the leaf + 1.
 //
 // case 3) In case the underlying tree contains leaves with the given namespace
-// their start and end index will be returned together with a range proof and
-// the found leaves. In that case the leafHash field of the returned Proof will be nil.
+// their start and end (end is non-inclusive) index will be returned together
+// with a range
+// proof for [start, end). In that case the leafHash field of the returned Proof
+// will be nil.
+//
+// The isMaxNamespaceIDIgnored field of the Proof reflects the ignoreMaxNs field
+// of n.treeHasher. When set to true, this indicates that the proof was generated
+// using a modified version of the namespace hash with a custom namespace ID range calculation.
+// For more information on this, please refer to the HashNode method in the Hasher.
 func (n *NamespacedMerkleTree) ProveNamespace(nID namespace.ID) (Proof, error) {
 	isMaxNsIgnored := n.treeHasher.IsMaxNamespaceIDIgnored()
 	// case 1)
