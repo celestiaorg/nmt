@@ -141,7 +141,8 @@ func (n *NamespacedMerkleTree) ProveRange(start, end int) (Proof, error) {
 	isMaxNsIgnored := n.treeHasher.IsMaxNamespaceIDIgnored()
 	n.computeLeafHashesIfNecessary()
 	// TODO: store nodes and re-use the hashes instead recomputing parts of the tree here
-	if start < 0 || start >= end || end > len(n.leafHashes) {
+	if start < 0 || start >= end || end > len(n.
+		leafHashes) {
 		return NewEmptyRangeProof(isMaxNsIgnored), ErrInvalidRange
 	}
 	proof := n.buildRangeProof(start, end)
@@ -176,6 +177,9 @@ func (n *NamespacedMerkleTree) ProveNamespace(nID namespace.ID) (Proof, error) {
 	if nID.Less(n.minNID) || n.maxNID.Less(nID) { // TODO [Me] we could move this entire if block inside the `foundInRange` function
 		// TODO [Me] Shouldn't we instead return the first or the last node in the tree as the exclusion proof?
 		// TODO [Me] although I think this current logic is based on the premise that the root of the tree is trusted
+		// TODO [Me] this check is redundant,
+		//  it is already being checked in ProveRange,
+		//  we may want to unite the two
 		return NewEmptyRangeProof(isMaxNsIgnored), nil
 	}
 
