@@ -103,9 +103,9 @@ type NamespacedMerkleTree struct {
 	// the leafRange indicates the range of
 	// the leaves matching that namespace ID in the tree
 	namespaceRanges map[string]leafRange
-	// the minimum namespace ID of the leaves
+	// minNID is the minimum namespace ID of the leaves
 	minNID namespace.ID
-	// the maximum namespace ID of the leaves
+	// maxNID is the maximum namespace ID of the leaves
 	maxNID namespace.ID
 
 	// rawRoot caches the value of the tree root whenever the Root()
