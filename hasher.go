@@ -117,7 +117,7 @@ func (n *Hasher) Sum([]byte) []byte {
 		return n.HashLeaf(n.data)
 	case NodePrefix:
 		flagLen := int(n.NamespaceLen) * 2
-		sha256Len := n.Size()
+		sha256Len := n.baseHasher.Size()
 		return n.HashNode(n.data[:flagLen+sha256Len], n.data[flagLen+sha256Len:])
 	default:
 		panic("nmt node type wasn't set")
@@ -144,8 +144,8 @@ func (n *Hasher) EmptyRoot() []byte {
 }
 
 // HashLeaf hashes leaves to:
-// ns(rawData) || ns(rawData) || hash(leafPrefix || rawData), where raw data is the leaf's
-// data minus the namespaceID (namely leaf[NamespaceLen:]).
+// ns(leaf) || ns(leaf) || hash(leafPrefix || leaf), where ns(leaf) is the namespaceID
+// inside the leaf's data namely leaf[:n.NamespaceLen]).
 // Hence, the input length has to be greater or equal to the
 // size of the underlying namespace.ID.
 //
@@ -159,7 +159,7 @@ func (n *Hasher) HashLeaf(leaf []byte) []byte {
 	nID := leaf[:n.NamespaceLen]
 	resLen := int(2*n.NamespaceLen) + n.baseHasher.Size()
 	res := append(append(make([]byte, 0, resLen), nID...), nID...)
-	// h(0x00, d.namespaceID, d.rawData)
+	// h(0x00, leaf)
 	data := append(append(make([]byte, 0, len(leaf)+1), LeafPrefix), leaf...)
 	h.Write(data)
 	return h.Sum(res)
