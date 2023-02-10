@@ -181,10 +181,11 @@ func (n *Hasher) HashLeaf(leaf []byte) []byte {
 // In this case, when setting the upper range, the maximum possible namespace ID
 // (i.e., 2^NamespaceIDSize-1) should be ignored if possible.
 // This is achieved by taking the maximum value among the namespace IDs
-// available in the range of its left and right children (i.e., max(l.minNID, l.maxNID , r.minNID,
-// r.maxNID)), which is not equal to the maximum possible namespace ID value.
+// available in the range of its left and right children (i.e.,
+// max(left.minNID, left.maxNID , right.minNID,
+// right.maxNID)), which is not equal to the maximum possible namespace ID value.
 // If such a namespace ID does not exist, the maximum NID is calculated
-// as normal, i.e., "res.maxNID = max(l.maxNID , r.maxNID).
+// as normal, i.e., "res.maxNID = max(left.maxNID , right.maxNID).
 func (n *Hasher) HashNode(left, right []byte) []byte {
 	h := n.baseHasher
 	h.Reset()
