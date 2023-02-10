@@ -25,11 +25,22 @@ type Proof struct {
 	// In case the namespace to be proved is in the min/max range of
 	// the tree but absent, this will contain the leaf hash
 	// necessary to verify the proof of absence.
-	// leafHash contains a tree leaf that 1) its namespace ID is the largest namespace ID less than nid and 2) the child to the left of it is smaller than the nid 3) the child to the right of it is larger than nid.
+	// leafHash contains a tree leaf that 1) its namespace ID is the largest
+	// namespace ID less than nid and 2) the namespace ID of the leaf to the
+	// left of it is smaller
+	// than the nid 3) the namespace ID of the  leaf to the right of it is
+	// larger than nid.
 	leafHash []byte
 	// isMaxNamespaceIDIgnored is set to true if the tree from which
 	// this Proof was generated from is initialized with
 	// Options.IgnoreMaxNamespace == true.
+	// The IgnoreMaxNamespace flag influences the calculation of the
+	// namespace ID range for intermediate nodes in the tree.
+	// This flag signals that, when determining the upper limit of the
+	// namespace ID range for a tree node, the maximum possible namespace ID
+	// (equivalent to "NamespaceIDSize" bytes of 0xFF, or 2^NamespaceIDSize-1)
+	// should be omitted if feasible. For a more in-depth understanding of
+	// this field, refer to the "HashNode" method in the "Hasher.
 	isMaxNamespaceIDIgnored bool
 }
 
@@ -99,18 +110,20 @@ func NewAbsenceProof(
 }
 
 // VerifyNamespace verifies a whole namespace, i.e. 1) it verifies inclusion of
-// the provided `data` in the tree (or the `proof.leafHash` in case of absence proof) 2) it verifies that the namespace
+// the provided `data` in the tree (or the proof.leafHash in case of absence proof) 2) it verifies that the namespace
 // is complete i.e., the data items matching the namespace ID `nID`  are within the range [`proof.start`, `proof.end`)
-// hence no data of that namespace was left out in the `proof`.
+// and no data of that namespace was left out.
 // VerifyNamespace deems an empty `proof` valid if the queried `nID` falls outside the namespace range of the supplied `root` or if the `root` is empty
 //
 // `h` MUST be the same as the underlying hash function used to generate the proof. Otherwise, the verification will fail.
 // `nID` is the namespace ID for which the namespace `proof` is generated.
-// `data` contains the namespaced data (but not namespace hash) underlying the leaves of the tree in the range of [`proof.start`, `proof.end`). For an absence `proof`, the `data` is empty.
-//
-// `data` items MUST be ordered according to their index in the tree, with `data[0]` corresponding to the namespaced data at index `start`,
-//
-//	and the last element in `data` corresponding to the data item at index `end-1` of the tree.
+// `data` contains the namespaced data items (
+// but not namespace hash) underlying the leaves of the tree in the range of
+// [`proof.start`, `proof.end`). For an absence `proof`, the `data` is empty.
+// `data` items MUST be ordered according to their index in the tree,
+// with `data[0]` corresponding to the namespaced data at index `start`,
+//	and the last element in `data` corresponding to the data item at index
+//	`end-1` of the tree.
 //
 // `root` is the root of the NMT against which the `proof` is verified.
 func (proof Proof) VerifyNamespace(
@@ -161,7 +174,8 @@ func (proof Proof) VerifyNamespace(
 			gotLeafHashes = append(gotLeafHashes, hashLeafFunc(leafData))
 		}
 	}
-	// check whether the number of data match the proof range end-start and make an early return if not
+	// check whether the number of leaves match the proof range i.e.,
+	// end-start. If not, make an early return.
 	if !proof.IsOfAbsence() && len(gotLeafHashes) != (proof.End()-proof.Start()) {
 		return false
 	}
@@ -216,13 +230,13 @@ func (proof Proof) verifyLeafHashes(
 				return leafHash
 			}
 
-			// if current range does not overlap with the proof range,
+			// if the leaf index  is outside the proof range,
 			// pop and return a proof node (which in this case is a leaf) if present,
 			// else return nil because leaf doesn't exist
 			return popIfNonEmpty(&proof.nodes)
 		}
 
-		// if current range does not overlap with proof range,
+		// if current range does not overlap with the proof range,
 		// pop and return a proof node if present,
 		// else return nil because subtree doesn't exist
 		if end <= proof.start || start >= proof.end {
