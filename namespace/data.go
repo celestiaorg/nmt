@@ -20,6 +20,3 @@ func (d PrefixedData8) NamespaceID() ID {
 func (d PrefixedData8) Data() []byte {
 	return d[8:]
 }
-
-
-
