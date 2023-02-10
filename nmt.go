@@ -193,7 +193,8 @@ func (n *NamespacedMerkleTree) ProveRange(start, end int) (Proof, error) {
 // and the tree does not have any entries with the given Namespace ID nID,
 // this will be proven by returning the inclusion/range Proof of the (namespaced or rather flagged)
 // hash of the leaf of the tree 1) with the largest namespace ID that is
-// smaller than nID and 2) the child to the left of it is smaller than the nid 3) the child to
+// smaller than nID and 2) the namespace ID of the leaf to the left of it is
+// smaller than the nid 3) the namespace ID of the leaf to
 // the right of it is larger than nid.
 // The nodes field of the returned Proof structure is populated with the Merkle inclusion proof.
 // the leafHash field of the returned Proof will contain the namespaced hash of such leaf.
@@ -258,7 +259,6 @@ func (n *NamespacedMerkleTree) buildRangeProof(proofStart, proofEnd int) [][]byt
 
 	// start, end are indices of leaves in the tree hence they should be within the size of the tree i.e.,
 	// less than or equal to the len(n.leaves)
-	// this recursive algorithm is inspired by RFC6962 https://www.rfc-editor.org/rfc/rfc6962#section-2.1
 	// includeNode indicates whether the hash of the current subtree (covering the supplied range i.e., [start, end)) or
 	// one of its constituent subtrees should be part of the proof
 	recurse = func(start, end int, includeNode bool) []byte {
@@ -269,7 +269,8 @@ func (n *NamespacedMerkleTree) buildRangeProof(proofStart, proofEnd int) [][]byt
 		// reached a leaf
 		if end-start == 1 {
 			leafHash := n.leafHashes[start]
-			// if the index of the leaf node is out of the queried range i.e., [proofStart, proofEnd]
+			// if the index of the leaf node is out of the queried range i.e.
+			// , [proofStart, proofEnd)
 			// and if the leaf is required as part of the proof i.e., includeNode == true
 			if (start < proofStart || start >= proofEnd) && includeNode {
 				// add the leafHash to the proof
@@ -372,9 +373,14 @@ func (n *NamespacedMerkleTree) calculateAbsenceIndex(nID namespace.ID) int {
 	panic("calculateAbsenceIndex() called although (nID < minNID) or (maxNID < nID) for provided nID")
 }
 
-// foundInRange returns true, together with the starting index and ending index of a range of leaves in the namespace tree whose namespace IDs match the given nID.
-// if no leaves is found, foundInRange returns (false, 0, 0).
-// the ending index is non-inclusive
+// foundInRange returns a tuple of (true, startIndex, endIndex) if a range of leaves
+// in the namespace tree is found with namespace IDs that match the given nID.
+// The startIndex and endIndex indicate the starting and ending indices of the range, respectively.
+//
+// If no leaves are found, foundInRange returns (false, 0, 0).
+//
+// The endIndex is non-inclusive,
+// meaning it does not include the leaf at that index in the range.
 func (n *NamespacedMerkleTree) foundInRange(nID namespace.ID) (bool, int, int) {
 	// This is a faster version of this code snippet:
 	// https://github.com/celestiaorg/celestiaorg-prototype/blob/2aeca6f55ad389b9d68034a0a7038f80a8d2982e/simpleblock.go#L106-L117
@@ -408,9 +414,10 @@ func (n *NamespacedMerkleTree) Push(namespacedData namespace.PrefixedData) error
 	return nil
 }
 
-// Root calculates the namespaced Merkle Tree's root based on the data that has been added through the use of the Push method.
-// the returned byte slice is of size 2* n.NamespaceSize + the underlying hash output size, and should be parsed as
-// min namespace ID of the root || max namespace ID of the root || root hashDigest
+// Root calculates the namespaced Merkle Tree's root based on the data that has
+// been added through the use of the Push method.
+// the returned byte slice is of size 2* n.NamespaceSize + the underlying hash output size,
+// and should be parsed as minND || maxNID || hash
 func (n *NamespacedMerkleTree) Root() []byte {
 	if n.rawRoot == nil {
 		n.rawRoot = n.computeRoot(0, len(n.leaves))
@@ -418,7 +425,8 @@ func (n *NamespacedMerkleTree) Root() []byte {
 	return n.rawRoot
 }
 
-// computeRoot calculates the namespace Merkle root for a tree/sub-tree that encompasses the leaves within the range of [start, end).
+// computeRoot calculates the namespace Merkle root for a tree/sub-tree that
+// encompasses the leaves within the range of [start, end).
 func (n *NamespacedMerkleTree) computeRoot(start, end int) []byte {
 	switch end - start {
 	case 0:
@@ -443,7 +451,8 @@ func (n *NamespacedMerkleTree) computeRoot(start, end int) []byte {
 }
 
 // getSplitPoint returns the largest power of 2 less than the length
-// at a high level, it returns the size of the left child in a full Merkle tree root that has length number of leaves.
+// Essentially, it returns the size of the left subtree in a full Merkle tree
+// with a total number of leaves equal to length.
 func getSplitPoint(length int) int {
 	if length < 1 {
 		panic("Trying to split a tree with size < 1")
@@ -477,10 +486,13 @@ func (n *NamespacedMerkleTree) updateNamespaceRanges() {
 	}
 }
 
-// validateAndExtractNamespace verifies whether ndata is a valid namespace-prefixe data, and returns its namespace ID.
+// validateAndExtractNamespace verifies whether ndata is a valid namespace
+// -prefixed data, and returns its namespace ID.
 // The first `n.NamespaceSize()` bytes of namespacedData is treated as its namespace ID.
-// validateAndExtractNamespace returns an error if the namespaced data is not namespace-prefixed (i.e., its size is smaller than the tree's NamespaceSize),
-// or if its namespace ID is smaller than the last leaf data in the tree (i.e., the n.leaves should be sorted in ascending order by their namespace ID).
+// validateAndExtractNamespace returns an error if the namespaced data is not namespace-prefixed
+// (i.e., its size is smaller than the tree's NamespaceSize),
+// or if its namespace ID is smaller than the last leaf data in the tree
+// (i.e., the n.leaves should be sorted in ascending order by their namespace ID).
 func (n *NamespacedMerkleTree) validateAndExtractNamespace(ndata namespace.PrefixedData) (
 	namespace.ID, error
 ) {
