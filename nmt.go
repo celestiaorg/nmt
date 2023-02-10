@@ -31,9 +31,21 @@ type Options struct {
 	InitialCapacity int
 	// the size of namespace ID in bytes
 	NamespaceIDSize namespace.IDSize
-	// the major impact of the `IgnoreMaxNamespace` flag is on how namespace ID range of intermediate tree nodes are calculated based on their children
-	// in this case, the maximum namespace ID is treated differently
-	// for more details see the HashNode method of the Hasher
+	// The IgnoreMaxNamespace flag affects the calculation of the namespace ID
+	// range for intermediate tree nodes.
+	// This flag indicates that the maximum possible namespace ID, i.e.,
+	// the value equivalent to "NamespaceIDSize" bytes of 0xFF should be
+	// ignored if possible. That is for a given NMT node "n" with left
+	// and  right children "l" and "r", respectively,
+	// the maximum namespace ID of "n" (i.e. "n.maxNID") is found by taking the
+	// maximum value among the namespace IDs available in the range of its left
+	// and right children (i.e. "max(l.minNID, l.maxNID , r.minNID,
+	// r.maxNID)") which is not equal to the maximum possible namespace ID
+	// value.
+	//	If such a namespace ID does not exist,
+	//	then the maximum possible namespace ID value i.e.,
+	//	max(l.minNID, l.maxNID , r.minNID, r.maxNID)") will be used as normal.
+	//	For further details, refer to the "HashNode" method in the "Hasher".
 	IgnoreMaxNamespace bool
 	NodeVisitor        NodeVisitorFn
 }
@@ -205,7 +217,9 @@ func (n *NamespacedMerkleTree) ProveNamespace(nID namespace.ID) (Proof, error) {
 	proof := n.buildRangeProof(proofStart, proofEnd)
 
 	if found {
-		return NewInclusionProof(proofStart, proofEnd, proof, isMaxNsIgnored), nil
+		return NewInclusionProof(
+			proofStart, proofEnd, proof, isMaxNsIgnored
+		), nil
 	}
 	// TODO [Me] the underlying struct type for both inclusion and absence proofs are the same, i.e., `Proof`
 	// TODO [Me] the only distinction is in the presence/absence of the `leafHash`,
@@ -213,7 +227,9 @@ func (n *NamespacedMerkleTree) ProveNamespace(nID namespace.ID) (Proof, error) {
 	// TODO [Me] however, we may want to actually add an extra field to the `Proof`
 	// TODO [Me] that indicates whether the proof is for inclusion or for absence
 
-	return NewAbsenceProof(proofStart, proofEnd, proof, n.leafHashes[proofStart], isMaxNsIgnored), nil
+	return NewAbsenceProof(
+		proofStart, proofEnd, proof, n.leafHashes[proofStart], isMaxNsIgnored
+	), nil
 }
 
 // buildRangeProof returns the nodes (as byte slices) in the range proof of the supplied range i.e.,
@@ -255,7 +271,7 @@ func (n *NamespacedMerkleTree) buildRangeProof(proofStart, proofEnd int) [][]byt
 		// check whether the subtree representing the [start, end) range of leaves has overlap with the
 		// queried proof range i.e., [proofStart, proofEnd)
 		// if not
-		if (end <= proofStart || start >= proofEnd) && includeNode { //TODO [Me] the `&& includeNode` seems ineffective and unnecessary
+		if (end <= proofStart || start >= proofEnd) && includeNode { // TODO [Me] the `&& includeNode` seems ineffective and unnecessary
 			// setting newIncludeNode to false indicates that non of the subtrees (left and right) of the current
 			// subtree are required for the proof
 			// because the range of the leaves they cover have no overlap with the
@@ -305,7 +321,9 @@ func (n *NamespacedMerkleTree) Get(nID namespace.ID) [][]byte {
 // GetWithProof is a convenience method returns leaves for the given namespace.ID
 // together with the proof for that namespace. It returns the same result
 // as calling the combination of Get(nid) and ProveNamespace(nid).
-func (n *NamespacedMerkleTree) GetWithProof(nID namespace.ID) ([][]byte, Proof, error) {
+func (n *NamespacedMerkleTree) GetWithProof(nID namespace.ID) (
+	[][]byte, Proof, error
+) {
 	data := n.Get(nID)
 	proof, err := n.ProveNamespace(nID)
 	return data, proof, err
@@ -452,10 +470,15 @@ func (n *NamespacedMerkleTree) updateNamespaceRanges() {
 // The first `n.NamespaceSize()` bytes of namespacedData is treated as its namespace ID.
 // validateAndExtractNamespace returns an error if the namespaced data is not namespace-prefixed (i.e., its size is smaller than the tree's NamespaceSize),
 // or if its namespace ID is smaller than the last leaf data in the tree (i.e., the n.leaves should be sorted in ascending order by their namespace ID).
-func (n *NamespacedMerkleTree) validateAndExtractNamespace(ndata namespace.PrefixedData) (namespace.ID, error) {
+func (n *NamespacedMerkleTree) validateAndExtractNamespace(ndata namespace.PrefixedData) (
+	namespace.ID, error
+) {
 	nidSize := int(n.NamespaceSize())
 	if len(ndata) < nidSize {
-		return nil, fmt.Errorf("%w: got: %v, want >= %v", ErrMismatchedNamespaceSize, len(ndata), nidSize)
+		return nil, fmt.Errorf(
+			"%w: got: %v, want >= %v", ErrMismatchedNamespaceSize, len(ndata),
+			nidSize
+		)
 	}
 	nID := namespace.ID(ndata[:n.NamespaceSize()])
 	// ensure pushed data doesn't have a smaller namespace than the previous one:
