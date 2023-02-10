@@ -72,7 +72,9 @@ func (n *Hasher) NamespaceSize() namespace.IDSize {
 	return n.NamespaceLen
 }
 
-func NewNmtHasher(baseHasher hash.Hash, nidLen namespace.IDSize, ignoreMaxNamespace bool) *Hasher {
+func NewNmtHasher(
+	baseHasher hash.Hash, nidLen namespace.IDSize, ignoreMaxNamespace bool
+) *Hasher {
 	return &Hasher{
 		baseHasher:       baseHasher,
 		NamespaceLen:     nidLen,
@@ -118,7 +120,9 @@ func (n *Hasher) Sum([]byte) []byte {
 	case NodePrefix:
 		flagLen := int(n.NamespaceLen) * 2
 		sha256Len := n.Size()
-		return n.HashNode(n.data[:flagLen+sha256Len], n.data[flagLen+sha256Len:])
+		return n.HashNode(
+			n.data[:flagLen+sha256Len], n.data[flagLen+sha256Len:]
+		)
 	default:
 		panic("nmt node type wasn't set")
 	}
@@ -165,19 +169,34 @@ func (n *Hasher) HashLeaf(leaf []byte) []byte {
 	return h.Sum(res)
 }
 
-// HashNode hashes inner nodes to:
-// minNID || maxNID || hash(NodePrefix || left || right), where left and right are the full
-// left and right child node bytes, including their respective min and max namespace IDs:
-// left = left.Min() || left.Max() || l.Hash().
-func (n *Hasher) HashNode(l, r []byte) []byte {
+// HashNode calculates a namespaced hash of a node from the supplied left and
+// right children
+// left, right are namespaced hash values with the following format:
+// minNID || maxNID|| hash
+// if n.ignoreMaxNs is set to false then HashNode follows the normal namespace
+// hash calculation i.e. min(left.minNs, right.minNs) || max(left.maxNs,
+// right.maxNs) || H(NodePrefix, left, right)
+// however, if n.ignoreMaxNs is set to true then the calculation of the
+// namespace ID range of the node slightly changes.
+// That is, when setting the upper range, the maximum possible namespace ID,
+// i.e., the value equivalent to "NamespaceIDSize" bytes of 0xFF should be
+// ignored if possible. That is for a given NMT node "n" with left
+// and  right children "l" and "r", respectively,
+// the maximum namespace ID of "n" (i.e. "n.maxNID") is found by taking the
+// maximum value among the namespace IDs available in the range of its left
+// and right children (i.e. "max(l.minNID, l.maxNID , r.minNID,
+// r.maxNID)") which is not equal to the maximum possible namespace ID
+// value. If such a namespace ID does not exist, then the maximum possible namespace ID value i.e.,
+//	max(l.maxNID , r.maxNID)") will be used as normal.
+func (n *Hasher) HashNode(left, right []byte) []byte {
 	h := n.baseHasher
 	h.Reset()
 
 	// the actual hash result of the children got extended (or flagged) by their
 	// children's minNs || maxNs; hence the flagLen = 2 * NamespaceLen:
 	flagLen := 2 * n.NamespaceLen
-	leftMinNs, leftMaxNs := l[:n.NamespaceLen], l[n.NamespaceLen:flagLen]
-	rightMinNs, rightMaxNs := r[:n.NamespaceLen], r[n.NamespaceLen:flagLen]
+	leftMinNs, leftMaxNs := left[:n.NamespaceLen], left[n.NamespaceLen:flagLen]
+	rightMinNs, rightMaxNs := right[:n.NamespaceLen], right[n.NamespaceLen:flagLen]
 
 	minNs := min(leftMinNs, rightMinNs)
 	var maxNs []byte
@@ -193,11 +212,16 @@ func (n *Hasher) HashNode(l, r []byte) []byte {
 
 	// Note this seems a little faster than calling several Write()s on the
 	// underlying Hash function (see: https://github.com/google/trillian/pull/1503):
-	data := append(append(append(
-		make([]byte, 0, 1+len(l)+len(r)),
-		NodePrefix),
-		l...),
-		r...)
+	data := append(
+		append(
+			append(
+				make([]byte, 0, 1+len(left)+len(right)),
+				NodePrefix
+			),
+			left...
+		),
+		right...
+	)
 	//nolint:errcheck
 	h.Write(data)
 	return h.Sum(res)
