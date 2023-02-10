@@ -92,7 +92,7 @@ type NamespacedMerkleTree struct {
 	// store leaf hashes whenever computed (via Root() or via computeLeafHashesIfNecessary)
 	leafHashes [][]byte
 
-	// this can be used to efficiently look up the range for an
+	// namespaceRanges can be used to efficiently look up the range for an
 	// existing namespace without iterating through the leaves
 	// the map key is the string representation of a namespace.ID  and
 	// the leafRange indicates the starting position and ending position of
@@ -497,7 +497,11 @@ func (n *NamespacedMerkleTree) computeLeafHashesIfNecessary() {
 }
 
 type leafRange struct {
-	start, end uint64 // end is non-inclusive
+	// start and end denote the indices of a leaf in the tree.
+	// start ranges from 0 up to the total number of leaves minus 1
+	// end ranges from 1 up to the total number of leaves
+	// end is non-inclusive
+	start, end uint64
 }
 
 // MinNamespace extracts the minimum namespace ID from a given namespace hash, which is
