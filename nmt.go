@@ -88,14 +88,19 @@ type NamespacedMerkleTree struct {
 
 	// just cache stuff until we pass in a store and keep all nodes in there
 	// currently, only leaves and leafHashes are stored:
+
+	// leaves holds the list of namespace-prefixed data elements that have been
+	// added to the tree, in the order of their insertion.
+	// each namespace-prefixed data item is represented as a byte slice.
 	leaves [][]byte
-	// store leaf hashes whenever computed (via Root() or via computeLeafHashesIfNecessary)
+	//  leafHashes stores the namespace hash of the leaves,
+	//  calculated either through the Root() or the computeLeafHashesIfNecessary methods.
 	leafHashes [][]byte
 
 	// namespaceRanges can be used to efficiently look up the range for an
 	// existing namespace without iterating through the leaves
 	// the map key is the string representation of a namespace.ID  and
-	// the leafRange indicates the starting position and ending position of
+	// the leafRange indicates the range of
 	// the leaves matching that namespace ID in the tree
 	namespaceRanges map[string]leafRange
 	// the minimum namespace ID of the leaves
@@ -103,7 +108,10 @@ type NamespacedMerkleTree struct {
 	// the maximum namespace ID of the leaves
 	maxNID namespace.ID
 
-	// cache the root
+	// rawRoot caches the value of the tree root whenever the Root()
+	// method is invoked.
+	// It's important to note that rawRoot may become outdated and may not
+	// accurately reflect the current state of the leaves.
 	rawRoot []byte
 }
 
