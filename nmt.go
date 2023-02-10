@@ -469,7 +469,11 @@ func (n *NamespacedMerkleTree) validateAndExtractNamespace(ndata namespace.Prefi
 	// ensure pushed data doesn't have a smaller namespace than the previous one:
 	curSize := len(n.leaves)
 	if curSize > 0 {
-		if nID.Less(n.leaves[curSize-1][:nidSize]) {
+		if nID.Less(n.leaves[curSize-1][:nidSize]) { // TODO [Me] this
+			// function takes care of multiple tasks i.e.,
+			// ID extraction and checking it against he last nID,
+			// I suggest to split it into two separate functions for the sake
+			// of better readability
 			return nil, fmt.Errorf(
 				"%w: last namespace: %x, pushed: %x",
 				ErrInvalidPushOrder,
