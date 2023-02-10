@@ -154,7 +154,9 @@ func (n *NamespacedMerkleTree) ProveRange(start, end int) (Proof, error) {
 //
 // case 1) If the namespace nID is out of the range of the tree's min and max namespace
 // i.e., (nID < n.minNID) or (n.maxNID < nID)
-//  we do not generate any range proof, instead we return an empty Proof with the range (0,0) i.e.,
+//
+//	we do not generate any range proof, instead we return an empty Proof with the range (0,0) i.e.,
+//
 // Proof.start = 0 and Proof.end = 0
 // to indicate that this namespace is not contained in the tree.
 //
@@ -203,9 +205,7 @@ func (n *NamespacedMerkleTree) ProveNamespace(nID namespace.ID) (Proof, error) {
 	proof := n.buildRangeProof(proofStart, proofEnd)
 
 	if found {
-		return NewInclusionProof(
-			proofStart, proofEnd, proof, isMaxNsIgnored
-		), nil
+		return NewInclusionProof(proofStart, proofEnd, proof, isMaxNsIgnored), nil
 	}
 	// TODO [Me] the underlying struct type for both inclusion and absence proofs are the same, i.e., `Proof`
 	// TODO [Me] the only distinction is in the presence/absence of the `leafHash`,
@@ -213,9 +213,7 @@ func (n *NamespacedMerkleTree) ProveNamespace(nID namespace.ID) (Proof, error) {
 	// TODO [Me] however, we may want to actually add an extra field to the `Proof`
 	// TODO [Me] that indicates whether the proof is for inclusion or for absence
 
-	return NewAbsenceProof(
-		proofStart, proofEnd, proof, n.leafHashes[proofStart], isMaxNsIgnored
-	), nil
+	return NewAbsenceProof(proofStart, proofEnd, proof, n.leafHashes[proofStart], isMaxNsIgnored), nil
 }
 
 // buildRangeProof returns the nodes (as byte slices) in the range proof of the supplied range i.e.,
@@ -307,9 +305,7 @@ func (n *NamespacedMerkleTree) Get(nID namespace.ID) [][]byte {
 // GetWithProof is a convenience method returns leaves for the given namespace.ID
 // together with the proof for that namespace. It returns the same result
 // as calling the combination of Get(nid) and ProveNamespace(nid).
-func (n *NamespacedMerkleTree) GetWithProof(nID namespace.ID) (
-	[][]byte, Proof, error
-) {
+func (n *NamespacedMerkleTree) GetWithProof(nID namespace.ID) ([][]byte, Proof, error) {
 	data := n.Get(nID)
 	proof, err := n.ProveNamespace(nID)
 	return data, proof, err
@@ -455,15 +451,10 @@ func (n *NamespacedMerkleTree) updateNamespaceRanges() {
 	}
 }
 
-func (n *NamespacedMerkleTree) validateAndExtractNamespace(ndata namespace.PrefixedData) (
-	namespace.ID, error
-) {
+func (n *NamespacedMerkleTree) validateAndExtractNamespace(ndata namespace.PrefixedData) (namespace.ID, error) {
 	nidSize := int(n.NamespaceSize())
 	if len(ndata) < nidSize {
-		return nil, fmt.Errorf(
-			"%w: got: %v, want >= %v", ErrMismatchedNamespaceSize, len(ndata),
-			nidSize
-		)
+		return nil, fmt.Errorf("%w: got: %v, want >= %v", ErrMismatchedNamespaceSize, len(ndata), nidSize)
 	}
 	nID := namespace.ID(ndata[:n.NamespaceSize()])
 	// ensure pushed data doesn't have a smaller namespace than the previous one:

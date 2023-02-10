@@ -81,18 +81,14 @@ func NewEmptyRangeProof(ignoreMaxNamespace bool) Proof {
 // NewInclusionProof constructs a proof that proves that a namespace.ID
 // is included in an NMT.
 func NewInclusionProof(
-	proofStart, proofEnd int, proofNodes [][]byte, ignoreMaxNamespace bool
-) Proof {
+	proofStart, proofEnd int, proofNodes [][]byte, ignoreMaxNamespace bool) Proof {
 	return Proof{proofStart, proofEnd, proofNodes, nil, ignoreMaxNamespace}
 }
 
 // NewAbsenceProof constructs a proof that proves that a namespace.ID
 // falls within the range of an NMT but no leaf with that namespace.ID is
 // included.
-func NewAbsenceProof(
-	proofStart, proofEnd int, proofNodes [][]byte, leafHash []byte,
-	ignoreMaxNamespace bool
-) Proof {
+func NewAbsenceProof(proofStart, proofEnd int, proofNodes [][]byte, leafHash []byte, ignoreMaxNamespace bool) Proof {
 	return Proof{proofStart, proofEnd, proofNodes, leafHash, ignoreMaxNamespace}
 }
 
@@ -100,9 +96,7 @@ func NewAbsenceProof(
 // the provided data in the tree. Additionally, it verifies that the namespace
 // is complete and no leaf of that namespace was left out in the proof.
 // leafs contain leaves within the nID
-func (proof Proof) VerifyNamespace(
-	h hash.Hash, nID namespace.ID, leaves [][]byte, root []byte
-) bool {
+func (proof Proof) VerifyNamespace(h hash.Hash, nID namespace.ID, leaves [][]byte, root []byte) bool {
 	// TODO [Me] what is this check for?
 	nth := NewNmtHasher(h, nID.Size(), proof.isMaxNamespaceIDIgnored)
 	min := namespace.ID(MinNamespace(root, nID.Size()))
@@ -118,9 +112,7 @@ func (proof Proof) VerifyNamespace(
 		// empty proofs are always rejected unless nID is outside the range of namespaces covered by the root
 		// we special case the empty root, since it purports to cover the zero namespace but does not actually
 		// include any such nodes
-		if nID.Less(min) || max.Less(nID) || bytes.Equal(
-			root, nth.EmptyRoot()
-		) {
+		if nID.Less(min) || max.Less(nID) || bytes.Equal(root, nth.EmptyRoot()) {
 			return true
 		}
 		return false
@@ -146,7 +138,7 @@ func (proof Proof) VerifyNamespace(
 				return false
 			}
 			leafData := append(
-				gotLeafNid, gotLeaf[nIDLen:]...
+				gotLeafNid, gotLeaf[nIDLen:]...,
 			) // TODO why not just passing the leaf? isn't it the same?
 			// hash the leaf data
 			gotLeafHashes = append(gotLeafHashes, hashLeafFunc(leafData))
@@ -161,10 +153,7 @@ func (proof Proof) VerifyNamespace(
 }
 
 // verifyLeafHashes checks whether all the leaves matching the namespace ID nID are covered by the proof if verifyCompleteness is set to true
-func (proof Proof) verifyLeafHashes(
-	nth *Hasher, verifyCompleteness bool, nID namespace.ID, leafHashes [][]byte,
-	root []byte
-) bool {
+func (proof Proof) verifyLeafHashes(nth *Hasher, verifyCompleteness bool, nID namespace.ID, leafHashes [][]byte, root []byte) bool {
 	var leafIndex uint64
 	// TODO [Me] Why called leftSubtrees?
 	// leftSubtrees is to be populated by the subtree roots upto [0, r.Start)
@@ -249,7 +238,7 @@ func (proof Proof) verifyLeafHashes(
 	//  the root of the tree for some older version i.e.,
 	//  with less number of leaves.
 	//  An inclusion proof to a tree with 4 leaves wont work for the advanced
-	//  version of the same tree with 8 leaves. 
+	//  version of the same tree with 8 leaves.
 	rootHash := computeRoot(0, proofRangeSubtreeEstimate)
 	for i := 0; i < len(proof.nodes); i++ {
 		rootHash = nth.HashNode(rootHash, proof.nodes[i])
@@ -262,14 +251,12 @@ func (proof Proof) verifyLeafHashes(
 // and the provided proof to regenerate and compare the root. Note that the leaf
 // data should not contain the prefixed namespace, unlike the tree.Push method,
 // which takes prefixed data. All leaves implicitly have the same namespace ID: `nid`.
-func (proof Proof) VerifyInclusion(
-	h hash.Hash, nid namespace.ID, leaves [][]byte, root []byte
-) bool {
+func (proof Proof) VerifyInclusion(h hash.Hash, nid namespace.ID, leaves [][]byte, root []byte) bool {
 	nth := NewNmtHasher(h, nid.Size(), proof.isMaxNamespaceIDIgnored)
 	hashes := make([][]byte, len(leaves))
 	for i, d := range leaves {
 		leafData := append(
-			append(make([]byte, 0, len(d)+len(nid)), nid...), d...
+			append(make([]byte, 0, len(d)+len(nid)), nid...), d...,
 		)
 		hashes[i] = nth.HashLeaf(leafData)
 	}
