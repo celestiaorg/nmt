@@ -1,8 +1,8 @@
 # Introduction
 
 Namespaced Merkle Tree, NMT for short, is the core component of Celestia blockchain.
-Transactions in Celestia are associated with a namespace ID which signifies the application (more specifically the 
-Rollup) they belong to.  Nodes interested in a specific application only need to download transactions of a certain 
+Transactions in Celestia are associated with a namespace ID which signifies the application they belong to.  
+Nodes interested in a specific application only need to download transactions of a certain 
 namespace ID. The Namespaced  Merkle Tree (NMT) was introduced in the [LazyLEdger article](https://arxiv.
 org/abs/1905.09274) to organize 
 transactions in Celestia blocks based on their namespace IDs. The NMT allows for efficient and verifiable 
@@ -12,11 +12,10 @@ repository.
 
 # NMT Data Structure
 
-Namespaced Merkle Tree, NMT for short, at the core is a normal Merkle tree that employs a modified hash function, 
+Namespaced Merkle Tree, at the core is a normal Merkle tree that employs a modified hash function, 
 namely a [namespaced hash](#namespaced-hash) to ensure each node in the tree encompasses the range of namespaces of its 
-descendants' messages. The leaves of the tree are arranged in ascending order based on the namespace identifiers of 
-the messages they hold.  The messages stored in the NMT leaves are arranged in ascending order based on their namespace IDs, 
-which must be of a fixed and known size and have the format `<NsID>||<rawData>`. 
+descendants' messages. The messages stored in the NMT leaves are arranged in ascending order based on their namespace IDs, 
+which must be of a fixed and known size and have the format `<NsID>||<Message Data>`. 
 
 
 ## Namespaced Hash
@@ -26,7 +25,7 @@ IDs covered by a node's left and right children (in case of non-leaf nodes), or 
 The hash output is formatted as  `minNs||maxNs||h(.)`, where `minNs` is the lowest namespace identifier among all the node's descendants, 
 `maxNs` is the highest, and `h` represents the hash digest (e.g., SHA256).
 
-**Leaf Nodes**: Each leaf in the tree represents the namespaced hash of a namespaced message `d` with the following format `d = <NsID>||<rawData>`. 
+**Leaf Nodes**: Each leaf in the tree represents the namespaced hash of a namespaced message `d` with the following format `d = <NsID>||<Message Data>`. 
 The hash is computed as follows:
 
 ```go
@@ -76,10 +75,7 @@ An example of a NMT is shown in the figure below. The code snippets necessary to
 
 ## Namespace Proof
 
-A NMT supports the standard functionalities of a Merkle tree, such as inclusion proofs and range proofs. Furthermore,
-it  provides the ability to query an NMT for an intended namespace ID and generate namespace proofs.
-When querying an NMT, the following cases may be encountered that are enumerated and explained next.
-
+NMT supports standard Merkle tree functionalities, including inclusion and range proofs, and offers namespace ID querying and proof generation. The following enumerated cases explain potential outcomes when querying an NMT for a namespace ID.
 ### Namespace Inclusion Proof
 
 When the queried namespace ID `nID` has corresponding items in the tree with root `T`, the query is resolved by a 
@@ -90,7 +86,7 @@ namespace inclusion proof which consists of:
    inclusion proof of the `start` leaf and 2) the [namespaced hash](#namespaced-hash) of the right siblings of the Merkle inclusion proof of  the `end` 
    leaf. Nodes are sorted according to the in-order traversal of the tree.
 
-For example, the NMT proof of `nID=0` in the supplied example would be `[start=0, end=2)` and the Merkle inclusion proof embodies `01 03 52c7c03`.
+For example, the NMT proof of `nID=0` in the supplied example would be `[start=0, end=2)` and the Merkle inclusion proof embodies one single tree node i.e., `01 03 52c7c03`.
 ### Namespace Absence Proof
 
 If the namespace ID being queried falls within the range of namespace IDs in the tree, but there is no corresponding 
@@ -114,7 +110,7 @@ The Merkle inclusion proof for this leaf consists of the following nodes, in the
 
 ### Namespace Empty Proof
 If the requested namespace ID falls outside the namespace range represented by the tree root `T`, the query will be resolved with an empty namespace proof.
-In the provided example, a query for `nID=6` would be responded by an empty proof.
+In the provided example, a query for `nID=6` would be responded by an empty proof as it falls outside the root's namsespace range.
 
 ## Namespace Proof verification
 
@@ -129,8 +125,9 @@ Proof inclusion can be verified via a regular Merkle range proof verification.
 The Completeness of the proof necessitates additional checks. Specifically, 1) 
 the maximum namespace ID of the nodes in the proof that are left siblings of the `start` leaf must be less than the 
 provided namespace ID (`nID`), and 2) the minimum namespace ID of the nodes in the proof that are right siblings of 
-the `end` leaf must be greater than the provided namespace ID (`nID`).
+the `end-1` leaf must be greater than the provided namespace ID (`nID`).
 
+As an example, the namespace proof for`nID=0` (which consists of one single node i.e., `01 03 52c7c03`) is complete. This is because the node `01 03 52c7c03` is located on the left side of `end=1` and its `minNs` value is `01`, which is greater than `nID=0`.
 
 ### Verification of NMT Absence Proof
 
@@ -154,7 +151,7 @@ func New(h hash.Hash, setters ...Option) *NamespacedMerkleTree
 ```
 1. Namespace ID byte-size: If not specified then a default maximum is applied by the library.
 2. The initial Capacity of the tree i.e., the number of leaves: if not specified,a default maximum is applied.
-3. The `IgnoreMaxNamespace` flag.The `IgnoreMaxNamespace` flag is set to true by default. It's specific to Celestia and aims to improve namespace query performance when the NMT is built on data items with specific namespace IDs. For more information on the flag's interpretation and usage, see section [Ignore MAx Namespace](#ignore-max-namespace).
+3. The `IgnoreMaxNamespace` flag.The `IgnoreMaxNamespace` flag is set to true by default. It's specific to Celestia and aims to improve namespace query performance when the NMT is built on data items with specific namespace IDs. For more information on the flag's interpretation and usage, see section [Ignore Max Namespace](#ignore-max-namespace).
 
 A sample configuration of NMT is provided below:
 
@@ -171,7 +168,7 @@ One can examine the namespace ID size of the `tree` using
 ```go
 func (n *NamespacedMerkleTree) NamespaceSize() namespace.IDSize
 ```
-
+E.g.,
 ```go
 idSize := tree.NamespaceSize() // outputs 1
 ```
@@ -190,7 +187,7 @@ Non-compliance with either of these requirements cause `Push` to fail.
 ```go
 func (n *NamespacedMerkleTree) Push(namespacedData namespace.PrefixedData) error
 ```
-
+E.g.,
 ```go
 d := append(namespace.ID{0}, []byte("leaf_0")...) // the first `tree.NamespaceSize()` bytes of each data item is treated as its namespace ID.
 if err := tree.Push(d); err != nil {
@@ -201,19 +198,18 @@ d1 := append(namespace.ID{0}, []byte("leaf_1")...)
 if err := tree.Push(d1); err != nil {
     // something went wrong
 }
-d2 := append(namespace.ID{1}, []byte("leaf_1")...) 
+d2 := append(namespace.ID{1}, []byte("leaf_2")...) 
 if err := tree.Push(d2); err != nil {
     // something went wrong
 }
-d3 := append(namespace.ID{3}, []byte("leaf_1")...) 
+d3 := append(namespace.ID{3}, []byte("leaf_3")...) 
 if err := tree.Push(d3); err != nil {
     // something went wrong
 }
 ```
 ## Get the root
 
-It calculates NMT root based on the data that has been added through the use of the `Push` method.
-Note that
+The `Root()` method calculates the NMT root based on the data that has been added through the use of the `Push` method.
 ```go
 func (n *NamespacedMerkleTree) Root() []byte
 ```
@@ -222,7 +218,7 @@ For example:
 // compute the root
 root := tree.Root() 
 ```
-It corresponds to `00 03 b1c2cc5` in the provided example.
+In the provided examle, the root would be `00 03 b1c2cc5`.
 
 The minimum and maximum namespace IDs of the tree root can be obtained through the following methods:
 
@@ -241,7 +237,7 @@ func (n *NamespacedMerkleTree) ProveNamespace(nID namespace.ID) (Proof, error)
 ```
 For example:
 ```go
-nID := namespace.ID{3}
+nID := namespace.ID{0}
 proof, err := tree.ProveNamespace(nID)
     if err != nil {
       panic("unexpected error")
@@ -296,7 +292,7 @@ if proof.VerifyNamespace(sha256.New(), namespace.ID{0}, leafs, root) {
 
 **Verification steps:**
 
-Verification is as explained in [Proof Verification](#nmt-proof-verification), below just for further clarity we explain how that verification map to the `Proof` fields and `VerifyNamespace` parameters.
+Verification should be done as explained in [Proof Verification](#nmt-proof-verification) section. Though, to provide further clarity, we'll explain how the verification process for the Proof fields and VerifyNamespace parameters corresponds to the instructions given in the Proof Verification section.
 If `proof` is a namespace inclusion proof, the followings should be verified about the `leaves`:
 - All the leaves should be namespace prefixed
 - Match the queried `nID`
@@ -310,7 +306,7 @@ If `proof` is an absence proof, then `leaves` are empty hence do not need any ve
 - The completeness of `proof.nodes` (as defined in section [Proof Verification](#nmt-proof-verification)) should be verified w.r.t. to the queried namespace ID `nID`.
 
 
-In case that the `proof` is empty then:
+In case that the `proof` is an empty then:
 - If the queried `nID` falls outside the namespace range of the supplied `root`, then the `proof` is valid.
 - If the namespace tree is empty, then an empty `proof` is valid.
 
@@ -319,3 +315,5 @@ In case that the `proof` is empty then:
 
 1. Al-Bassam, Mustafa. "Lazyledger: A distributed data availability ledger with client-side smart contracts." *arXiv preprint arXiv:1905.09274*
  (2019).
+2. The outdated specification of NMT https://github.com/celestiaorg/celestia-specs/blob/master/src/specs/data_structures.md#namespace-merkle-tree
+3. NMT library  https://github.com/celestiaorg/nmt
