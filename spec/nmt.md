@@ -259,13 +259,9 @@ type Proof struct {
 `start, end:`  1) the starting index `start`and the ending index `end` of leaves that match the provided namespace ID `nid`. Note that `end` is non-inclusive.
 
 `nodes`: The `nodes` hold the tree nodes necessary for the Merkle range proof of `[start, end)`  ordered according to in-order traversal of the tree.
-
-[//]: # (- The namespaced hash of the left siblings for the Merkle inclusion proof of the `start` leaf)
-[//]: # (- The namespaced hash of the right siblings of the Merkle inclusion proof of  the `end` leaf)
-
-`nodes` embodies a list of byte slices, where each byte slice contains an NMT node. 
+`nodes` embodies an ordered list of byte slices, where each byte slice contains an NMT node. 
 Nodes have identical size and all follow the [namespaced hash format](#namespaced-hash).
-In the preceding example, each node is 34-byte long: `minNs<1 byte>||maxNs<1 byte>||h<32 byte>`.
+In the example given earlier, each node is 34 bytes in length and takes the following form:  `minNs<1 byte>||maxNs<1 byte>||h<32 byte>`.
 
 `leafHash`: This field is non-empty only for [namespace absence proofs](#namespace-absence-proof).
 
