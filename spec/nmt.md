@@ -121,13 +121,13 @@ An NMT inclusion proof is deemed valid if it meets the followings:
 - **Inclusion**: The spplied Merkle proof for the range `[start, end)` is valid for the given tree root `T`. This indicates that the leaves in the range `[start, end)` belong to the tree root `T`.
 - **Completeness**: There are no other leaves matching `nID` that do not belong to the returned range `[start, end)`.
 
-Proof inclusion can be verified via a regular Merkle range proof verification.
-The Completeness of the proof necessitates additional checks. Specifically, 1) 
-the maximum namespace ID of the nodes in the proof that are left siblings of the `start` leaf must be less than the 
-provided namespace ID (`nID`), and 2) the minimum namespace ID of the nodes in the proof that are right siblings of 
-the `end-1` leaf must be greater than the provided namespace ID (`nID`).
+Proof _inclusion_ can be verified via a regular Merkle range proof verification.
+However, _completeness_ of the proof requires additional checks. Specifically, 1) 
+the maximum namespace ID of the nodes in the proof that are on the left side of the branch connecting the `start` leaf to the root must be less than the 
+provided namespace ID (`nID`), and 2) the minimum namespace ID of the nodes in the proof that are on the right side of the branch connecting the
+ `end-1` leaf to the root must be greater than the provided namespace ID (`nID`).
 
-As an example, the namespace proof for`nID=0` (which consists of one single node i.e., `01 03 52c7c03`) is complete. This is because the node `01 03 52c7c03` is located on the left side of `end=1` and its `minNs` value is `01`, which is greater than `nID=0`.
+As an example, the namespace proof for`nID=0` (which consists of one single node i.e., `01 03 52c7c03`) is complete. This is because the node `01 03 52c7c03` is located on the left side of the branch connecting `end=1` to the root and its `minNs` value is `01`, which is greater than `nID=0`.
 
 ### Verification of NMT Absence Proof
 
