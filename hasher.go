@@ -15,14 +15,14 @@ const (
 
 var _ hash.Hash = (*Hasher)(nil)
 
-// defaultHasher uses sha256 as a base-hasher, 8 bytes
+// defaultHasher uses sha256 as a base-hasher, 16 bytes
 // for the namespace IDs and ignores the maximum possible namespace.
 var defaultHasher = NewNmtHasher(sha256.New(), DefaultNamespaceIDLen, true)
 
-// Sha256Namespace8FlaggedLeaf uses sha256 as a base-hasher, 8 bytes
+// Sha256Namespace16FlaggedLeaf uses sha256 as a base-hasher, 16 bytes
 // for the namespace IDs and ignores the maximum possible namespace.
 //
-// Sha256Namespace8FlaggedLeaf(namespacedData) results in:
+// Sha256Namespace16FlaggedLeaf(namespacedData) results in:
 // ns(rawData) || ns(rawData) || sha256(LeafPrefix || rawData),
 // where rawData is the leaf's data minus the namespace.ID prefix
 // (namely namespacedData[NamespaceLen:]).
@@ -33,18 +33,18 @@ var defaultHasher = NewNmtHasher(sha256.New(), DefaultNamespaceIDLen, true)
 // as the first DefaultNamespaceIDLen bytes are interpreted as the namespace ID).
 // If the input does not fulfil this, we will panic.
 // The output will be of length 2*DefaultNamespaceIDLen+sha256.Size = 48 bytes.
-func Sha256Namespace8FlaggedLeaf(namespacedData []byte) []byte {
+func Sha256Namespace16FlaggedLeaf(namespacedData []byte) []byte {
 	return defaultHasher.HashLeaf(namespacedData)
 }
 
-// Sha256Namespace8FlaggedInner hashes inner nodes to:
+// Sha256Namespace16FlaggedInner hashes inner nodes to:
 // minNID || maxNID || sha256(NodePrefix || leftRight), where leftRight consists of the full
 // left and right child node bytes, including their respective min and max namespace IDs.
 // Hence, the input has to be of size:
-// 48 = 32 + 8 + 8  = sha256.Size + 2*DefaultNamespaceIDLen bytes.
+// 64 = 32 + 16 + 16 = sha256.Size + 2*DefaultNamespaceIDLen bytes.
 // If the input does not fulfil this, we will panic.
-// The output will also be of length 2*DefaultNamespaceIDLen+sha256.Size = 48 bytes.
-func Sha256Namespace8FlaggedInner(leftRight []byte) []byte {
+// The output will also be of length 2*DefaultNamespaceIDLen+sha256.Size = 64 bytes.
+func Sha256Namespace16FlaggedInner(leftRight []byte) []byte {
 	const flagLen = DefaultNamespaceIDLen * 2
 	sha256Len := defaultHasher.baseHasher.Size()
 	left := leftRight[:flagLen+sha256Len]

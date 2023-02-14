@@ -171,7 +171,7 @@ func rangeProof(t *testing.T, n *NamespacedMerkleTree, start, end int) [][]byte 
 
 func TestProof_MultipleLeaves(t *testing.T) {
 	n := New(sha256.New())
-	ns := []byte{1, 2, 3, 4, 5, 6, 7, 8}
+	ns := []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16}
 	rawData := [][]byte{
 		bytes.Repeat([]byte{1}, 100),
 		bytes.Repeat([]byte{2}, 100),

@@ -20,3 +20,16 @@ func (d PrefixedData8) NamespaceID() ID {
 func (d PrefixedData8) Data() []byte {
 	return d[8:]
 }
+
+// PrefixedData16 like PrefixedData is just a slice of bytes.
+// It assumes that the slice it represents is at least 16 bytes.
+// This assumption is not enforced by the type system though.
+type PrefixedData16 []byte
+
+func (d PrefixedData16) NamespaceID() ID {
+	return ID(d[:16])
+}
+
+func (d PrefixedData16) Data() []byte {
+	return d[16:]
+}

@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	DefaultNamespaceIDLen = 8
+	DefaultNamespaceIDLen = 16
 	DefaultCapacity       = 128
 )
 
@@ -46,7 +46,7 @@ func InitialCapacity(cap int) Option {
 }
 
 // NamespaceIDSize sets the size of namespace IDs (in bytes) used by this tree.
-// Defaults to 8 bytes.
+// Defaults to 16 bytes.
 func NamespaceIDSize(size int) Option {
 	if size < 0 || size > namespace.IDMaxSize {
 		panic("Got invalid namespace.IDSize. Expected 0 <= size <= namespace.IDMaxSize.")
