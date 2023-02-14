@@ -53,7 +53,7 @@ In a NMT data structure, the `minNs` and `maxNs` values of the root node denote 
 respectively, of all messages within the tree.
 
 
-A NMT is exemplified in the following figure.
+An example of a NMT is shown in the figure below. The code snippets necessary to create this tree are provided in section [NMT Implementation](#nmt-library), and the data items and tree nodes are represented as hex strings. For the sake of brevity, we have only included the first 7 hex digits of SHA256 for each namespace hash.
 
 ```markdown
                                  00 03 b1c2cc5                                Tree root
@@ -78,7 +78,7 @@ A NMT is exemplified in the following figure.
 
 A NMT supports the standard functionalities of a Merkle tree, such as inclusion proofs and range proofs. Furthermore,
 it  provides the ability to query an NMT for an intended namespace ID and generate namespace proofs.
-When querying an NMT, 3 different cases may be encountered that are enumerated and explained below.
+When querying an NMT, the following cases may be encountered that are enumerated and explained next.
 
 [//]: # (NamespaceQuery&#40;T, nID&#41;: T indicates the root of the queried tree e.g., N6 in the above example whereas nid is the )
 
@@ -94,6 +94,7 @@ namespace inclusion proof which consists of:
    inclusion proof of the `start` leaf and 2) the [namespaced hash](#namespaced-hash) of the right siblings of the Merkle inclusion proof of  the `end` 
    leaf. Nodes are sorted according to the in-order traversal of the tree.
 
+For example, the NMT proof of `nID=0` in the supplied example would be `[start=0, end=2)` and the Merkle inclusion proof embodies `01 03 52c7c03`.
 ### Namespace Absence Proof
 
 If the namespace ID being queried falls within the range of namespace IDs in the tree, but there is no corresponding 
@@ -101,19 +102,23 @@ message, an absence proof will be generated.
 This proof asserts that no message in the tree matches the queried namespace ID `nID`.
 
 The absence proof consists of
-1) A leaf of the tree that 
-   1) its namespace ID is the largest namespace ID less than `nID` and
+1) The index of a leaf of the tree that 
+   1) its namespace ID is the smallest namespace ID larger than `nID` and
    2) the namespace ID of the leaf to the left of it  is smaller than the `nID` 
    3) the namespace ID of the leaf to the right of it is larger than `nID`.
-2) The index of the said leaf in the tree.
-3) A regular Merkle inclusion proof for the said leaf.
+2) A regular Merkle inclusion proof for the said leaf.
 
 Note that the proof only requires the hash of the leaf, not its underlying message. 
 This is because the aim of the proof is to demonstrate the absence of `nID`.
 
+In the provided example, if we query the tree for `nID=2`, we will receive an absence proof since `nID=2` is not part of the tree. 
+The index of the leaf included in the proof will be `3`, which corresponds to the hash value `03 03 b4a2792`. 
+The Merkle inclusion proof for this leaf consists of the following nodes, in the order they appear in an in-order traversal of the tree: `00 00 ead8d25` and `01 01 71ca46a`.
+
+
 ### Namespace Empty Proof
-If the requested namespace ID falls outside the namespace range represented by the tree root `T`, the query will be 
-resolved with an empty namespace proof. 
+If the requested namespace ID falls outside the namespace range represented by the tree root `T`, the query will be resolved with an empty namespace proof.
+In the provided example, a query for `nID=6` would be responded by an empty proof.
 
 ## Namespace Proof verification
 
@@ -129,6 +134,7 @@ The Completeness of the proof necessitates additional checks. Specifically, 1)
 the maximum namespace ID of the nodes in the proof that are left siblings of the `start` leaf must be less than the 
 provided namespace ID (`nID`), and 2) the minimum namespace ID of the nodes in the proof that are right siblings of 
 the `end` leaf must be greater than the provided namespace ID (`nID`).
+
 
 ### Verification of NMT Absence Proof
 
@@ -152,7 +158,7 @@ func New(h hash.Hash, setters ...Option) *NamespacedMerkleTree
 ```
 1. Namespace ID byte-size: If not specified then a default maximum is applied by the library.
 2. The initial Capacity of the tree i.e., the number of leaves: if not specified,a default maximum is applied.
-3. The `IgnoreMaxNamespace` flag.The `IgnoreMaxNamespace` flag is set to true by default. It's specific to Celestia and aims to improve namespace query performance when the NMT is built on data items with specific namespace IDs. For more information on the flag's interpretation and usage, see section [TBD @Sanaz Taheri]().
+3. The `IgnoreMaxNamespace` flag.The `IgnoreMaxNamespace` flag is set to true by default. It's specific to Celestia and aims to improve namespace query performance when the NMT is built on data items with specific namespace IDs. For more information on the flag's interpretation and usage, see section [Ignore MAx Namespace](#ignore-max-namespace).
 
 A sample configuration of NMT is provided below:
 
@@ -208,9 +214,6 @@ if err := tree.Push(d3); err != nil {
     // something went wrong
 }
 ```
-The resulting NMT is illustrated below where data items and tree nodes are represented in hex strings. 
-For brevity, we only included the starting 7 hex digits of SHA256 of each namespace hash.
-
 ## Get the root
 
 It calculates NMT root based on the data that has been added through the use of the `Push` method.
