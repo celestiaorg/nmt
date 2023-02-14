@@ -182,7 +182,7 @@ idSize := tree.NamespaceSize() // outputs 1
 ### Ignore Max Namespace 
 If the NMT is configured with `IgnoreMaxNamespace` set to true, then the calculation of the namespace ID range of non-leaf nodes in the [namespace hash function](#namespaced-hash) will change slightly.
 That is when determining the upper limit of the namespace ID range for a tree node `n`, with children `l` and `r`, the maximum possible namespace ID, equivalent to `NamespaceIDSize()` bytes of `0xFF`, or `2^NamespaceIDSize()-1`,
-should be omitted if feasible. In the preceding example the maximum possible namespace ID would be `0xFF`. This is achieved by taking the maximum value among the namespace IDs available in the range of its left and right children (i.e., `n.maxNs = max(l.minNs, l.maxNs , r.minNs, r.maxNs))`, which is not equal to the maximum possible namespace ID value. 
+should be omitted if feasible (in the preceding example the maximum possible namespace ID would be `0xFF`). This is achieved by taking the maximum value among the namespace IDs available in the range of its left and right children (i.e., `n.maxNs = max(l.minNs, l.maxNs , r.minNs, r.maxNs))`, which is not equal to the maximum possible namespace ID value. 
 If such a namespace ID does not exist, the `maxNs` is calculated as normal, i.e., `n.maxNs = max(l.maxNs , r.maxNs)`.
 
 ## Add leaves
@@ -235,9 +235,6 @@ minNS := nmt.MinNamespace(root, tree.NamespaceSize())
 maxNS := nmt.MaxNamespace(root, tree.NamespaceSize())
 ```
  `minNs` and `maxNs` are equal to `00` and `03` in the supplied example.
-<aside>
-💡 I suggest to abstract out details like  tree.NamespaceSize(), and instead simplify the method signature to nmt.MinNamespace(root), the namespace size is part of the tree structure and should not be passed as a parameter (it is error prone)
-</aside>
 
 ## Generate Namespace Proof
 
@@ -266,8 +263,6 @@ type Proof struct {
 	isMaxNamespaceIDIgnored bool
 }
 ```
-The final proof would consist of the following NMT nodes in the same exact order: `00 00 ead8d25` and `01 01 71ca46a`.
-
 `start, end:`  1) the starting index `start`and the ending index `end` of leaves that match the provided namespace ID `nid`. Note that `end` is non-inclusive.
 
 `nodes`: The `nodes` hold the tree nodes necessary for the Merkle range proof of `[start, end)`  ordered according to in-order traversal of the tree.
