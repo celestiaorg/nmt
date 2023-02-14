@@ -117,8 +117,8 @@ In the provided example, a query for `nID=6` would be responded by an empty proo
 ### Verification of NMT Inclusion Proof
 
 An NMT inclusion proof is deemed valid if it meets the followings:
-
-- **Inclusion**: The spplied Merkle proof for the range `[start, end)` is valid for the given tree root `T`. This indicates that the leaves in the range `[start, end)` belong to the tree root `T`.
+- The namespace ID of the leaves in the range `[start, end)` match the queried `nID`.
+- **Inclusion**: The supplied Merkle proof for the range `[start, end)` is valid for the given tree root `T`. This indicates that the leaves in the range `[start, end)` belong to the tree root `T`.
 - **Completeness**: There are no other leaves matching `nID` that do not belong to the returned range `[start, end)`.
 
 Proof _inclusion_ can be verified via a regular Merkle range proof verification.
@@ -145,10 +145,11 @@ empty NMT proof is valid by definition.
 
 ## NMT initialization and configuration
 
-When constructing an NMT using `New` API (below), a base hash function needs to be passed alongside with some optional configurations, namely:
+An NMT can be constructed using the `New` function.
 ```go
 func New(h hash.Hash, setters ...Option) *NamespacedMerkleTree
 ```
+It receives a base hash function alongside with some optional configurations, namely:
 1. Namespace ID byte-size: If not specified then a default maximum is applied by the library.
 2. The initial Capacity of the tree i.e., the number of leaves: if not specified,a default maximum is applied.
 3. The `IgnoreMaxNamespace` flag.The `IgnoreMaxNamespace` flag is set to true by default. It's specific to Celestia and aims to improve namespace query performance when the NMT is built on data items with specific namespace IDs. For more information on the flag's interpretation and usage, see section [Ignore Max Namespace](#ignore-max-namespace).
@@ -180,7 +181,7 @@ If such a namespace ID does not exist, the `maxNs` is calculated as normal, i.e.
 
 ## Add leaves
 
-Data items are added to the tree using the `Push` API.
+Data items are added to the tree using the `Push` method.
 Data items should be prefixed with namespaces of size set out for the NMT (i.e.,   `tree.NamespaceSize()`) and added in ascending order of their namespace IDs to avoid errors during the `Push` process. 
 Non-compliance with either of these requirements cause `Push` to fail.
 
@@ -218,7 +219,7 @@ For example:
 // compute the root
 root := tree.Root() 
 ```
-In the provided examle, the root would be `00 03 b1c2cc5`.
+In the provided example, the root would be `00 03 b1c2cc5`.
 
 The minimum and maximum namespace IDs of the tree root can be obtained through the following methods:
 
@@ -226,7 +227,7 @@ The minimum and maximum namespace IDs of the tree root can be obtained through t
 minNS := nmt.MinNamespace(root, tree.NamespaceSize())
 maxNS := nmt.MaxNamespace(root, tree.NamespaceSize())
 ```
- `minNs` and `maxNs` are equal to `00` and `03` in the supplied example.
+ The `minNs` and `maxNs` are equal to `00` and `03` in the supplied example.
 
 ## Generate Namespace Proof
 
@@ -259,8 +260,8 @@ type Proof struct {
 
 `nodes`: The `nodes` hold the tree nodes necessary for the Merkle range proof of `[start, end)`  ordered according to in-order traversal of the tree.
 
-- The namespaced hash of the left siblings for the Merkle inclusion proof of the `start` leaf
-- The namespaced hash of the right siblings of the Merkle inclusion proof of  the `end` leaf
+[//]: # (- The namespaced hash of the left siblings for the Merkle inclusion proof of the `start` leaf)
+[//]: # (- The namespaced hash of the right siblings of the Merkle inclusion proof of  the `end` leaf)
 
 `nodes` embodies a list of byte slices, where each byte slice contains an NMT node. 
 Nodes have identical size and all follow the [namespaced hash format](#namespaced-hash).
@@ -272,7 +273,7 @@ In the preceding example, each node is 34-byte long: `minNs<1 byte>||maxNs<1 byt
 
 ## NMT proof verification
 
-The correctness of a namespace `Proof` for a specific namespace ID `nID` can be verified using `VerifyNamespace`.
+The correctness of a namespace `Proof` for a specific namespace ID `nID` can be verified using the [`VerifyNamespace` method](https://github.com/celestiaorg/nmt/blob/master/proof.go).
 
 ```go
 func (proof Proof) VerifyNamespace(h hash.Hash, nID namespace.ID, leaves [][]byte, root []byte) bool 
@@ -284,31 +285,50 @@ func (proof Proof) VerifyNamespace(h hash.Hash, nID namespace.ID, leaves [][]byt
 `leaves`  MUST be 1) namespace-prefixed 2) ordered according to their index in the tree, with `leaves[0]` corresponding to the leaf at index `start`, and the last element in leaves corresponding to the leaf at index `end-1`.
 - `root` the root of the NMT against which the `proof` is verified.
 
+E.g.,
 ```go
+leafs := [][]byte{
+   append(namespace.ID{0}, []byte("leaf_0")...),
+   append(namespace.ID{0}, []byte("leaf_1")...),
+}
 if proof.VerifyNamespace(sha256.New(), namespace.ID{0}, leafs, root) {
       fmt.Printf("Successfully verified namespace: %x\n", namespace.ID{0})
 }
 ```
 
-**Verification steps:**
+[//]: # ()
+[//]: # (**Verification steps:**)
 
-Verification should be done as explained in [Proof Verification](#nmt-proof-verification) section. Though, to provide further clarity, we'll explain how the verification process for the Proof fields and VerifyNamespace parameters corresponds to the instructions given in the Proof Verification section.
-If `proof` is a namespace inclusion proof, the followings should be verified about the `leaves`:
-- All the leaves should be namespace prefixed
-- Match the queried `nID`
-- The number of leaves match the range `end-start`
-The completeness of `proof.nodes` (as defined in section [Proof Verification](#nmt-proof-verification)) should be verified.
-The `proof.nodes` should form a valid Merkle range proof for the range `[start, end)` for the supplied `leaves` to the given NMT `root`.
+[//]: # ()
+[//]: # (Verification should be done as explained in [Proof Verification]&#40;#nmt-proof-verification&#41; section. Though, to provide further clarity, we'll explain how the verification process for the Proof fields and VerifyNamespace parameters corresponds to the instructions given in the Proof Verification section.)
 
+[//]: # (If `proof` is a namespace inclusion proof, the followings should be verified about the `leaves`:)
 
-If `proof` is an absence proof, then `leaves` are empty hence do not need any verification:
-- `proof.nodes` should be valid inclusion proof for the `proof.leafHash`.
-- The completeness of `proof.nodes` (as defined in section [Proof Verification](#nmt-proof-verification)) should be verified w.r.t. to the queried namespace ID `nID`.
+[//]: # (- All the leaves should be namespace prefixed)
 
+[//]: # (- Match the queried `nID`)
 
-In case that the `proof` is an empty then:
-- If the queried `nID` falls outside the namespace range of the supplied `root`, then the `proof` is valid.
-- If the namespace tree is empty, then an empty `proof` is valid.
+[//]: # (- The number of leaves match the range `end-start`)
+
+[//]: # (The completeness of `proof.nodes` &#40;as defined in section [Proof Verification]&#40;#nmt-proof-verification&#41;&#41; should be verified.)
+
+[//]: # (The `proof.nodes` should form a valid Merkle range proof for the range `[start, end&#41;` for the supplied `leaves` to the given NMT `root`.)
+
+[//]: # ()
+[//]: # ()
+[//]: # (If `proof` is an absence proof, then `leaves` are empty hence do not need any verification:)
+
+[//]: # (- `proof.nodes` should be valid inclusion proof for the `proof.leafHash`.)
+
+[//]: # (- The completeness of `proof.nodes` &#40;as defined in section [Proof Verification]&#40;#nmt-proof-verification&#41;&#41; should be verified w.r.t. to the queried namespace ID `nID`.)
+
+[//]: # ()
+[//]: # ()
+[//]: # (In case that the `proof` is an empty then:)
+
+[//]: # (- If the queried `nID` falls outside the namespace range of the supplied `root`, then the `proof` is valid.)
+
+[//]: # (- If the namespace tree is empty, then an empty `proof` is valid.)
 
 
 ## Resources
