@@ -296,41 +296,6 @@ if proof.VerifyNamespace(sha256.New(), namespace.ID{0}, leafs, root) {
 }
 ```
 
-[//]: # ()
-[//]: # (**Verification steps:**)
-
-[//]: # ()
-[//]: # (Verification should be done as explained in [Proof Verification]&#40;#nmt-proof-verification&#41; section. Though, to provide further clarity, we'll explain how the verification process for the Proof fields and VerifyNamespace parameters corresponds to the instructions given in the Proof Verification section.)
-
-[//]: # (If `proof` is a namespace inclusion proof, the followings should be verified about the `leaves`:)
-
-[//]: # (- All the leaves should be namespace prefixed)
-
-[//]: # (- Match the queried `nID`)
-
-[//]: # (- The number of leaves match the range `end-start`)
-
-[//]: # (The completeness of `proof.nodes` &#40;as defined in section [Proof Verification]&#40;#nmt-proof-verification&#41;&#41; should be verified.)
-
-[//]: # (The `proof.nodes` should form a valid Merkle range proof for the range `[start, end&#41;` for the supplied `leaves` to the given NMT `root`.)
-
-[//]: # ()
-[//]: # ()
-[//]: # (If `proof` is an absence proof, then `leaves` are empty hence do not need any verification:)
-
-[//]: # (- `proof.nodes` should be valid inclusion proof for the `proof.leafHash`.)
-
-[//]: # (- The completeness of `proof.nodes` &#40;as defined in section [Proof Verification]&#40;#nmt-proof-verification&#41;&#41; should be verified w.r.t. to the queried namespace ID `nID`.)
-
-[//]: # ()
-[//]: # ()
-[//]: # (In case that the `proof` is an empty then:)
-
-[//]: # (- If the queried `nID` falls outside the namespace range of the supplied `root`, then the `proof` is valid.)
-
-[//]: # (- If the namespace tree is empty, then an empty `proof` is valid.)
-
-
 ## Resources
 
 1. Al-Bassam, Mustafa. "Lazyledger: A distributed data availability ledger with client-side smart contracts." *arXiv preprint arXiv:1905.09274*
