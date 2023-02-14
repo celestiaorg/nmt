@@ -80,10 +80,6 @@ A NMT supports the standard functionalities of a Merkle tree, such as inclusion 
 it  provides the ability to query an NMT for an intended namespace ID and generate namespace proofs.
 When querying an NMT, the following cases may be encountered that are enumerated and explained next.
 
-[//]: # (NamespaceQuery&#40;T, nID&#41;: T indicates the root of the queried tree e.g., N6 in the above example whereas nid is the )
-
-[//]: # (queried namespace ID.)
-
 ### Namespace Inclusion Proof
 
 When the queried namespace ID `nID` has corresponding items in the tree with root `T`, the query is resolved by a 
