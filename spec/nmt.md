@@ -55,7 +55,23 @@ respectively, of all messages within the tree.
 
 A NMT is exemplified in the following figure.
 
-![nmt](/imgs/nmt.png)
+```markdown
+                                 00 03 b1c2cc5                                Tree root
+                           /                       \
+                          /                         \
+                         H()                        H()  
+                        /                             \
+                       /                               \    
+               00 00 ead8d25                      01 03 52c7c03               Non-leaf nodes
+              /            \                    /               \
+            H()            H()                H()               H() 
+            /                \                /                   \
+    00 00 5fa0c9c       00 00 52385a0    01 01 71ca46a       0303b4a2792      Leaves
+        |                   |                 |                   |
+       H()                 H()               H()                 H()
+        |                   |                 |                   |
+00 6c6561665f30      00 6c6561665f31    01 6c6561665f32      03 6c6561665f33  Namespaced data items 
+```
 
 
 ## Namespace Proof
@@ -194,23 +210,7 @@ if err := tree.Push(d3); err != nil {
 ```
 The resulting NMT is illustrated below where data items and tree nodes are represented in hex strings. 
 For brevity, we only included the starting 7 hex digits of SHA256 of each namespace hash.
-```markdown
-                                 00 03 b1c2cc5                                Tree root
-                           /                       \
-                          /                         \
-                         H()                        H()  
-                        /                             \
-                       /                               \    
-               00 00 ead8d25                      01 03 52c7c03               Non-leaf nodes
-              /            \                    /               \
-            H()            H()                H()               H() 
-            /                \                /                   \
-    00 00 5fa0c9c       00 00 52385a0    01 01 71ca46a       0303b4a2792      Leaves
-        |                   |                 |                   |
-       H()                 H()               H()                 H()
-        |                   |                 |                   |
-00 6c6561665f30      00 6c6561665f31    01 6c6561665f32      03 6c6561665f33  Namespaced data items 
-```
+
 ## Get the root
 
 It calculates NMT root based on the data that has been added through the use of the `Push` method.
@@ -276,10 +276,6 @@ The final proof would consist of the following NMT nodes in the same exact order
 Nodes have identical size and all follow the [namespaced hash format](#namespaced-hash).
 In the preceding example, each node is 34-byte long: `minNs<1 byte>||maxNs<1 byte>||h<32 byte>`.
 
-<aside>
-💡 Should not we also return the leaves matching the nID?
-</aside>
-
 `leafHash`: This field is non-empty only for [namespace absence proofs](#namespace-absence-proof).
 
 `isMaxNamespaceIDIgnored`: If this field is present, then namespace range of the tree nodes are set as explained in [Ignore Max Namespace](#ignore-max-namespace).
@@ -291,11 +287,6 @@ The correctness of a namespace `Proof` for a specific namespace ID `nID` can be 
 ```go
 func (proof Proof) VerifyNamespace(h hash.Hash, nID namespace.ID, leaves [][]byte, root []byte) bool 
 ```
-
-<aside>
-💡 The size of the tree is needed for the proof verification, but is actually missing in the method signature.
-
-</aside>
 
 - `h` MUST be the same as the underlying hash function used to generate the proof. Otherwise, the verification will fail.
 - `nID` is the namespace ID for which the `proof` is generated.
@@ -328,26 +319,6 @@ If `proof` is an absence proof, then `leaves` are empty hence do not need any ve
 In case that the `proof` is empty then:
 - If the queried `nID` falls outside the namespace range of the supplied `root`, then the `proof` is valid.
 - If the namespace tree is empty, then an empty `proof` is valid.
-
-
-
-[//]: # (`nodes` should satisfy completeness property.)
-[//]: # (`nodes` should be correct Merkle range proof for the supplied range `[proof.start, proof.end&#41;`.)
-[//]: # (In the case of absence proof, `nodes` should be valid inclusion proof for the `proof.leafHash`)
-[//]: # (`leaves` should be valid namespace-prefixed data items.)
-[//]: # (The Hash function should take care of the relation between the namespace ID of the supplied nodes. To make sure they are in order.)
-[//]: # ()
-
-[//]: # (To verify completeness, the `nodes` should be grouped based on being left subtree roots or right subtree roots.  Then, their namespace IDs are compared against `nID` according to the completeness rule.)
-[//]: # (Once the above checks are done, the `root` of the tree is being calculated using the supplied `proof.nodes` and the `leaves`. In the case of absence proof, then instead of `leaves` the `proof.leafHash` is used for the `root` construction.)
-[//]: # (The final computed `root` must match the supplied NMT `root`.)
-[//]: # (TBD &#40;to myself&#41; provide an example from the NMT image @Sanaz Taheri)
-
-
-<aside>
-💡 This is not the case in the current implementation: The proof `nodes` and `leafHash`should all follow the NMT node structure, with respect to their format, and the relation bw their min and max namespace IDs.
-</aside>
-
 
 
 ## Resources
