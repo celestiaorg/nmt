@@ -37,7 +37,7 @@ import (
 )
 
 func main() {
-    // the tree will use this namespace size
+    // the tree will use this namespace size (number of bytes)
     nidSize := 1
     // the leaves that will be pushed
     data := [][]byte{
