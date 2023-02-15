@@ -65,8 +65,8 @@ For the sake of brevity, we have only included the first 7 hex digits of SHA256 
 00 6c6561665f30      00 6c6561665f31    01 6c6561665f32      03 6c6561665f33  Namespaced Data Items 
 
         0                   1                  2                  3           Data Items/Leaves Indices
-```
-                                        Figure 1.
+``` 
+Figure 1.
 
 ## Namespace Proof
 
