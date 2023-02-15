@@ -9,8 +9,9 @@ This specification explains the NMT data structure and provides an overview of i
 
 # NMT Data Structure
 
-Namespaced Merkle Tree, at the core is a normal Merkle tree that employs a modified hash function, namely a [namespaced hash](#namespaced-hash) to ensure each node in the tree encompasses the range of namespaces of its descendants' messages. 
-The messages stored in the NMT leaves are arranged in ascending order based on their namespace IDs, which must be of a fixed and known size and have the format `<NsID>||<Message Data>`. 
+Namespaced Merkle Tree, at its core, is a normal Merkle tree that employs a modified hash function, namely a [namespaced hash](#namespaced-hash) to ensure each node in the tree encompasses the range of namespaces of its descendants' messages. 
+Messages stored in the NMT leaves are all namespace-prefixed with the format `<NsID>||<Message Data>` and arranged in ascending order based on their namespace IDs.
+All namespace identifiers have a fixed and known size. 
 
 
 ## Namespaced Hash
