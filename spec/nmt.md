@@ -58,7 +58,7 @@ For the sake of brevity, we have only included the first 7 hex digits of SHA256 
               /            \                    /               \
             H()            H()                H()               H() 
             /                \                /                   \
-    00 00 5fa0c9c       00 00 52385a0    01 01 71ca46a       0303b4a2792      Leaf Nodes
+    00 00 5fa0c9c       00 00 52385a0    01 01 71ca46a       03 03 b4a2792    Leaf Nodes
         |                   |                 |                   |
        H()                 H()               H()                 H()
         |                   |                 |                   |
