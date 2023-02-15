@@ -43,7 +43,8 @@ The inclusion of the `0x01` value in the hash calculation serves as a non-leaf p
 In an NMT data structure, the `minNs` and `maxNs` values of the root node denote the minimum and maximum namespace IDs, respectively, of all messages within the tree.
 
 
-An example of an NMT is shown in the figure below which utilizes SHA256 as the underlying hash function and namespace ID size of `1` byte. The code snippets necessary to create this tree are provided in [NMT Library](#nmt-library) section, and the data items and tree nodes are represented as hex strings. 
+An example of an NMT is shown in the figure below which utilizes SHA256 as the underlying hash function and namespace ID size of `1` byte. 
+The code snippets necessary to create this tree are provided in [NMT Library](#nmt-library) section, and the data items and tree nodes are represented as hex strings. 
 For the sake of brevity, we have only included the first 7 hex digits of SHA256 for each namespace hash.
 
 ```markdown
