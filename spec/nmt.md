@@ -9,8 +9,7 @@ This specification explains the NMT data structure and provides an overview of i
 
 # NMT Data Structure
 
-Namespaced Merkle Tree, at the core is a normal Merkle tree that employs a modified hash function, namely a [namespaced hash](#namespaced-hash) to ensure each node in the tree encompasses the range of namespaces of its 
-descendants' messages. 
+Namespaced Merkle Tree, at the core is a normal Merkle tree that employs a modified hash function, namely a [namespaced hash](#namespaced-hash) to ensure each node in the tree encompasses the range of namespaces of its descendants' messages. 
 The messages stored in the NMT leaves are arranged in ascending order based on their namespace IDs, which must be of a fixed and known size and have the format `<NsID>||<Message Data>`. 
 
 
@@ -93,8 +92,8 @@ An absence proof asserts that no message in the tree matches the queried namespa
 The absence proof consists of:
 1) The index of a leaf of the tree that 
    1) its namespace ID is the smallest namespace ID larger than `nID` and
-   2) the namespace ID of the leaf to the left of it  is smaller than the `nID` 
-   3) the namespace ID of the leaf to the right of it is larger than `nID`.
+   2) the namespace ID of the leaf to the left of it  is smaller than `nID` 
+   3) the namespace ID of the leaf to the right of it is larger than  `nID`.
 2) A regular Merkle inclusion proof for the said leaf.
 
 Note that the proof only requires the hash of the leaf, not its underlying message. 
