@@ -137,7 +137,7 @@ If the queried `nID` falls outside the namespace range of the tree root, or the 
 
 # NMT Library
 
-## NMT initialization and configuration
+## NMT Initialization and Configuration
 
 An NMT can be constructed using the `New` function.
 ```go
@@ -177,7 +177,7 @@ should be omitted if feasible (in the preceding code example with the ID size of
 This is achieved by taking the maximum value among the namespace IDs available in the range of node's left and right children (i.e., `n.maxNs = max(l.minNs, l.maxNs , r.minNs, r.maxNs))`, which is not equal to the maximum possible namespace ID value. 
 If such a namespace ID does not exist, the `maxNs` is calculated as normal, i.e., `n.maxNs = max(l.maxNs , r.maxNs)`.
 
-## Add leaves
+## Add Leaves
 
 Data items are added to the tree using the `Push` method.
 Data items should be prefixed with namespaces of size set out for the NMT (i.e.,   `tree.NamespaceSize()`) and added in ascending order of their namespace IDs to avoid errors during the `Push` process. 
@@ -206,7 +206,7 @@ if err := tree.Push(d3); err != nil {
     // something went wrong
 }
 ```
-## Get the root
+## Get Root
 
 The `Root()` method calculates the NMT root based on the data that has been added through the use of the `Push` method.
 ```go
@@ -268,7 +268,7 @@ In the example given earlier, each node is `34` bytes in length and takes the fo
 
 `isMaxNamespaceIDIgnored`: If this field is present, then namespace range of the tree nodes are set as explained in the [Ignore Max Namespace](#ignore-max-namespace) section.
 
-## NMT proof verification
+## Verify Namespace Proof
 
 The correctness of a namespace `Proof` for a specific namespace ID `nID` can be verified using the [`VerifyNamespace`](https://github.com/celestiaorg/nmt/blob/master/proof.go) method.
 
