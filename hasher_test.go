@@ -246,8 +246,7 @@ func TestNamespaceHasherSum(t *testing.T) {
 	}
 }
 
-func TestHashNodeChildrenNamespaceRange(t *testing.T) {
-
+func TestHashNode_ChildrenNamespaceRange(t *testing.T) {
 	type children struct {
 		l []byte // namespace hash of the left child with the format of MinNs||MaxNs||h
 		r []byte // namespace hash of the right child with the format of MinNs||MaxNs||h
@@ -260,17 +259,17 @@ func TestHashNodeChildrenNamespaceRange(t *testing.T) {
 		panic    bool // whether the test should panic or nor
 	}{
 		{
-			"left.maxNs > right.minNs", 2,
+			"left.maxNs>right.minNs", 2,
 			children{[]byte{0, 0, 1, 1}, []byte{0, 0, 1, 1}},
 			true, // this test case should panic since in an ordered NMT, left.maxNs cannot be greater than right.minNs
 		},
 		{
-			"left.maxNs = right.minNs", 2,
+			"left.maxNs=right.minNs", 2,
 			children{[]byte{0, 0, 1, 1}, []byte{1, 1, 2, 2}},
 			false,
 		},
 		{
-			"left.maxNs < right.minNs", 2,
+			"left.maxNs<right.minNs", 2,
 			children{[]byte{0, 0, 1, 1}, []byte{2, 2, 3, 3}},
 			false,
 		},
