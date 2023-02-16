@@ -123,7 +123,9 @@ func (n *Hasher) Sum([]byte) []byte {
 	case NodePrefix:
 		flagLen := int(n.NamespaceLen) * 2
 		sha256Len := n.baseHasher.Size()
-		return n.HashNode(n.data[:flagLen+sha256Len], n.data[flagLen+sha256Len:])
+		leftChild := n.data[:flagLen+sha256Len]
+		rightChild := n.data[flagLen+sha256Len:]
+		return n.HashNode(leftChild, rightChild)
 	default:
 		panic("nmt node type wasn't set")
 	}
