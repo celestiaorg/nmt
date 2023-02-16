@@ -1,7 +1,7 @@
 # Introduction
 
 Namespaced Merkle Tree, NMT for short, is one of the core components of Celestia blockchain.
-Transactions in Celestia are associated with a namespace ID which signifies the application they belong to.  
+Transactions in Celestia are associated with a namespace ID which signifies the application they belong to.
 Nodes interested in a specific application only need to download transactions of a certain namespace ID. 
 The Namespaced  Merkle Tree (NMT) was introduced in the [LazyLedger article](https://arxiv.org/abs/1905.09274) to organize transactions in Celestia blocks based on their namespace IDs. 
 The NMT allows for efficient and verifiable queries of application-specific transactions by accessing only the block header, which contains the NMT root.
