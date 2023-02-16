@@ -198,9 +198,9 @@ func (n *Hasher) HashNode(left, right []byte) []byte {
 	rightMinNs, rightMaxNs := right[:n.NamespaceLen], right[n.NamespaceLen:flagLen]
 
 	// check the namespace range of the left and right children
-	RMinNID := namespace.ID(rightMinNs)
-	LMaxNID := namespace.ID(leftMaxNs)
-	if RMinNID.Less(LMaxNID) {
+	rightMinNID := namespace.ID(rightMinNs)
+	leftMaxNID := namespace.ID(leftMaxNs)
+	if rightMinNID.Less(leftMaxNID) {
 		panic("nodes are out of order: the maximum namespace of the left child is greater than the min namespace of the right child")
 	}
 
