@@ -245,10 +245,10 @@ func TestHashNode_ChildrenNamespaceRange(t *testing.T) {
 	}
 
 	tests := []struct {
-		name     string
-		nidLen   namespace.IDSize
-		children children
-		panic    bool // whether the test should panic or nor
+		name      string
+		nidLen    namespace.IDSize
+		children  children
+		wantPanic bool // whether the test should panic or nor
 	}{
 		{
 			"left.maxNs>right.minNs", 2,
@@ -273,7 +273,7 @@ func TestHashNode_ChildrenNamespaceRange(t *testing.T) {
 				if r := recover(); r != nil { // here we check whether panic happened
 					gotPanic = true
 				}
-				assert.Equal(t, tt.panic, gotPanic)
+				assert.Equal(t, tt.wantPanic, gotPanic)
 			}()
 			n := NewNmtHasher(sha256.New(), tt.nidLen, false)
 			n.HashNode(tt.children.l, tt.children.r)
