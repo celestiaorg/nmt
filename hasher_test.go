@@ -19,6 +19,10 @@ const (
 	innerSize = 2 * hashSize
 )
 
+// defaultHasher uses sha256 as a base-hasher, 8 bytes for the namespace IDs and
+// ignores the maximum possible namespace.
+var defaultHasher = NewNmtHasher(sha256.New(), DefaultNamespaceIDLen, true)
+
 func Test_namespacedTreeHasher_HashLeaf(t *testing.T) {
 	zeroNID := []byte{0}
 	oneNID := []byte{1}
