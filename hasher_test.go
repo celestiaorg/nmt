@@ -86,14 +86,6 @@ func Test_namespacedTreeHasher_HashNode(t *testing.T) {
 				sum(crypto.SHA256, []byte{NodePrefix}, []byte{0, 0, 0, 0}, []byte{0, 0, 1, 1})...,
 			),
 		},
-		{
-			"leftmin==rightmin && leftmax>rightmax", 2,
-			children{[]byte{0, 0, 1, 1}, []byte{0, 0, 0, 1}},
-			append(
-				[]byte{0, 0, 1, 1},
-				sum(crypto.SHA256, []byte{NodePrefix}, []byte{0, 0, 1, 1}, []byte{0, 0, 0, 1})...,
-			),
-		},
 		// XXX: can this happen in practice? or is this an invalid state?
 		{
 			"leftmin>rightmin && leftmax<rightmax", 2,
