@@ -775,56 +775,32 @@ func sortByteArrays(src [][]byte) {
 	sort.Slice(src, func(i, j int) bool { return bytes.Compare(src[i], src[j]) < 0 })
 }
 
-func TestMinNamespace(t *testing.T) {
+func TestMinMaxNamespace(t *testing.T) {
 	type testCase struct {
-		name string
-		tree *NamespacedMerkleTree
-		want namespace.ID
+		name    string
+		tree    *NamespacedMerkleTree
+		wantMin namespace.ID
+		wantMax namespace.ID
 	}
 	testCases := []testCase{
 		{
-			name: "example tree with four leaves",
-			tree: exampleTreeWithFourLeaves(),
-			want: namespace.ID{0},
+			name:    "example tree with four leaves",
+			tree:    exampleTreeWithFourLeaves(),
+			wantMin: namespace.ID{0},
+			wantMax: namespace.ID{3},
 		},
 		{
-			name: "example tree with eight leaves",
-			tree: exampleTreeWithEightLeaves(),
-			want: namespace.ID{1, 1},
+			name:    "example tree with eight leaves",
+			tree:    exampleTreeWithEightLeaves(),
+			wantMin: namespace.ID{1, 1},
+			wantMax: namespace.ID{8, 8},
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			got := tc.tree.MinNamespace()
-			assert.Equal(t, tc.want, got)
-		})
-	}
-}
-
-func TestMaxNamespace(t *testing.T) {
-	type testCase struct {
-		name string
-		tree *NamespacedMerkleTree
-		want namespace.ID
-	}
-	testCases := []testCase{
-		{
-			name: "example tree with four leaves",
-			tree: exampleTreeWithFourLeaves(),
-			want: namespace.ID{3},
-		},
-		{
-			name: "example tree with eight leaves",
-			tree: exampleTreeWithEightLeaves(),
-			want: namespace.ID{8, 8},
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			got := tc.tree.MaxNamespace()
-			assert.Equal(t, tc.want, got)
+			assert.Equal(t, tc.wantMin, tc.tree.MinNamespace())
+			assert.Equal(t, tc.wantMax, tc.tree.MaxNamespace())
 		})
 	}
 }
