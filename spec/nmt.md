@@ -112,7 +112,7 @@ In Figure 1, a query for `nID=6` would be responded by an empty proof as it fall
 
 ### Verification of NMT Inclusion Proof
 
-An NMT inclusion proof is deemed valid if it meets the followings:
+An NMT inclusion proof is deemed valid if it meets the following:
 - The namespace ID of the leaves in the returned range `[start, end)` match the queried `nID`.
 - **Inclusion**: The supplied Merkle proof for the range `[start, end)` is valid for the given tree root `T`. 
 - **Completeness**: There are no other leaves matching `nID` that do not belong to the returned range `[start, end)`.
