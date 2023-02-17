@@ -319,6 +319,16 @@ func (n *NamespacedMerkleTree) Root() []byte {
 	return n.rawRoot
 }
 
+// MinNamespace returns the minimum namespace ID in this Namespaced Merkle Tree.
+func (n *NamespacedMerkleTree) MinNamespace() namespace.ID {
+	return MinNamespace(n.Root(), n.NamespaceSize())
+}
+
+// MaxNamespace returns the maximum namespace ID in this Namespaced Merkle Tree.
+func (n *NamespacedMerkleTree) MaxNamespace() namespace.ID {
+	return MaxNamespace(n.Root(), n.NamespaceSize())
+}
+
 func (n *NamespacedMerkleTree) computeRoot(start, end int) []byte {
 	switch end - start {
 	case 0:
