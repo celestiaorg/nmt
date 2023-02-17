@@ -1,11 +1,11 @@
 # Introduction
 
-Namespaced Merkle Tree, NMT for short, is one of the core components of Celestia blockchain.
+Namespaced Merkle Tree (NMT) is one of the core components of the Celestia blockchain.
 Transactions in Celestia are associated with a namespace ID which signifies the application they belong to.
 Nodes interested in a specific application only need to download transactions of a certain namespace ID. 
 The Namespaced  Merkle Tree (NMT) was introduced in the [LazyLedger article](https://arxiv.org/abs/1905.09274) to organize transactions in Celestia blocks based on their namespace IDs. 
-The NMT allows for efficient and verifiable queries of application-specific transactions by accessing only the block header, which contains the NMT root.
-This specification explains the NMT data structure and provides an overview of its current implementation in the repository.
+The NMT allows for efficient and verifiable queries of application-specific transactions by accessing based on the block header which contains the NMT root.
+This specification explains the NMT data structure and provides an overview of its current implementation in this repository.
 
 # NMT Data Structure
 
@@ -16,7 +16,7 @@ All namespace identifiers have a fixed and known size.
 
 ## Namespaced Hash
 
-NMT utilizes a namespaced hash function i.e., `NsH()`, which in addition to the normal digest calculation, it returns the range of namespace IDs covered by a node's children. The hash output is formatted as  `minNs||maxNs||h(.)`, where `minNs` is the lowest namespace identifier among all the node's descendants, `maxNs` is the highest, and `h` represents the hash digest (e.g., SHA256).
+NMT utilizes a namespaced hash function i.e., `NsH()`, which in addition to the normal digest calculation, it returns the range of namespace IDs covered by a node's children. The hash output is formatted as  `minNs||maxNs||h(.)`, where `minNs` is the lowest namespace identifier among all the node's descendants, `maxNs` is the highest, and `h(.)` represents the hash digest of `.` (e.g., `SHA256(.)`).
 
 **Leaf Nodes**: Each leaf in the tree represents the namespaced hash of a namespaced message `d = <NsID>||<Message Data>`. 
 The hash is computed as follows:
@@ -93,8 +93,7 @@ An absence proof asserts that no message in the tree matches the queried namespa
 The absence proof consists of:
 1) The index of a leaf of the tree that 
    1) its namespace ID is the smallest namespace ID larger than `nID` and
-   2) the namespace ID of the leaf to the left of it  is smaller than `nID` 
-   3) the namespace ID of the leaf to the right of it is larger than  `nID`.
+   2) the namespace ID of the leaf to the left of it is smaller than `nID`.
 2) A regular Merkle inclusion proof for the said leaf to the tree root `T`.
 
 Note that the proof only requires the hash of the leaf, not its underlying message. 
