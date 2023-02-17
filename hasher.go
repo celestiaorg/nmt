@@ -2,7 +2,6 @@ package nmt
 
 import (
 	"bytes"
-	"crypto/sha256"
 	"hash"
 
 	"github.com/celestiaorg/nmt/namespace"
@@ -14,42 +13,6 @@ const (
 )
 
 var _ hash.Hash = (*Hasher)(nil)
-
-// defaultHasher uses sha256 as a base-hasher, 8 bytes for the namespace IDs and
-// ignores the maximum possible namespace.
-var defaultHasher = NewNmtHasher(sha256.New(), DefaultNamespaceIDLen, true)
-
-// Sha256Namespace8FlaggedLeaf uses sha256 as a base-hasher, 8 bytes for the
-// namespace IDs and ignores the maximum possible namespace.
-//
-// Sha256Namespace8FlaggedLeaf(namespacedData) results in: ns(rawData) ||
-// ns(rawData) || sha256(LeafPrefix || rawData), where rawData is the leaf's
-// data minus the namespace.ID prefix (namely namespacedData[NamespaceLen:]).
-//
-// Note that different from other cryptographic hash functions, this here makes
-// assumptions on the input: len(namespacedData) >= DefaultNamespaceIDLen has to
-// hold, as the first DefaultNamespaceIDLen bytes are interpreted as the
-// namespace ID). If the input does not fulfil this, we will panic. The output
-// will be of length 2*DefaultNamespaceIDLen+sha256.Size = 48 bytes.
-func Sha256Namespace8FlaggedLeaf(namespacedData []byte) []byte {
-	return defaultHasher.HashLeaf(namespacedData)
-}
-
-// Sha256Namespace8FlaggedInner hashes inner nodes to: minNID || maxNID ||
-// sha256(NodePrefix || leftRight), where leftRight consists of the full left
-// and right child node bytes, including their respective min and max namespace
-// IDs. Hence, the input has to be of size: 48 = 32 + 8 + 8  = sha256.Size +
-// 2*DefaultNamespaceIDLen bytes. If the input does not fulfil this, we will
-// panic. The output will also be of length 2*DefaultNamespaceIDLen+sha256.Size
-// = 48 bytes.
-func Sha256Namespace8FlaggedInner(leftRight []byte) []byte {
-	const flagLen = DefaultNamespaceIDLen * 2
-	sha256Len := defaultHasher.baseHasher.Size()
-	left := leftRight[:flagLen+sha256Len]
-	right := leftRight[flagLen+sha256Len:]
-
-	return defaultHasher.HashNode(left, right)
-}
 
 type Hasher struct {
 	baseHasher   hash.Hash
