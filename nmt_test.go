@@ -14,6 +14,7 @@ import (
 	"testing"
 
 	"github.com/celestiaorg/nmt/namespace"
+	"github.com/stretchr/testify/assert"
 )
 
 type namespaceDataPair struct {
@@ -772,4 +773,74 @@ func generateRandNamespacedRawData(total int, nidSize int, leafSize int) [][]byt
 
 func sortByteArrays(src [][]byte) {
 	sort.Slice(src, func(i, j int) bool { return bytes.Compare(src[i], src[j]) < 0 })
+}
+
+func TestMinMaxNamespace(t *testing.T) {
+	type testCase struct {
+		name    string
+		tree    *NamespacedMerkleTree
+		wantMin namespace.ID
+		wantMax namespace.ID
+	}
+	testCases := []testCase{
+		{
+			name:    "example tree with four leaves",
+			tree:    exampleTreeWithFourLeaves(),
+			wantMin: namespace.ID{0},
+			wantMax: namespace.ID{3},
+		},
+		{
+			name:    "example tree with eight leaves",
+			tree:    exampleTreeWithEightLeaves(),
+			wantMin: namespace.ID{1, 1},
+			wantMax: namespace.ID{8, 8},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.wantMin, tc.tree.MinNamespace())
+			assert.Equal(t, tc.wantMax, tc.tree.MaxNamespace())
+		})
+	}
+}
+
+func exampleTreeWithFourLeaves() *NamespacedMerkleTree {
+	nidSize := 1
+	data := [][]byte{
+		append(namespace.ID{0}, []byte("leaf_0")...),
+		append(namespace.ID{0}, []byte("leaf_1")...),
+		append(namespace.ID{1}, []byte("leaf_2")...),
+		append(namespace.ID{3}, []byte("leaf_3")...),
+	}
+
+	tree := New(sha256.New(), NamespaceIDSize(nidSize))
+	for _, d := range data {
+		if err := tree.Push(d); err != nil {
+			panic(fmt.Sprintf("unexpected error: %v", err))
+		}
+	}
+	return tree
+}
+
+func exampleTreeWithEightLeaves() *NamespacedMerkleTree {
+	nidSize := 2
+	data := [][]byte{
+		append(namespace.ID{1, 1}, []byte("leaf_0")...),
+		append(namespace.ID{2, 2}, []byte("leaf_1")...),
+		append(namespace.ID{3, 3}, []byte("leaf_2")...),
+		append(namespace.ID{4, 4}, []byte("leaf_3")...),
+		append(namespace.ID{5, 5}, []byte("leaf_4")...),
+		append(namespace.ID{6, 6}, []byte("leaf_5")...),
+		append(namespace.ID{7, 7}, []byte("leaf_6")...),
+		append(namespace.ID{8, 8}, []byte("leaf_7")...),
+	}
+
+	tree := New(sha256.New(), NamespaceIDSize(nidSize))
+	for _, d := range data {
+		if err := tree.Push(d); err != nil {
+			panic(fmt.Sprintf("unexpected error: %v", err))
+		}
+	}
+	return tree
 }
