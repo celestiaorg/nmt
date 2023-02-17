@@ -6,10 +6,10 @@ import (
 )
 
 var (
-	srpNotPowerOf2       = errors.New("GetSubrootPaths: Supplied square size is not a power of 2")
-	srpInvalidShareCount = errors.New("GetSubrootPaths: Can't compute path for 0 share count slice")
-	srpPastSquareSize    = errors.New("GetSubrootPaths: Share slice can't be past the square size")
-	srpInvalidIdxEnd     = errors.New("GetSubrootPaths: idxEnd must be larger than idxStart and shareCount")
+	errNotPowerOf2       = errors.New("GetSubrootPaths: Supplied square size is not a power of 2")
+	errInvalidShareCount = errors.New("GetSubrootPaths: Can't compute path for 0 share count slice")
+	errPastSquareSize    = errors.New("GetSubrootPaths: Share slice can't be past the square size")
+	errInvalidIdxEnd     = errors.New("GetSubrootPaths: idxEnd must be larger than idxStart and shareCount")
 )
 
 // merkle path to a node is equivalent to the index's binary representation
@@ -51,9 +51,8 @@ func prune(idxStart uint, idxEnd uint, maxWidth uint) [][]int {
 	if idxStart+1 >= idxEnd {
 		if idxStart%2 == 1 {
 			return [][]int{pathStart, pathEnd}
-		} else {
-			return [][]int{pathStart[:len(pathStart)-1]}
 		}
+		return [][]int{pathStart[:len(pathStart)-1]}
 	}
 
 	var prunedPaths [][]int
@@ -127,24 +126,24 @@ func GetSubrootPaths(squareSize uint, idxStart uint, shareCount uint) ([][][]int
 	// check squareSize is at least 2 and that it's
 	// a power of 2 by checking that only 1 bit is on
 	if squareSize < 2 || bits.OnesCount(squareSize) != 1 {
-		return nil, srpNotPowerOf2
+		return nil, errNotPowerOf2
 	}
 
 	// no path exists for 0 count slice
 	if shareCount == 0 {
-		return nil, srpInvalidShareCount
+		return nil, errInvalidShareCount
 	}
 
 	idxEnd := idxStart + shareCount
 	if idxEnd < idxStart || idxEnd < shareCount {
-		return nil, srpInvalidIdxEnd
+		return nil, errInvalidIdxEnd
 	}
 
 	shares := squareSize * squareSize
 
 	// sanity checking
 	if idxStart >= shares || idxEnd > shares {
-		return nil, srpPastSquareSize
+		return nil, errPastSquareSize
 	}
 
 	startRow := idxStart / squareSize

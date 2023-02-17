@@ -619,7 +619,8 @@ func TestNMT_forgedNamespaceEmptinessProof(t *testing.T) {
 		append(namespace.ID{1}, []byte("leaf_0")...),
 		append(namespace.ID{1}, []byte("leaf_1")...),
 		append(namespace.ID{2}, []byte("leaf_2")...),
-		append(namespace.ID{2}, []byte("leaf_3")...)}
+		append(namespace.ID{2}, []byte("leaf_3")...),
+	}
 	// Init a tree with the namespace size as well as
 	// the underlying hash function:
 	tree := New(sha256.New(), NamespaceIDSize(1))
