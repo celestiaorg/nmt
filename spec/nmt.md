@@ -229,7 +229,7 @@ maxNS := nmt.MaxNamespace(root, tree.NamespaceSize())
 
 ## Generate Namespace Proof
 
-The `ProveNamespace` can be used to generate a namespace proof for a specific namespace ID.
+The `ProveNamespace` method can be used to generate a namespace proof for a specific namespace ID.
 
 ```go
 func (n *NamespacedMerkleTree) ProveNamespace(nID namespace.ID) (Proof, error)
