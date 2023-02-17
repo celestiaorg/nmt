@@ -238,8 +238,8 @@ For example:
 ```go
 nID := namespace.ID{0}
 proof, err := tree.ProveNamespace(nID)
-    if err != nil {
-      panic("unexpected error")
+if err != nil {
+  panic("unexpected error")
 }
 ```
 
