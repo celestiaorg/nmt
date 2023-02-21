@@ -231,5 +231,4 @@ func TestHashNode_ChildrenNamespaceRange(t *testing.T) {
 			n.HashNode(tt.children.l, tt.children.r)
 		})
 	}
-
 }
