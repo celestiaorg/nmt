@@ -3,7 +3,6 @@ package nmt
 import (
 	"crypto"
 	"crypto/sha256"
-	_ "crypto/sha256"
 	"reflect"
 	"testing"
 
