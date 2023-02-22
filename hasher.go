@@ -2,6 +2,7 @@ package nmt
 
 import (
 	"bytes"
+	"fmt"
 	"hash"
 
 	"github.com/celestiaorg/nmt/namespace"
@@ -63,6 +64,10 @@ func (n *Hasher) Write(data []byte) (int, error) {
 		panic("only a single Write is allowed")
 	}
 
+	if _, err := n.validateNodeFormat(data); err != nil {
+		return 0, err
+	}
+
 	ln := len(data)
 	switch ln {
 	// inner nodes are made up of the nmt hashes of the left and right children
@@ -92,6 +97,46 @@ func (n *Hasher) Sum([]byte) []byte {
 	default:
 		panic("nmt node type wasn't set")
 	}
+}
+
+func (n *Hasher) validateNodeFormat(node []byte) (bool, error) {
+	totalNameSpaceLen := 2 * n.NamespaceLen
+	if len(node) < int(totalNameSpaceLen) {
+		return false, fmt.Errorf("node is not namespaced")
+	}
+	minND := namespace.ID(MinNamespace(node, n.NamespaceLen))
+	maxND := namespace.ID(MaxNamespace(node, n.NamespaceLen))
+	if maxND.Less(minND) {
+		return false, fmt.Errorf("min namespace ID %x is larger than max namespace ID %x", minND, maxND)
+	}
+	return true, nil
+}
+
+func (n *Hasher) validateNamespaceRange(left, right []byte) (bool, error) {
+	// the actual hash result of the children got extended (or flagged) by their
+	// children's minNs || maxNs; hence the flagLen = 2 * NamespaceLen:
+	totalNameSpaceLen := 2 * n.NamespaceLen
+	leftMaxNs := namespace.ID(left[n.NamespaceLen:totalNameSpaceLen])
+	rightMinNs := namespace.ID(right[:n.NamespaceLen])
+
+	// check the namespace range of the left and right children
+	if rightMinNs.Less(leftMaxNs) {
+		return false, fmt.Errorf("the maximum namespace of the left child %x is greater than the min namespace of the right child %x", leftMaxNs, rightMinNs)
+	}
+	return true, nil
+}
+
+func (n *Hasher) ValidateNodes(left, right []byte) (bool, error) {
+	if _, err := n.validateNodeFormat(left); err != nil {
+		return false, err
+	}
+	if _, err := n.validateNodeFormat(right); err != nil {
+		return false, err
+	}
+	if _, err := n.validateNamespaceRange(left, right); err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 // Reset resets the Hash to its initial state.
@@ -133,6 +178,14 @@ func (n *Hasher) HashLeaf(leaf []byte) []byte {
 	data := append(append(make([]byte, 0, len(leaf)+1), LeafPrefix), leaf...)
 	h.Write(data)
 	return h.Sum(res)
+}
+
+func (n *Hasher) ValidateNamespacedData(data []byte) (bool, error) {
+	nidSize := int(n.NamespaceSize())
+	if len(data) < nidSize {
+		return false, fmt.Errorf("%w: got: %v, want >= %v", ErrMismatchedNamespaceSize, len(data), nidSize)
+	}
+	return true, nil
 }
 
 // HashNode calculates a namespaced hash of a node using the supplied left and
