@@ -336,3 +336,31 @@ func TestValidateNodeFormat(t *testing.T) {
 	}
 
 }
+
+func TestIsNamespacedData(t *testing.T) {
+	tests := []struct {
+		name         string
+		data         []byte
+		nIDLen       namespace.IDSize
+		isNamespaced bool
+	}{
+		{
+			"valid namespaced data",
+			[]byte{0, 0},
+			2,
+			true,
+		},
+		{
+			"non-namespaced data",
+			[]byte{1},
+			2,
+			false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			n := NewNmtHasher(sha256.New(), tt.nIDLen, false)
+			assert.Equal(t, tt.isNamespaced, n.IsNamespacedData(tt.data) == nil)
+		})
+	}
+}
