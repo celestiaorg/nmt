@@ -15,6 +15,10 @@ const (
 
 var _ hash.Hash = (*Hasher)(nil)
 
+var (
+// ErrInvalidRange
+)
+
 type Hasher struct {
 	baseHasher   hash.Hash
 	NamespaceLen namespace.IDSize
@@ -99,46 +103,6 @@ func (n *Hasher) Sum([]byte) []byte {
 	}
 }
 
-func (n *Hasher) validateNodeFormat(node []byte) (bool, error) {
-	totalNameSpaceLen := 2 * n.NamespaceLen
-	if len(node) < int(totalNameSpaceLen) {
-		return false, fmt.Errorf("node is not namespaced")
-	}
-	minND := namespace.ID(MinNamespace(node, n.NamespaceLen))
-	maxND := namespace.ID(MaxNamespace(node, n.NamespaceLen))
-	if maxND.Less(minND) {
-		return false, fmt.Errorf("min namespace ID %x is larger than max namespace ID %x", minND, maxND)
-	}
-	return true, nil
-}
-
-func (n *Hasher) validateNamespaceRange(left, right []byte) (bool, error) {
-	// the actual hash result of the children got extended (or flagged) by their
-	// children's minNs || maxNs; hence the flagLen = 2 * NamespaceLen:
-	totalNameSpaceLen := 2 * n.NamespaceLen
-	leftMaxNs := namespace.ID(left[n.NamespaceLen:totalNameSpaceLen])
-	rightMinNs := namespace.ID(right[:n.NamespaceLen])
-
-	// check the namespace range of the left and right children
-	if rightMinNs.Less(leftMaxNs) {
-		return false, fmt.Errorf("the maximum namespace of the left child %x is greater than the min namespace of the right child %x", leftMaxNs, rightMinNs)
-	}
-	return true, nil
-}
-
-func (n *Hasher) ValidateNodes(left, right []byte) (bool, error) {
-	if _, err := n.validateNodeFormat(left); err != nil {
-		return false, err
-	}
-	if _, err := n.validateNodeFormat(right); err != nil {
-		return false, err
-	}
-	if _, err := n.validateNamespaceRange(left, right); err != nil {
-		return false, err
-	}
-	return true, nil
-}
-
 // Reset resets the Hash to its initial state.
 func (n *Hasher) Reset() {
 	n.tp, n.data = 255, nil // reset with an invalid node type, as zero value is a valid Leaf
@@ -158,32 +122,86 @@ func (n *Hasher) EmptyRoot() []byte {
 	return digest
 }
 
-// HashLeaf hashes leaves to:
-// ns(leaf) || ns(leaf) || hash(leafPrefix || leaf), where ns(leaf) is the namespaceID
-// inside the leaf's data namely leaf[:n.NamespaceLen]).
-// Hence, the input length has to be greater or equal to the
-// size of the underlying namespace.ID.
-//
-// Note that for leaves minNs = maxNs = ns(leaf) = leaf[:NamespaceLen].
-//
-//nolint:errcheck
-func (n *Hasher) HashLeaf(leaf []byte) []byte {
-	h := n.baseHasher
-	h.Reset()
-
-	nID := leaf[:n.NamespaceLen]
-	resLen := int(2*n.NamespaceLen) + n.baseHasher.Size()
-	res := append(append(make([]byte, 0, resLen), nID...), nID...)
-	// h(0x00, leaf)
-	data := append(append(make([]byte, 0, len(leaf)+1), LeafPrefix), leaf...)
-	h.Write(data)
-	return h.Sum(res)
-}
-
 func (n *Hasher) ValidateNamespacedData(data []byte) (bool, error) {
 	nidSize := int(n.NamespaceSize())
 	if len(data) < nidSize {
 		return false, fmt.Errorf("%w: got: %v, want >= %v", ErrMismatchedNamespaceSize, len(data), nidSize)
+	}
+	return true, nil
+}
+
+// HashLeaf computes namespace hash of the namespaced data item `ndata` to:
+// the namespaced hash has the following format: ns(ndata) || ns(ndata) || hash(leafPrefix || ndata), where ns(ndata) is the namespaceID
+// inside the data item namely leaf[:n.NamespaceLen]).
+// Note that for leaves minNs = maxNs = ns(leaf) = leaf[:NamespaceLen].
+// HashLeaf can panic if the input is not properly namespaced.
+// to avoid panic, call ValidateNamespacedData on the input data `ndata` before calling HashLeaf.
+//
+//nolint:errcheck
+func (n *Hasher) HashLeaf(ndata []byte) []byte {
+	h := n.baseHasher
+	h.Reset()
+
+	nID := ndata[:n.NamespaceLen]
+	resLen := int(2*n.NamespaceLen) + n.baseHasher.Size()
+	minMaxNIDs := make([]byte, 0, resLen)
+	minMaxNIDs = append(minMaxNIDs, nID...) // nID
+	minMaxNIDs = append(minMaxNIDs, nID...) // nID || nID
+
+	// add LeafPrefix to the ndata
+	leafPrefixedNData := make([]byte, 0, len(ndata)+1)
+	leafPrefixedNData = append(leafPrefixedNData, LeafPrefix)
+	leafPrefixedNData = append(leafPrefixedNData, ndata...)
+	h.Write(leafPrefixedNData)
+
+	// compute h(LeafPrefix || ndata) and append it to the minMaxNIDs
+	nameSpacedHash := h.Sum(minMaxNIDs) // nID || nID || h(LeafPrefix || ndata)
+	return nameSpacedHash
+}
+
+// validateNodeFormat checks whether the supplied node conforms to the namespaced hash format.
+// the function returns true if the node is in correct format, otherwise false alongside with an error.
+func (n *Hasher) validateNodeFormat(node []byte) (validated bool, err error) {
+	totalNameSpaceLen := 2 * n.NamespaceLen
+	if len(node) < int(totalNameSpaceLen) {
+		return false, fmt.Errorf("node is not namespaced")
+	}
+	minND := namespace.ID(MinNamespace(node, n.NamespaceLen))
+	maxND := namespace.ID(MaxNamespace(node, n.NamespaceLen))
+	if maxND.Less(minND) {
+		return false, fmt.Errorf("min namespace ID %x is larger than max namespace ID %x", minND, maxND)
+	}
+	return true, nil
+}
+
+// validateNamespaceOrder checks whether left and right as two sibling nodes in an NMT have correct namespace IDs relative to each other, more specifically,
+// the maximum namespace ID of the left sibling should not exceed the minimum namespace ID of the right sibling.
+// the function returns true if the condition holds, otherwise false alongside with an error.
+func (n *Hasher) validateNamespaceOrder(left, right []byte) (verified bool, err error) {
+	// the actual hash result of the children got extended (or flagged) by their
+	// children's minNs || maxNs; hence the flagLen = 2 * NamespaceLen:
+	totalNameSpaceLen := 2 * n.NamespaceLen
+	leftMaxNs := namespace.ID(left[n.NamespaceLen:totalNameSpaceLen])
+	rightMinNs := namespace.ID(right[:n.NamespaceLen])
+
+	// check the namespace range of the left and right children
+	if rightMinNs.Less(leftMaxNs) {
+		return false, fmt.Errorf("the maximum namespace of the left child %x is greater than the min namespace of the right child %x", leftMaxNs, rightMinNs)
+	}
+	return true, nil
+}
+
+// ValidateNodes is helper function to be called prior to HashNode to verify the validity of the inputs of HashNode and avoid panics.
+// It verifies whether left and right comply by the namespace hash format, and are correctly ordered according to their namespace IDs.
+func (n *Hasher) ValidateNodes(left, right []byte) (bool, error) {
+	if _, err := n.validateNodeFormat(left); err != nil {
+		return false, err
+	}
+	if _, err := n.validateNodeFormat(right); err != nil {
+		return false, err
+	}
+	if _, err := n.validateNamespaceOrder(left, right); err != nil {
+		return false, err
 	}
 	return true, nil
 }
@@ -193,7 +211,7 @@ func (n *Hasher) ValidateNamespacedData(data []byte) (bool, error) {
 // values with the format "minNID || maxNID || hash." The HashNode function may
 // panic if the inputs provided are invalid, i.e., when left and right are not
 // in the namespaced hash format or when left.maxNID is greater than
-// right.minNID. To prevent panicking, it is advisable to check these criteria
+// right.minNID. To prevent panicking, call ValidateNodes(left, right) to check these criteria
 // before calling the HashNode function. By default, the normal namespace hash
 // calculation is followed, which is "res = min(left.minNID, right.minNID) ||
 // max(left.maxNID, right.maxNID) || H(NodePrefix, left, right)". "res" refers
