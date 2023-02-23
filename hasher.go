@@ -86,7 +86,9 @@ func (n *Hasher) Sum([]byte) []byte {
 	case NodePrefix:
 		flagLen := int(n.NamespaceLen) * 2
 		sha256Len := n.baseHasher.Size()
-		return n.HashNode(n.data[:flagLen+sha256Len], n.data[flagLen+sha256Len:])
+		leftChild := n.data[:flagLen+sha256Len]
+		rightChild := n.data[flagLen+sha256Len:]
+		return n.HashNode(leftChild, rightChild)
 	default:
 		panic("nmt node type wasn't set")
 	}
@@ -135,19 +137,23 @@ func (n *Hasher) HashLeaf(leaf []byte) []byte {
 
 // HashNode calculates a namespaced hash of a node using the supplied left and
 // right children. The input values, "left" and "right," are namespaced hash
-// values with the format "minNID || maxNID || hash." By default, the normal
-// namespace hash calculation is followed, which is "res = min(left.minNID,
-// right.minNID) || max(left.maxNID, right.maxNID) || H(NodePrefix, left,
-// right)". "res" refers to the return value of the HashNode. However, if the
-// "ignoreMaxNs" property of the Hasher is set to true, the calculation of the
-// namespace ID range of the node slightly changes. In this case, when setting
-// the upper range, the maximum possible namespace ID (i.e.,
-// 2^NamespaceIDSize-1) should be ignored if possible. This is achieved by
-// taking the maximum value among the namespace IDs available in the range of
-// its left and right children (i.e., max(left.minNID, left.maxNID ,
-// right.minNID, right.maxNID)), which is not equal to the maximum possible
-// namespace ID value. If such a namespace ID does not exist, the maximum NID is
-// calculated as normal, i.e., "res.maxNID = max(left.maxNID , right.maxNID).
+// values with the format "minNID || maxNID || hash." The HashNode function may
+// panic if the inputs provided are invalid, i.e., when left and right are not
+// in the namespaced hash format or when left.maxNID is greater than
+// right.minNID. To prevent panicking, it is advisable to check these criteria
+// before calling the HashNode function. By default, the normal namespace hash
+// calculation is followed, which is "res = min(left.minNID, right.minNID) ||
+// max(left.maxNID, right.maxNID) || H(NodePrefix, left, right)". "res" refers
+// to the return value of the HashNode. However, if the "ignoreMaxNs" property
+// of the Hasher is set to true, the calculation of the namespace ID range of
+// the node slightly changes. In this case, when setting the upper range, the
+// maximum possible namespace ID (i.e., 2^NamespaceIDSize-1) should be ignored
+// if possible. This is achieved by taking the maximum value among the namespace
+// IDs available in the range of its left and right children (i.e.,
+// max(left.minNID, left.maxNID , right.minNID, right.maxNID)), which is not
+// equal to the maximum possible namespace ID value. If such a namespace ID does
+// not exist, the maximum NID is calculated as normal, i.e., "res.maxNID =
+// max(left.maxNID , right.maxNID).
 func (n *Hasher) HashNode(left, right []byte) []byte {
 	h := n.baseHasher
 	h.Reset()
@@ -157,6 +163,13 @@ func (n *Hasher) HashNode(left, right []byte) []byte {
 	flagLen := 2 * n.NamespaceLen
 	leftMinNs, leftMaxNs := left[:n.NamespaceLen], left[n.NamespaceLen:flagLen]
 	rightMinNs, rightMaxNs := right[:n.NamespaceLen], right[n.NamespaceLen:flagLen]
+
+	// check the namespace range of the left and right children
+	rightMinNID := namespace.ID(rightMinNs)
+	leftMaxNID := namespace.ID(leftMaxNs)
+	if rightMinNID.Less(leftMaxNID) {
+		panic("nodes are out of order: the maximum namespace of the left child is greater than the min namespace of the right child")
+	}
 
 	minNs := min(leftMinNs, rightMinNs)
 	var maxNs []byte

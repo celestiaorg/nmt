@@ -89,14 +89,6 @@ func Test_namespacedTreeHasher_HashNode(t *testing.T) {
 				sum(crypto.SHA256, []byte{NodePrefix}, []byte{0, 0, 0, 0}, []byte{0, 0, 1, 1})...,
 			),
 		},
-		{
-			"leftmin==rightmin && leftmax>rightmax", 2,
-			children{[]byte{0, 0, 1, 1}, []byte{0, 0, 0, 1}},
-			append(
-				[]byte{0, 0, 1, 1},
-				sum(crypto.SHA256, []byte{NodePrefix}, []byte{0, 0, 1, 1}, []byte{0, 0, 0, 1})...,
-			),
-		},
 		// XXX: can this happen in practice? or is this an invalid state?
 		{
 			"leftmin>rightmin && leftmax<rightmax", 2,
@@ -194,6 +186,49 @@ func TestNamespaceHasherSum(t *testing.T) {
 			_, _ = h.Write(make([]byte, ts.writtenSize))
 			sum := h.Sum(nil)
 			assert.Equal(t, len(sum), ts.expectedSize)
+		})
+	}
+}
+
+func TestHashNode_ChildrenNamespaceRange(t *testing.T) {
+	type children struct {
+		l []byte // namespace hash of the left child with the format of MinNs||MaxNs||h
+		r []byte // namespace hash of the right child with the format of MinNs||MaxNs||h
+	}
+
+	tests := []struct {
+		name      string
+		nidLen    namespace.IDSize
+		children  children
+		wantPanic bool // whether the test should panic or nor
+	}{
+		{
+			"left.maxNs>right.minNs", 2,
+			children{[]byte{0, 0, 1, 1}, []byte{0, 0, 1, 1}},
+			true, // this test case should panic since in an ordered NMT, left.maxNs cannot be greater than right.minNs
+		},
+		{
+			"left.maxNs=right.minNs", 2,
+			children{[]byte{0, 0, 1, 1}, []byte{1, 1, 2, 2}},
+			false,
+		},
+		{
+			"left.maxNs<right.minNs", 2,
+			children{[]byte{0, 0, 1, 1}, []byte{2, 2, 3, 3}},
+			false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			defer func() {
+				gotPanic := false
+				if r := recover(); r != nil { // here we check whether panic happened
+					gotPanic = true
+				}
+				assert.Equal(t, tt.wantPanic, gotPanic)
+			}()
+			n := NewNmtHasher(sha256.New(), tt.nidLen, false)
+			n.HashNode(tt.children.l, tt.children.r)
 		})
 	}
 }
