@@ -63,8 +63,8 @@ func (n *Hasher) Size() int {
 
 // Write writes the namespaced data to be hashed.
 //
-// Requires data of fixed size to match leaf or inner NMT nodes. Only a single
-// write is allowed.
+// Requires data of fixed size to match leaf or inner NMT nodes,
+// otherwise, returns error. Only a single write is allowed.
 func (n *Hasher) Write(data []byte) (int, error) {
 	if n.data != nil {
 		panic("only a single Write is allowed")
