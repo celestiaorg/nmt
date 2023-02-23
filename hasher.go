@@ -2,6 +2,7 @@ package nmt
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"hash"
 
@@ -16,7 +17,8 @@ const (
 var _ hash.Hash = (*Hasher)(nil)
 
 var (
-// ErrInvalidRange
+	ErrInvalidNamespaceRange = errors.New("min namespace ID is greater than max namespace ID for NMT node")
+	ErrUnorderedSiblings     = errors.New("NMT sibling nodes should be ordered lexicographically by namespace IDs")
 )
 
 type Hasher struct {
