@@ -3,6 +3,7 @@ package nmt
 import (
 	"crypto"
 	"crypto/sha256"
+	"errors"
 	"reflect"
 	"testing"
 
@@ -231,4 +232,107 @@ func TestHashNode_ChildrenNamespaceRange(t *testing.T) {
 			n.HashNode(tt.children.l, tt.children.r)
 		})
 	}
+}
+
+func TestValidateSiblingsNamespaceOrder(t *testing.T) {
+	type children struct {
+		l []byte // namespace hash of the left child with the format of MinNs||MaxNs||h
+		r []byte // namespace hash of the right child with the format of MinNs||MaxNs||h
+	}
+
+	tests := []struct {
+		name     string
+		nidLen   namespace.IDSize
+		children children
+		wantErr  bool
+	}{
+		{
+			"left.maxNs>right.minNs", 2,
+			children{[]byte{0, 0, 1, 1}, []byte{0, 0, 1, 1}},
+			true,
+		},
+		{
+			"left.maxNs=right.minNs", 2,
+			children{[]byte{0, 0, 1, 1}, []byte{1, 1, 2, 2}},
+			false,
+		},
+		{
+			"left.maxNs<right.minNs", 2,
+			children{[]byte{0, 0, 1, 1}, []byte{2, 2, 3, 3}},
+			false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			n := NewNmtHasher(sha256.New(), tt.nidLen, false)
+			err := n.validateSiblingsNamespaceOrder(tt.children.l, tt.children.r)
+			assert.Equal(t, tt.wantErr, err != nil)
+			if err != nil {
+				assert.True(t, errors.Is(err, ErrUnorderedSiblings))
+			}
+		})
+	}
+}
+
+func TestValidateNodeFormat(t *testing.T) {
+
+	tests := []struct {
+		name    string
+		nIDLen  namespace.IDSize
+		minNID  []byte
+		maxNID  []byte
+		hash    []byte
+		wantErr bool
+		errType error
+	}{
+		{ // valid node
+			"valid node: minNID < maxNID",
+			2,
+			[]byte{0, 0},
+			[]byte{1, 1},
+			[]byte{1, 2, 3, 4},
+			false,
+			nil,
+		},
+		{ // valid node
+			"valid node: minNID = maxNID",
+			2,
+			[]byte{0, 0},
+			[]byte{0, 0},
+			[]byte{1, 2, 3, 4},
+			false,
+			nil,
+		},
+		{ // invalid namespace range: minNID > maxNID
+			"invalid node: minNID > maxNID",
+			2,
+			[]byte{1, 1},
+			[]byte{0, 0},
+			[]byte{1, 2, 3, 4},
+			true,
+			ErrInvalidNamespaceRange,
+		},
+		{ // mismatched namespace size
+			"invalid node: mismatching namespace sizes",
+			2,
+			[]byte{0},
+			[]byte{1},
+			[]byte{0},
+			true,
+			ErrMismatchedNamespaceSize,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			n := NewNmtHasher(sha256.New(), tt.nIDLen, false)
+			err := n.validateNodeFormat(append(append(tt.minNID, tt.maxNID...), tt.hash...))
+			assert.Equal(t, tt.wantErr, err != nil)
+			if tt.wantErr {
+				assert.True(t, errors.Is(err, tt.errType))
+			}
+		})
+
+	}
+
 }
