@@ -166,12 +166,12 @@ func (n *Hasher) HashLeaf(ndata []byte) []byte {
 func (n *Hasher) validateNodeFormat(node []byte) (validated bool, err error) {
 	totalNameSpaceLen := 2 * n.NamespaceLen
 	if len(node) < int(totalNameSpaceLen) {
-		return false, fmt.Errorf("node is not namespaced")
+		return false, fmt.Errorf("%w: got: %v, want >= %v", ErrMismatchedNamespaceSize, len(node), totalNameSpaceLen)
 	}
 	minND := namespace.ID(MinNamespace(node, n.NamespaceLen))
 	maxND := namespace.ID(MaxNamespace(node, n.NamespaceLen))
 	if maxND.Less(minND) {
-		return false, fmt.Errorf("min namespace ID %x is larger than max namespace ID %x", minND, maxND)
+		return false, fmt.Errorf("%w: min namespace ID %x > max namespace ID %x", ErrInvalidNamespaceRange, minND, maxND)
 	}
 	return true, nil
 }
@@ -188,7 +188,7 @@ func (n *Hasher) validateNamespaceOrder(left, right []byte) (verified bool, err 
 
 	// check the namespace range of the left and right children
 	if rightMinNs.Less(leftMaxNs) {
-		return false, fmt.Errorf("the maximum namespace of the left child %x is greater than the min namespace of the right child %x", leftMaxNs, rightMinNs)
+		return false, fmt.Errorf("%w: the maximum namespace of the left child %x is greater than the min namespace of the right child %x", ErrUnorderedSiblings, leftMaxNs, rightMinNs)
 	}
 	return true, nil
 }
