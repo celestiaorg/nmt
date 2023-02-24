@@ -120,18 +120,19 @@ func (n *Hasher) EmptyRoot() []byte {
 // IsNamespacedData checks whether data is namespace prefixed.
 func (n *Hasher) IsNamespacedData(data []byte) (err error) {
 	nidSize := int(n.NamespaceSize())
-	if len(data) < nidSize {
-		return fmt.Errorf("%w: got: %v, want >= %v", ErrMismatchedNamespaceSize, len(data), nidSize)
+	lenData := len(data)
+	if lenData < nidSize {
+		return fmt.Errorf("%w: got: %v, want >= %v", ErrMismatchedNamespaceSize, lenData, nidSize)
 	}
 	return nil
 }
 
-// HashLeaf computes namespace hash of the namespaced data item `ndata` to:
-// the namespaced hash has the following format: ns(ndata) || ns(ndata) || hash(leafPrefix || ndata),
-// where ns(ndata) is the namespaceID inside the data item namely leaf[:n.NamespaceLen]).
-// Note that for leaves minNs = maxNs = ns(leaf) = leaf[:NamespaceLen].
-// HashLeaf can panic if the input is not properly namespaced.
-// to avoid panic, call IsNamespacedData on the input data `ndata` before invoking HashLeaf method.
+// HashLeaf computes namespace hash of the namespaced data item `ndata` as
+// ns(ndata) || ns(ndata) || hash(leafPrefix || ndata), where ns(ndata) is the
+// namespaceID inside the data item namely leaf[:n.NamespaceLen]). Note that for
+// leaves minNs = maxNs = ns(leaf) = leaf[:NamespaceLen]. HashLeaf can panic if
+// the input is not properly namespaced. To avoid panic, call IsNamespacedData
+// on the input data `ndata` before invoking HashLeaf method.
 //
 //nolint:errcheck
 func (n *Hasher) HashLeaf(ndata []byte) []byte {
@@ -159,8 +160,9 @@ func (n *Hasher) HashLeaf(ndata []byte) []byte {
 // namespaced hash format.
 func (n *Hasher) validateNodeFormat(node []byte) (err error) {
 	totalNameSpaceLen := 2 * n.NamespaceLen
-	if len(node) < int(totalNameSpaceLen) {
-		return fmt.Errorf("%w: got: %v, want >= %v", ErrMismatchedNamespaceSize, len(node), totalNameSpaceLen)
+	nodeLen := len(node)
+	if nodeLen < int(totalNameSpaceLen) {
+		return fmt.Errorf("%w: got: %v, want >= %v", ErrMismatchedNamespaceSize, nodeLen, totalNameSpaceLen)
 	}
 	return nil
 }
@@ -172,8 +174,7 @@ func (n *Hasher) validateNodeFormat(node []byte) (err error) {
 // that the left and right nodes are in correct format, i.e., they are
 // namespaced hash values.
 func (n *Hasher) validateSiblingsNamespaceOrder(left, right []byte) (err error) {
-	// the actual hash result of the children got extended (or flagged) by their
-	// children's minNs || maxNs; hence the flagLen = 2 * NamespaceLen:
+	// each NMT node has two namespace IDs for the min and max
 	totalNameSpaceLen := 2 * n.NamespaceLen
 	leftMaxNs := namespace.ID(left[n.NamespaceLen:totalNameSpaceLen])
 	rightMinNs := namespace.ID(right[:n.NamespaceLen])
