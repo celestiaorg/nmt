@@ -169,11 +169,11 @@ func (n *Hasher) validateNodeFormat(node []byte) (err error) {
 	if len(node) < int(totalNameSpaceLen) {
 		return fmt.Errorf("%w: got: %v, want >= %v", ErrMismatchedNamespaceSize, len(node), totalNameSpaceLen)
 	}
-	minND := namespace.ID(MinNamespace(node, n.NamespaceLen))
-	maxND := namespace.ID(MaxNamespace(node, n.NamespaceLen))
-	if maxND.Less(minND) {
-		return fmt.Errorf("%w: min namespace ID %x > max namespace ID %x", ErrInvalidNamespaceRange, minND, maxND)
-	}
+	// minND := namespace.ID(MinNamespace(node, n.NamespaceLen))
+	// maxND := namespace.ID(MaxNamespace(node, n.NamespaceLen))
+	// if maxND.Less(minND) {
+	// 	return fmt.Errorf("%w: min namespace ID %x > max namespace ID %x", ErrInvalidNamespaceRange, minND, maxND)
+	// }
 	return nil
 }
 
@@ -233,18 +233,23 @@ func (n *Hasher) HashNode(left, right []byte) []byte {
 	h := n.baseHasher
 	h.Reset()
 
+	if err := n.validateNodeFormat(left); err != nil {
+		panic(err)
+	}
+	if err := n.validateNodeFormat(right); err != nil {
+		panic(err)
+	}
+
+	// check the namespace range of the left and right children
+	if err := n.validateSiblingsNamespaceOrder(left, right); err != nil {
+		panic(err)
+	}
+
 	// the actual hash result of the children got extended (or flagged) by their
 	// children's minNs || maxNs; hence the flagLen = 2 * NamespaceLen:
 	flagLen := 2 * n.NamespaceLen
 	leftMinNs, leftMaxNs := left[:n.NamespaceLen], left[n.NamespaceLen:flagLen]
 	rightMinNs, rightMaxNs := right[:n.NamespaceLen], right[n.NamespaceLen:flagLen]
-
-	// check the namespace range of the left and right children
-	rightMinNID := namespace.ID(rightMinNs)
-	leftMaxNID := namespace.ID(leftMaxNs)
-	if rightMinNID.Less(leftMaxNID) {
-		panic("nodes are out of order: the maximum namespace of the left child is greater than the min namespace of the right child")
-	}
 
 	minNs := min(leftMinNs, rightMinNs)
 	var maxNs []byte
