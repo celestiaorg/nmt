@@ -294,24 +294,6 @@ func TestValidateNodeFormat(t *testing.T) {
 			false,
 			nil,
 		},
-		// { // valid node
-		// 	"valid node: minNID = maxNID",
-		// 	2,
-		// 	[]byte{0, 0},
-		// 	[]byte{0, 0},
-		// 	[]byte{1, 2, 3, 4},
-		// 	false,
-		// 	nil,
-		// },
-		// { // invalid namespace range: minNID > maxNID
-		// 	"invalid node: minNID > maxNID",
-		// 	2,
-		// 	[]byte{1, 1},
-		// 	[]byte{0, 0},
-		// 	[]byte{1, 2, 3, 4},
-		// 	true,
-		// 	ErrInvalidNamespaceRange,
-		// },
 		{ // mismatched namespace size
 			"invalid node: mismatching namespace sizes",
 			2,
@@ -425,16 +407,6 @@ func TestHashNodeWithValidateNodes(t *testing.T) {
 			children{[]byte{0, 0, 1, 1}, []byte{0, 0, 1, 1}},
 			true,
 		},
-		// {
-		// 	"left.minID>left.maxID", 2,
-		// 	children{[]byte{1, 1, 0, 0}, []byte{0, 0, 0, 0}},
-		// 	true,
-		// },
-		// {
-		// 	"right.minID>right.maxID", 2,
-		// 	children{[]byte{0, 0, 0, 0}, []byte{1, 1, 0, 0}},
-		// 	true,
-		// },
 		{
 			"len(left)<NamespaceLen", 2,
 			children{[]byte{0}, []byte{2, 2, 3, 3}},
