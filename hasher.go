@@ -119,8 +119,7 @@ func (n *Hasher) EmptyRoot() []byte {
 	return digest
 }
 
-// IsNamespacedData checks whether data is namespace prefixed, it not returns
-// false together with an error.
+// IsNamespacedData checks whether data is namespace prefixed.
 func (n *Hasher) IsNamespacedData(data []byte) (err error) {
 	nidSize := int(n.NamespaceSize())
 	if len(data) < nidSize {
