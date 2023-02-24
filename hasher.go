@@ -17,8 +17,7 @@ const (
 var _ hash.Hash = (*Hasher)(nil)
 
 var (
-	ErrInvalidNamespaceRange = errors.New("min namespace ID is greater than max namespace ID for NMT node")
-	ErrUnorderedSiblings     = errors.New("NMT sibling nodes should be ordered lexicographically by namespace IDs")
+	ErrUnorderedSiblings = errors.New("NMT sibling nodes should be ordered lexicographically by namespace IDs")
 )
 
 type Hasher struct {
@@ -225,7 +224,8 @@ func (n *Hasher) ValidateNodes(left, right []byte) error {
 // right.minNID, right.maxNID)), which is not equal to the maximum possible
 // namespace ID value. If such a namespace ID does not exist, the maximum NID is
 // calculated as normal, i.e., "res.maxNID = max(left.maxNID , right.maxNID).
-func (n *Hasher) HashNode(left, right []byte) []byte {å
+func (n *Hasher) HashNode(left, right []byte) []byte {
+	å
 	h := n.baseHasher
 	h.Reset()
 
