@@ -163,24 +163,17 @@ func (n *Hasher) HashLeaf(ndata []byte) []byte {
 }
 
 // validateNodeFormat checks whether the supplied node conforms to the namespaced hash format.
-// the function returns true if the node is in correct format, otherwise false alongside with an error.
 func (n *Hasher) validateNodeFormat(node []byte) (err error) {
 	totalNameSpaceLen := 2 * n.NamespaceLen
 	if len(node) < int(totalNameSpaceLen) {
 		return fmt.Errorf("%w: got: %v, want >= %v", ErrMismatchedNamespaceSize, len(node), totalNameSpaceLen)
 	}
-	// minND := namespace.ID(MinNamespace(node, n.NamespaceLen))
-	// maxND := namespace.ID(MaxNamespace(node, n.NamespaceLen))
-	// if maxND.Less(minND) {
-	// 	return fmt.Errorf("%w: min namespace ID %x > max namespace ID %x", ErrInvalidNamespaceRange, minND, maxND)
-	// }
 	return nil
 }
 
 // validateSiblingsNamespaceOrder checks whether left and right as two sibling nodes in an NMT have correct namespace IDs relative to each other, more specifically,
 // the maximum namespace ID of the left sibling should not exceed the minimum namespace ID of the right sibling.
-// the function returns true if the condition holds, otherwise false alongside with an error.
-// Note that the function assumes that the left and right nodes are in correct format, i.e., they are namespaced hashes.
+// Note that the function assumes that the left and right nodes are in correct format, i.e., they are namespaced hash values.
 func (n *Hasher) validateSiblingsNamespaceOrder(left, right []byte) (err error) {
 	// the actual hash result of the children got extended (or flagged) by their
 	// children's minNs || maxNs; hence the flagLen = 2 * NamespaceLen:
