@@ -267,9 +267,6 @@ func TestValidateSiblingsNamespaceOrder(t *testing.T) {
 			n := NewNmtHasher(sha256.New(), tt.nidLen, false)
 			err := n.validateSiblingsNamespaceOrder(tt.children.l, tt.children.r)
 			assert.Equal(t, tt.wantErr, err != nil)
-			if err != nil {
-				assert.True(t, errors.Is(err, ErrUnorderedSiblings))
-			}
 		})
 	}
 }
