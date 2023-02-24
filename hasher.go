@@ -16,9 +16,7 @@ const (
 
 var _ hash.Hash = (*Hasher)(nil)
 
-var (
-	ErrUnorderedSiblings = errors.New("NMT sibling nodes should be ordered lexicographically by namespace IDs")
-)
+var ErrUnorderedSiblings = errors.New("NMT sibling nodes should be ordered lexicographically by namespace IDs")
 
 type Hasher struct {
 	baseHasher   hash.Hash
@@ -129,7 +127,7 @@ func (n *Hasher) IsNamespacedData(data []byte) (err error) {
 }
 
 // HashLeaf computes namespace hash of the namespaced data item `ndata` to:
-// the namespaced hash has the following format: ns(ndata) || ns(ndata) || hash(leafPrefix || ndata), 
+// the namespaced hash has the following format: ns(ndata) || ns(ndata) || hash(leafPrefix || ndata),
 // where ns(ndata) is the namespaceID inside the data item namely leaf[:n.NamespaceLen]).
 // Note that for leaves minNs = maxNs = ns(leaf) = leaf[:NamespaceLen].
 // HashLeaf can panic if the input is not properly namespaced.

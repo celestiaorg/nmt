@@ -275,7 +275,6 @@ func TestValidateSiblingsNamespaceOrder(t *testing.T) {
 }
 
 func TestValidateNodeFormat(t *testing.T) {
-
 	tests := []struct {
 		name    string
 		nIDLen  namespace.IDSize
@@ -314,9 +313,7 @@ func TestValidateNodeFormat(t *testing.T) {
 				assert.True(t, errors.Is(err, tt.errType))
 			}
 		})
-
 	}
-
 }
 
 func TestIsNamespacedData(t *testing.T) {
