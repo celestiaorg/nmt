@@ -63,8 +63,8 @@ func (n *Hasher) Size() int {
 
 // Write writes the namespaced data to be hashed.
 //
-// Requires data of fixed size to match leaf or inner NMT nodes.
-// Only a single write is allowed.
+// Requires data of fixed size to match leaf or inner NMT nodes. Only a single
+// write is allowed.
 func (n *Hasher) Write(data []byte) (int, error) {
 	if n.data != nil {
 		panic("only a single Write is allowed")
@@ -120,7 +120,8 @@ func (n *Hasher) EmptyRoot() []byte {
 	return digest
 }
 
-// IsNamespacedData checks whether data is namespace prefixed, it not returns false together with an error.
+// IsNamespacedData checks whether data is namespace prefixed, it not returns
+// false together with an error.
 func (n *Hasher) IsNamespacedData(data []byte) (err error) {
 	nidSize := int(n.NamespaceSize())
 	if len(data) < nidSize {
@@ -158,7 +159,8 @@ func (n *Hasher) HashLeaf(ndata []byte) []byte {
 	return nameSpacedHash
 }
 
-// validateNodeFormat checks whether the supplied node conforms to the namespaced hash format.
+// validateNodeFormat checks whether the supplied node conforms to the
+// namespaced hash format.
 func (n *Hasher) validateNodeFormat(node []byte) (err error) {
 	totalNameSpaceLen := 2 * n.NamespaceLen
 	if len(node) < int(totalNameSpaceLen) {
@@ -167,9 +169,12 @@ func (n *Hasher) validateNodeFormat(node []byte) (err error) {
 	return nil
 }
 
-// validateSiblingsNamespaceOrder checks whether left and right as two sibling nodes in an NMT have correct namespace IDs relative to each other, more specifically,
-// the maximum namespace ID of the left sibling should not exceed the minimum namespace ID of the right sibling.
-// Note that the function assumes that the left and right nodes are in correct format, i.e., they are namespaced hash values.
+// validateSiblingsNamespaceOrder checks whether left and right as two sibling
+// nodes in an NMT have correct namespace IDs relative to each other, more
+// specifically, the maximum namespace ID of the left sibling should not exceed
+// the minimum namespace ID of the right sibling. Note that the function assumes
+// that the left and right nodes are in correct format, i.e., they are
+// namespaced hash values.
 func (n *Hasher) validateSiblingsNamespaceOrder(left, right []byte) (err error) {
 	// the actual hash result of the children got extended (or flagged) by their
 	// children's minNs || maxNs; hence the flagLen = 2 * NamespaceLen:
@@ -184,8 +189,10 @@ func (n *Hasher) validateSiblingsNamespaceOrder(left, right []byte) (err error) 
 	return nil
 }
 
-// ValidateNodes is helper function to be called prior to HashNode to verify the validity of the inputs of HashNode and avoid panics.
-// It verifies whether left and right comply by the namespace hash format, and are correctly ordered according to their namespace IDs.
+// ValidateNodes is helper function to be called prior to HashNode to verify the
+// validity of the inputs of HashNode and avoid panics. It verifies whether left
+// and right comply by the namespace hash format, and are correctly ordered
+// according to their namespace IDs.
 func (n *Hasher) ValidateNodes(left, right []byte) error {
 	if err := n.validateNodeFormat(left); err != nil {
 		return err
@@ -204,21 +211,21 @@ func (n *Hasher) ValidateNodes(left, right []byte) error {
 // values with the format "minNID || maxNID || hash." The HashNode function may
 // panic if the inputs provided are invalid, i.e., when left and right are not
 // in the namespaced hash format or when left.maxNID is greater than
-// right.minNID. To prevent panicking, call ValidateNodes(left, right) to check these criteria
-// before calling the HashNode function. By default, the normal namespace hash
-// calculation is followed, which is "res = min(left.minNID, right.minNID) ||
-// max(left.maxNID, right.maxNID) || H(NodePrefix, left, right)". "res" refers
-// to the return value of the HashNode. However, if the "ignoreMaxNs" property
-// of the Hasher is set to true, the calculation of the namespace ID range of
-// the node slightly changes. In this case, when setting the upper range, the
-// maximum possible namespace ID (i.e., 2^NamespaceIDSize-1) should be ignored
-// if possible. This is achieved by taking the maximum value among the namespace
-// IDs available in the range of its left and right children (i.e.,
-// max(left.minNID, left.maxNID , right.minNID, right.maxNID)), which is not
-// equal to the maximum possible namespace ID value. If such a namespace ID does
-// not exist, the maximum NID is calculated as normal, i.e., "res.maxNID =
-// max(left.maxNID , right.maxNID).
-func (n *Hasher) HashNode(left, right []byte) []byte {
+// right.minNID. To prevent panicking, call ValidateNodes(left, right) to check
+// these criteria before calling the HashNode function. By default, the normal
+// namespace hash calculation is followed, which is "res = min(left.minNID,
+// right.minNID) || max(left.maxNID, right.maxNID) || H(NodePrefix, left,
+// right)". "res" refers to the return value of the HashNode. However, if the
+// "ignoreMaxNs" property of the Hasher is set to true, the calculation of the
+// namespace ID range of the node slightly changes. In this case, when setting
+// the upper range, the maximum possible namespace ID (i.e.,
+// 2^NamespaceIDSize-1) should be ignored if possible. This is achieved by
+// taking the maximum value among the namespace IDs available in the range of
+// its left and right children (i.e., max(left.minNID, left.maxNID ,
+// right.minNID, right.maxNID)), which is not equal to the maximum possible
+// namespace ID value. If such a namespace ID does not exist, the maximum NID is
+// calculated as normal, i.e., "res.maxNID = max(left.maxNID , right.maxNID).
+func (n *Hasher) HashNode(left, right []byte) []byte {å
 	h := n.baseHasher
 	h.Reset()
 
