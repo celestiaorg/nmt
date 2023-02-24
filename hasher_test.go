@@ -282,7 +282,7 @@ func TestValidateNodeFormat(t *testing.T) {
 		errType error
 	}{
 		{ // valid node
-			"valid node: minNID < maxNID",
+			"valid node",
 			2,
 			[]byte{0, 0},
 			[]byte{1, 1},
@@ -315,38 +315,38 @@ func TestValidateNodeFormat(t *testing.T) {
 
 func TestIsNamespacedData(t *testing.T) {
 	tests := []struct {
-		name         string
-		data         []byte
-		nIDLen       namespace.IDSize
-		isNamespaced bool
+		name    string
+		data    []byte
+		nIDLen  namespace.IDSize
+		wantErr bool
 	}{
 		{
 			"valid namespaced data",
 			[]byte{0, 0},
 			2,
-			true,
+			false,
 		},
 		{
 			"non-namespaced data",
 			[]byte{1},
 			2,
-			false,
+			true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			n := NewNmtHasher(sha256.New(), tt.nIDLen, false)
-			assert.Equal(t, tt.isNamespaced, n.IsNamespacedData(tt.data) == nil)
+			assert.Equal(t, tt.wantErr, n.IsNamespacedData(tt.data) != nil)
 		})
 	}
 }
 
 func TestHashLeafWithIsNamespacedData(t *testing.T) {
 	tests := []struct {
-		name      string
-		data      []byte
-		nIDLen    namespace.IDSize
-		wantPanic bool
+		name    string
+		data    []byte
+		nIDLen  namespace.IDSize
+		wantErr bool
 	}{
 		{
 			"valid namespaced data",
@@ -364,7 +364,7 @@ func TestHashLeafWithIsNamespacedData(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			n := NewNmtHasher(sha256.New(), tt.nIDLen, false)
-			if tt.wantPanic {
+			if tt.wantErr {
 				require.Error(t, n.IsNamespacedData(tt.data))
 				require.Panics(t, func() {
 					n.HashLeaf(tt.data)
@@ -403,12 +403,12 @@ func TestHashNodeWithValidateNodes(t *testing.T) {
 		},
 		{
 			"len(left)<NamespaceLen", 2,
-			children{[]byte{0}, []byte{2, 2, 3, 3}},
+			children{[]byte{0, 0, 1}, []byte{2, 2, 3, 3}},
 			true,
 		},
 		{
 			"len(right)<NamespaceLen", 2,
-			children{[]byte{0, 0, 1, 1}, []byte{2}},
+			children{[]byte{0, 0, 1, 1}, []byte{2, 2, 3}},
 			true,
 		},
 	}
