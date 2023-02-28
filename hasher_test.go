@@ -297,7 +297,7 @@ func TestValidateNodeFormat(t *testing.T) {
 			[]byte{1},
 			[]byte{0},
 			true,
-			ErrMismatchedNamespaceSize,
+			ErrInvalidNodeLen,
 		},
 	}
 

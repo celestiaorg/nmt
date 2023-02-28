@@ -16,7 +16,10 @@ const (
 
 var _ hash.Hash = (*Hasher)(nil)
 
-var ErrUnorderedSiblings = errors.New("NMT sibling nodes should be ordered lexicographically by namespace IDs")
+var (
+	ErrUnorderedSiblings = errors.New("NMT sibling nodes should be ordered lexicographically by namespace IDs")
+	ErrInvalidNodeLen    = errors.New("Invalid NMT node size")
+)
 
 type Hasher struct {
 	baseHasher   hash.Hash
@@ -159,10 +162,10 @@ func (n *Hasher) HashLeaf(ndata []byte) []byte {
 // validateNodeFormat checks whether the supplied node conforms to the
 // namespaced hash format.
 func (n *Hasher) validateNodeFormat(node []byte) (err error) {
-	totalNameSpaceLen := 2 * n.NamespaceLen
+	totalNamespaceLen := 2 * n.NamespaceLen
 	nodeLen := len(node)
-	if nodeLen < int(totalNameSpaceLen) {
-		return fmt.Errorf("%w: got: %v, want >= %v", ErrMismatchedNamespaceSize, nodeLen, totalNameSpaceLen)
+	if nodeLen < int(totalNamespaceLen) {
+		return fmt.Errorf("%w: got: %v, want >= %v", ErrInvalidNodeLen, nodeLen, totalNamespaceLen)
 	}
 	return nil
 }
@@ -175,8 +178,8 @@ func (n *Hasher) validateNodeFormat(node []byte) (err error) {
 // namespaced hash values.
 func (n *Hasher) validateSiblingsNamespaceOrder(left, right []byte) (err error) {
 	// each NMT node has two namespace IDs for the min and max
-	totalNameSpaceLen := 2 * n.NamespaceLen
-	leftMaxNs := namespace.ID(left[n.NamespaceLen:totalNameSpaceLen])
+	totalNamespaceLen := 2 * n.NamespaceLen
+	leftMaxNs := namespace.ID(left[n.NamespaceLen:totalNamespaceLen])
 	rightMinNs := namespace.ID(right[:n.NamespaceLen])
 
 	// check the namespace range of the left and right children
