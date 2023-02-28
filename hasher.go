@@ -142,6 +142,10 @@ func (n *Hasher) HashLeaf(ndata []byte) []byte {
 	h := n.baseHasher
 	h.Reset()
 
+	if err := n.IsNamespacedData(ndata); err != nil {
+		panic(err)
+	}
+
 	nID := ndata[:n.NamespaceLen]
 	resLen := int(2*n.NamespaceLen) + n.baseHasher.Size()
 	minMaxNIDs := make([]byte, 0, resLen)
