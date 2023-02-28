@@ -3,6 +3,7 @@ package nmt
 import (
 	"crypto"
 	"crypto/sha256"
+	"errors"
 	"reflect"
 	"testing"
 
@@ -229,6 +230,197 @@ func TestHashNode_ChildrenNamespaceRange(t *testing.T) {
 			}()
 			n := NewNmtHasher(sha256.New(), tt.nidLen, false)
 			n.HashNode(tt.children.l, tt.children.r)
+		})
+	}
+}
+
+func TestValidateSiblingsNamespaceOrder(t *testing.T) {
+	type children struct {
+		l []byte // namespace hash of the left child with the format of MinNs||MaxNs||h
+		r []byte // namespace hash of the right child with the format of MinNs||MaxNs||h
+	}
+
+	tests := []struct {
+		name     string
+		nidLen   namespace.IDSize
+		children children
+		wantErr  bool
+	}{
+		{
+			"left.maxNs>right.minNs", 2,
+			children{[]byte{0, 0, 1, 1}, []byte{0, 0, 1, 1}},
+			true,
+		},
+		{
+			"left.maxNs=right.minNs", 2,
+			children{[]byte{0, 0, 1, 1}, []byte{1, 1, 2, 2}},
+			false,
+		},
+		{
+			"left.maxNs<right.minNs", 2,
+			children{[]byte{0, 0, 1, 1}, []byte{2, 2, 3, 3}},
+			false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			n := NewNmtHasher(sha256.New(), tt.nidLen, false)
+			err := n.validateSiblingsNamespaceOrder(tt.children.l, tt.children.r)
+			assert.Equal(t, tt.wantErr, err != nil)
+		})
+	}
+}
+
+func TestValidateNodeFormat(t *testing.T) {
+	tests := []struct {
+		name    string
+		nIDLen  namespace.IDSize
+		minNID  []byte
+		maxNID  []byte
+		hash    []byte
+		wantErr bool
+		errType error
+	}{
+		{ // valid node
+			"valid node",
+			2,
+			[]byte{0, 0},
+			[]byte{1, 1},
+			[]byte{1, 2, 3, 4},
+			false,
+			nil,
+		},
+		{ // mismatched namespace size
+			"invalid node: length",
+			2,
+			[]byte{0},
+			[]byte{1},
+			[]byte{0},
+			true,
+			ErrInvalidNodeLen,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			n := NewNmtHasher(sha256.New(), tt.nIDLen, false)
+			err := n.validateNodeFormat(append(append(tt.minNID, tt.maxNID...), tt.hash...))
+			assert.Equal(t, tt.wantErr, err != nil)
+			if tt.wantErr {
+				assert.True(t, errors.Is(err, tt.errType))
+			}
+		})
+	}
+}
+
+func TestIsNamespacedData(t *testing.T) {
+	tests := []struct {
+		name    string
+		data    []byte
+		nIDLen  namespace.IDSize
+		wantErr bool
+	}{
+		{
+			"valid namespaced data",
+			[]byte{0, 0},
+			2,
+			false,
+		},
+		{
+			"non-namespaced data",
+			[]byte{1},
+			2,
+			true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			n := NewNmtHasher(sha256.New(), tt.nIDLen, false)
+			assert.Equal(t, tt.wantErr, n.IsNamespacedData(tt.data) != nil)
+		})
+	}
+}
+
+func TestHashLeafWithIsNamespacedData(t *testing.T) {
+	tests := []struct {
+		name    string
+		data    []byte
+		nIDLen  namespace.IDSize
+		wantErr bool
+	}{
+		{
+			"valid namespaced data",
+			[]byte{0, 0},
+			2,
+			false,
+		},
+		{
+			"non-namespaced data",
+			[]byte{1},
+			2,
+			true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			n := NewNmtHasher(sha256.New(), tt.nIDLen, false)
+			if tt.wantErr {
+				require.Error(t, n.IsNamespacedData(tt.data))
+				require.Panics(t, func() {
+					n.HashLeaf(tt.data)
+				})
+			}
+		})
+	}
+}
+
+func TestHashNodeWithValidateNodes(t *testing.T) {
+	type children struct {
+		l []byte // namespace hash of the left child with the format of MinNs||MaxNs||h
+		r []byte // namespace hash of the right child with the format of MinNs||MaxNs||h
+	}
+
+	tests := []struct {
+		name     string
+		nidLen   namespace.IDSize
+		children children
+		wantErr  bool
+	}{
+		{
+			"left.maxNs<right.minNs", 2,
+			children{[]byte{0, 0, 1, 1}, []byte{2, 2, 3, 3}},
+			false,
+		},
+		{
+			"left.maxNs=right.minNs", 2,
+			children{[]byte{0, 0, 1, 1}, []byte{1, 1, 2, 2}},
+			false,
+		},
+		{
+			"left.maxNs>right.minNs", 2,
+			children{[]byte{0, 0, 1, 1}, []byte{0, 0, 1, 1}},
+			true,
+		},
+		{
+			"len(left)<NamespaceLen", 2,
+			children{[]byte{0, 0, 1}, []byte{2, 2, 3, 3}},
+			true,
+		},
+		{
+			"len(right)<NamespaceLen", 2,
+			children{[]byte{0, 0, 1, 1}, []byte{2, 2, 3}},
+			true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			n := NewNmtHasher(sha256.New(), tt.nidLen, false)
+			if tt.wantErr {
+				require.Error(t, n.ValidateNodes(tt.children.l, tt.children.r))
+				require.Panics(t, func() {
+					n.HashNode(tt.children.l, tt.children.r)
+				})
+			}
 		})
 	}
 }
