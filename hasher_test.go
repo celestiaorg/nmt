@@ -291,7 +291,7 @@ func TestValidateNodeFormat(t *testing.T) {
 			nil,
 		},
 		{ // mismatched namespace size
-			"invalid node: mismatching namespace sizes",
+			"invalid node: length",
 			2,
 			[]byte{0},
 			[]byte{1},

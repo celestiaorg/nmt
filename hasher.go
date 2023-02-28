@@ -18,7 +18,7 @@ var _ hash.Hash = (*Hasher)(nil)
 
 var (
 	ErrUnorderedSiblings = errors.New("NMT sibling nodes should be ordered lexicographically by namespace IDs")
-	ErrInvalidNodeLen    = errors.New("Invalid NMT node size")
+	ErrInvalidNodeLen    = errors.New("invalid NMT node size")
 )
 
 type Hasher struct {
