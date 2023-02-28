@@ -188,9 +188,8 @@ func (n *NamespacedMerkleTree) ProveRange(start, end int) (Proof, error) {
 // namespace i.e., n.minNID<= n.ID <=n.maxNID and the tree does not have any
 // entries with the given Namespace ID nID, this will be proven by returning the
 // inclusion/range Proof of the (namespaced or rather flagged) hash of the leaf
-// of the tree 1) with the largest namespace ID that is smaller than nID and 2)
-// the namespace ID of the leaf to the left of it is smaller than the nid 3) the
-// namespace ID of the leaf to the right of it is larger than nid. The nodes
+// of the tree 1) with the smallest namespace ID that is larger than nID and 2)
+// the namespace ID of the leaf to the left of it is smaller than the nid. The nodes
 // field of the returned Proof structure is populated with the Merkle inclusion
 // proof. the leafHash field of the returned Proof will contain the namespaced
 // hash of such leaf. The start and end fields of the Proof are set to the

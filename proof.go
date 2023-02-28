@@ -26,10 +26,9 @@ type Proof struct {
 	// leafHash are nil if the namespace is present in the NMT. In case the
 	// namespace to be proved is in the min/max range of the tree but absent,
 	// this will contain the leaf hash necessary to verify the proof of absence.
-	// leafHash contains a tree leaf that 1) its namespace ID is the largest
-	// namespace ID less than nid and 2) the namespace ID of the leaf to the
-	// left of it is smaller than the nid 3) the namespace ID of the  leaf to
-	// the right of it is larger than nid.
+	// leafHash contains a tree leaf that 1) its namespace ID is the smallest
+	// namespace ID larger than nid and 2) the namespace ID of the leaf to the
+	// left of it is smaller than the nid.
 	leafHash []byte
 	// isMaxNamespaceIDIgnored is set to true if the tree from which this Proof
 	// was generated from is initialized with Options.IgnoreMaxNamespace ==
