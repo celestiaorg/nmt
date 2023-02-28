@@ -139,12 +139,12 @@ func (n *Hasher) IsNamespacedData(data []byte) (err error) {
 //
 //nolint:errcheck
 func (n *Hasher) HashLeaf(ndata []byte) []byte {
+	h := n.baseHasher
+	h.Reset()
+
 	if err := n.IsNamespacedData(ndata); err != nil {
 		panic(err)
 	}
-	
-	h := n.baseHasher
-	h.Reset()
 
 	nID := ndata[:n.NamespaceLen]
 	resLen := int(2*n.NamespaceLen) + n.baseHasher.Size()
