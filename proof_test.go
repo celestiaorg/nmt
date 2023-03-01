@@ -83,6 +83,14 @@ func TestProof_VerifyNamespace_False(t *testing.T) {
 	}
 	pushedZeroNs := n.Get([]byte{0, 0, 0})
 	pushedLastNs := n.Get([]byte{0, 0, 8})
+
+	// an invalid absence proof for an existing namespace ID (2) in the constructed tree
+	leafIndex := 3
+	inclusionProofOfLeafIndex := rangeProof(t, n, leafIndex, leafIndex+1)
+	n.computeLeafHashesIfNecessary()
+	leafHash := n.leafHashes[leafIndex] // the only data item with namespace ID = 2 in the constructed tree is at index 3
+	invalidAbsenceProof := NewAbsenceProof(leafIndex, leafIndex+1, inclusionProofOfLeafIndex, leafHash, false)
+
 	tests := []struct {
 		name  string
 		proof Proof
@@ -132,6 +140,11 @@ func TestProof_VerifyNamespace_False(t *testing.T) {
 		{
 			"remove all leaves, errors", validProof,
 			args{[]byte{0, 0, 0}, pushedZeroNs[:len(pushedZeroNs)-2], n.Root()},
+			false,
+		},
+		{
+			"invalid absence proof of an existing nid", invalidAbsenceProof,
+			args{[]byte{0, 0, 2}, [][]byte{}, n.Root()},
 			false,
 		},
 	}
