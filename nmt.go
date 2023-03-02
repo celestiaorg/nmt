@@ -333,9 +333,8 @@ func (n *NamespacedMerkleTree) GetWithProof(nID namespace.ID) ([][]byte, Proof, 
 }
 
 // calculateAbsenceIndex returns the index of a leaf of the tree that 1) its
-// namespace ID is the largest namespace ID less than nid and 2) the namespace
-// ID of the leaf to the left of it is smaller than the nid 3) the namespace ID
-// of the leaf to the right of it is larger than nid.
+// namespace ID is the smallest namespace ID larger than nID and 2) the namespace
+// ID of the leaf to the left of it is smaller than the nID.
 func (n *NamespacedMerkleTree) calculateAbsenceIndex(nID namespace.ID) int {
 	nidSize := n.treeHasher.NamespaceSize()
 	var prevLeaf []byte
