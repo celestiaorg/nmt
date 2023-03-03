@@ -8,9 +8,9 @@ An NMT can be constructed using the `New` function.
 ```go
 func New(h hash.Hash, setters ...Option) *NamespacedMerkleTree
 ```
-It receives a base hash function alongside with some optional configurations, namely:
-1. Namespace ID byte-size: If not specified then a default maximum is applied by the library.
-2. The initial capacity of the tree i.e., the number of leaves: if not specified, a default maximum is applied.
+It receives a base hash function alongside some optional configurations, namely:
+1. Namespace ID byte-size: If not specified then a default is applied by the library.
+2. The initial capacity of the tree i.e., the number of leaves: if not specified, a default is applied.
 3. The `IgnoreMaxNamespace` flag.
    By default, the `IgnoreMaxNamespace` flag is set to true, which is a Celestia-specific feature designed to enhance performance when querying namespaces in the NMT.
    This is particularly useful when the NMT is built using data items, of which half are associated with reserved namespace IDs (i.e., the highest possible value within the ID size), that do not need to be queried using their namespace IDs.
@@ -158,7 +158,7 @@ In the example given earlier, each node is `34` bytes in length and takes the fo
 
 `leafHash`: This field is non-empty only for absence proofs and contains a leaf hash required for such a proof (see [namespace absence proofs](#namespace-absence-proof) section).
 
-`isMaxNamespaceIDIgnored`: If this field is present, then namespace range of the tree nodes are set as explained in the [Ignore Max Namespace](#ignore-max-namespace) section.
+`isMaxNamespaceIDIgnored`: If this field is true, then namespace range of the tree nodes are set as explained in the [Ignore Max Namespace](#ignore-max-namespace) section.
 
 ## Verify Namespace Proof
 
