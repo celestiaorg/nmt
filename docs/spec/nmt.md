@@ -128,9 +128,10 @@ As an example, the namespace proof for `nID = 0` for the NMT of Figure 1 (which 
 
 #### Verification of NMT Absence Proof
 
-An NMT absence proof is deemed valid if 
-1) The verification of Merkle inclusion proof of the returned leaf is valid.  
-2) It satisfies the proof completeness as explained in the [Verification of NMT Inclusion Proof](#verification-of-nmt-inclusion-proof).
+An NMT absence proof is deemed valid if it meets the following:
+1) The minimum namespace ID of the leaf in the proof is greater than the queried `nID`. 
+2) The verification of Merkle inclusion proof of the returned leaf is valid.  
+3) It satisfies the proof completeness as explained in the [Verification of NMT Inclusion Proof](#verification-of-nmt-inclusion-proof).
 Note that hash of the leaf does not have to be verified against the underlying message.
 
 #### Verification of Empty NMT proof
