@@ -71,6 +71,33 @@ if err := tree.Push(d3); err != nil {
     // something went wrong
 }
 ```
+
+The above code snippets generate the NMT illustrated in Figure 1. 
+The tree employs SHA256 as its underlying hash function and a namespace ID size of `1` byte. 
+Both data items and tree nodes are represented as hexadecimal strings. 
+To keep the diagram concise, we have only included the first seven digits of each namespace hash's SHA256 value.
+
+```markdown
+                                 00 03 b1c2cc5                                Tree Root
+                           /                       \
+                          /                         \
+                        NsH()                       NsH()  
+                        /                             \
+                       /                               \    
+               00 00 ead8d25                      01 03 52c7c03               Non-Leaf Nodes
+              /            \                    /               \
+            NsH()          NsH()              NsH()             NsH() 
+            /                \                /                   \
+    00 00 5fa0c9c       00 00 52385a0    01 01 71ca46a       03 03 b4a2792    Leaf Nodes
+        |                   |                 |                   |
+      NsH()               NsH()              NsH()               NsH()
+        |                   |                 |                   |
+00 6c6561665f30      00 6c6561665f31    01 6c6561665f32      03 6c6561665f33  Namespaced Data Items 
+
+        0                   1                  2                  3           Leaf Indices
+``` 
+Figure 1.
+
 ## Get Root
 
 The `Root()` method calculates the NMT root based on the data that has been added through the use of the `Push` method.
