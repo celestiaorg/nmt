@@ -143,6 +143,13 @@ func (proof Proof) VerifyNamespace(h hash.Hash, nID namespace.ID, data [][]byte,
 	nIDLen := nID.Size()
 	if proof.IsOfAbsence() {
 		gotLeafHashes = append(gotLeafHashes, proof.leafHash)
+		// conduct some sanity checks:
+		leafMinNID := namespace.ID(proof.leafHash[:nIDLen])
+		if !nID.Less(leafMinNID) {
+			// leafHash.minNID  must be greater than nID
+			return false
+		}
+
 	} else {
 		// collect leaf hashes from provided data and do some sanity checks:
 		hashLeafFunc := nth.HashLeaf
