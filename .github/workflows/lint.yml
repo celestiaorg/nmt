@@ -1,13 +1,13 @@
-name: golangci-lint
-# Runs golangci-lint over the nmt repository
-# This workflow is run on every pull request and push to master
-# The `golangci` job will pass without running if no *.{go, mod, sum} files have been modified.
+name: lint
 on:
   pull_request:
   push:
     branches:
       - master
 jobs:
+  # Runs golangci-lint over the nmt repository
+  # This workflow is run on every pull request and push to master
+  # The `golangci` job will pass without running if no *.{go, mod, sum} files have been modified.
   golangci:
     name: golangci-lint
     runs-on: ubuntu-latest
@@ -25,3 +25,9 @@ jobs:
           version: latest
           args: --timeout 10m
         if: env.GIT_DIFF
+
+  markdown-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: celestiaorg/.github/.github/actions/markdown-lint@main
