@@ -138,7 +138,7 @@ func (n *Hasher) IsNamespacedData(data []byte) (err error) {
 // on the input data `ndata` before invoking HashLeaf method.
 //
 //nolint:errcheck
-func (n *Hasher) HashLeaf(ndata []byte) []byte {
+func (n *Hasher) HashLeaf(ndata []byte) ([]byte, error) {
 	h := n.baseHasher
 	h.Reset()
 
@@ -230,20 +230,20 @@ func (n *Hasher) ValidateNodes(left, right []byte) error {
 // equal to the maximum possible namespace ID value. If such a namespace ID does
 // not exist, the maximum NID is calculated as normal, i.e., "res.maxNID =
 // max(left.maxNID , right.maxNID).
-func (n *Hasher) HashNode(left, right []byte) []byte {
+func (n *Hasher) HashNode(left, right []byte) ([]byte, error) {
 	h := n.baseHasher
 	h.Reset()
 
 	if err := n.validateNodeFormat(left); err != nil {
-		panic(err)
+		return []byte{}, err
 	}
 	if err := n.validateNodeFormat(right); err != nil {
-		panic(err)
+		return []byte{}, err
 	}
 
 	// check the namespace range of the left and right children
 	if err := n.validateSiblingsNamespaceOrder(left, right); err != nil {
-		panic(err)
+		return []byte{}, err
 	}
 
 	// the actual hash result of the children got extended (or flagged) by their
@@ -275,7 +275,7 @@ func (n *Hasher) HashNode(left, right []byte) []byte {
 	data = append(data, right...)
 	//nolint:errcheck
 	h.Write(data)
-	return h.Sum(res)
+	return h.Sum(res), nil
 }
 
 func max(ns []byte, ns2 []byte) []byte {
