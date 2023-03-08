@@ -104,5 +104,10 @@ and was heavily inspired by the initial implementation in the celestiaorg [proto
 
 [prototype]: https://github.com/celestiaorg/lazyledger-prototype
 [NebulousLabs']: https://gitlab.com/NebulousLabs/merkletree
-[trillian]: https://github.com/google/trillian
-[`LogHasher`]: https://github.com/google/trillian/blob/7502e99bb92ecf0ec8add958889c751f2cfc7f59/merkle/hashers/tree_hasher.go#L23-L34
+
+## Contributing
+
+Markdown files must conform to [GitHub Flavored Markdown](https://github.github.com/gfm/). Markdown must be formatted with:
+
+- [markdownlint](https://github.com/DavidAnson/markdownlint)
+- [Markdown Table Prettifier](https://github.com/darkriszty/MarkdownTablePrettify-VSCodeExt)
