@@ -162,7 +162,7 @@ func (n *Hasher) HashLeaf(ndata []byte) ([]byte, error) {
 	h.Reset()
 
 	if err := n.ValidateLeaf(ndata); err != nil {
-		return []byte{}, err
+		return nil, err
 	}
 
 	nID := ndata[:n.NamespaceLen]
@@ -251,15 +251,15 @@ func (n *Hasher) HashNode(left, right []byte) ([]byte, error) {
 	h.Reset()
 
 	if err := n.ValidateNodeFormat(left); err != nil {
-		return []byte{}, err
+		return nil, err
 	}
 	if err := n.ValidateNodeFormat(right); err != nil {
-		return []byte{}, err
+		return nil, err
 	}
 
 	// check the namespace range of the left and right children
 	if err := n.validateSiblingsNamespaceOrder(left, right); err != nil {
-		return []byte{}, err
+		return nil, err
 	}
 
 	// the actual hash result of the children got extended (or flagged) by their
