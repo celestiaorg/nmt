@@ -424,26 +424,38 @@ func (n *NamespacedMerkleTree) MaxNamespace() namespace.ID {
 
 // computeRoot calculates the namespace Merkle root for a tree/sub-tree that
 // encompasses the leaves within the range of [start, end).
-func (n *NamespacedMerkleTree) computeRoot(start, end int) []byte {
+func (n *NamespacedMerkleTree) computeRoot(start, end int) ([]byte, error) {
 	switch end - start {
 	case 0:
 		rootHash := n.treeHasher.EmptyRoot()
 		n.visit(rootHash)
-		return rootHash
+		return rootHash, nil
 	case 1:
-		leafHash := n.treeHasher.HashLeaf(n.leaves[start])
+		leafHash, err := n.treeHasher.HashLeaf(n.leaves[start])
+		if err != nil {
+			return nil, fmt.Errorf("failed to hash leaf: %w", err)
+		}
 		if len(n.leafHashes) < len(n.leaves) {
 			n.leafHashes = append(n.leafHashes, leafHash)
 		}
 		n.visit(leafHash, n.leaves[start])
-		return leafHash
+		return leafHash, nil
 	default:
 		k := getSplitPoint(end - start)
-		left := n.computeRoot(start, start+k)
-		right := n.computeRoot(start+k, end)
-		hash := n.treeHasher.HashNode(left, right)
+		left, err := n.computeRoot(start, start+k)
+		if err != nil {
+			return nil, fmt.Errorf("failed to compute left subtree root [%d, %d): %w", start, start+k, err)
+		}
+		right, err := n.computeRoot(start+k, end)
+		if err != nil {
+			return nil, fmt.Errorf("failed to compute right subtree root [%d, %d): %w", start+k, end, err)
+		}
+		hash, err := n.treeHasher.HashNode(left, right)
+		if err != nil {
+			return nil, fmt.Errorf("failed to compute subtree root [%d, %d): %w", left, right, err)
+		}
 		n.visit(hash, left, right)
-		return hash
+		return hash, nil
 	}
 }
 
