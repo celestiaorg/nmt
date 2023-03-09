@@ -444,11 +444,11 @@ func (n *NamespacedMerkleTree) computeRoot(start, end int) ([]byte, error) {
 		k := getSplitPoint(end - start)
 		left, err := n.computeRoot(start, start+k)
 		if err != nil {
-			return nil, fmt.Errorf("failed to compute left subtree root [%d, %d): %w", start, start+k, err)
+			return nil, fmt.Errorf("failed to compute subtree root [%d, %d): %w", start, start+k, err)
 		}
 		right, err := n.computeRoot(start+k, end)
 		if err != nil {
-			return nil, fmt.Errorf("failed to compute right subtree root [%d, %d): %w", start+k, end, err)
+			return nil, fmt.Errorf("failed to compute subtree root [%d, %d): %w", start+k, end, err)
 		}
 		hash, err := n.treeHasher.HashNode(left, right)
 		if err != nil {
