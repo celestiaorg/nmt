@@ -74,9 +74,17 @@ func (n *Hasher) Write(data []byte) (int, error) {
 	switch ln {
 	// inner nodes are made up of the nmt hashes of the left and right children
 	case n.Size() * 2:
+		// validate node format
+		if err := n.validateNodeFormat(data); err != nil {
+			return 0, err
+		}
 		n.tp = NodePrefix
 	// leaf nodes contain the namespace length and a share
 	default:
+		// validate leaf format
+		if err := n.IsNamespacedData(data); err != nil {
+			return 0, err
+		}
 		n.tp = LeafPrefix
 	}
 
@@ -89,13 +97,21 @@ func (n *Hasher) Write(data []byte) (int, error) {
 func (n *Hasher) Sum([]byte) []byte {
 	switch n.tp {
 	case LeafPrefix:
-		return n.HashLeaf(n.data)
+		res, err := n.HashLeaf(n.data)
+		if err != nil {
+			panic(err) // this should never happen since the data is already validated in the Write method
+		}
+		return res
 	case NodePrefix:
 		flagLen := int(n.NamespaceLen) * 2
 		sha256Len := n.baseHasher.Size()
 		leftChild := n.data[:flagLen+sha256Len]
 		rightChild := n.data[flagLen+sha256Len:]
-		return n.HashNode(leftChild, rightChild)
+		res, err := n.HashNode(leftChild, rightChild)
+		if err != nil {
+			panic(err) // this should never happen since the data is already validated in the Write method
+		}
+		return res
 	default:
 		panic("nmt node type wasn't set")
 	}
