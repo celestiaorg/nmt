@@ -95,8 +95,7 @@ Where `nid_0 = nid_1 = 0` and `nid_2 = nid_3 = 1` and `data_i = "leaf_i"` for `i
 
 ## Related
 
-This implementation (currently) uses NebulousLabs' [merkletree][NebulousLabs'] implementation
-and was heavily inspired by the initial implementation in the celestiaorg [prototype].
+This implementation was heavily inspired by the initial implementation in the celestiaorg [prototype].
 
 <!--- TODO references --->
 [academic paper]: https://arxiv.org/abs/1905.09274
@@ -104,5 +103,10 @@ and was heavily inspired by the initial implementation in the celestiaorg [proto
 
 [prototype]: https://github.com/celestiaorg/lazyledger-prototype
 [NebulousLabs']: https://gitlab.com/NebulousLabs/merkletree
-[trillian]: https://github.com/google/trillian
-[`LogHasher`]: https://github.com/google/trillian/blob/7502e99bb92ecf0ec8add958889c751f2cfc7f59/merkle/hashers/tree_hasher.go#L23-L34
+
+## Contributing
+
+Markdown files must conform to [GitHub Flavored Markdown](https://github.github.com/gfm/). Markdown must be formatted with:
+
+- [markdownlint](https://github.com/DavidAnson/markdownlint)
+- [Markdown Table Prettifier](https://github.com/darkriszty/MarkdownTablePrettify-VSCodeExt)

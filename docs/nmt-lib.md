@@ -1,14 +1,18 @@
 # Namespace Merkle Tree Library
-The Namespace Merkle Tree (NMT) library implements the NMT data structure outlined in the [NMT spec](./spec/nmt.md). 
+
+The Namespace Merkle Tree (NMT) library implements the NMT data structure outlined in the [NMT spec](./spec/nmt.md).
 In the following sections, we will provide instructions on how to utilize the library to construct an NMT and offer insights into its fundamental methods.
 
 ## NMT Initialization and Configuration
 
 An NMT can be constructed using the `New` function.
+
 ```go
 func New(h hash.Hash, setters ...Option) *NamespacedMerkleTree
 ```
+
 It receives a base hash function alongside some optional configurations, namely:
+
 1. Namespace ID byte-size: If not specified then a default is applied by the library.
 2. The initial capacity of the tree i.e., the number of leaves: if not specified, a default is applied.
 3. The `IgnoreMaxNamespace` flag.
@@ -31,12 +35,16 @@ One can examine the namespace ID size of the `tree` using
 ```go
 func (n *NamespacedMerkleTree) NamespaceSize() namespace.IDSize
 ```
+
 E.g.,
+
 ```go
 idSize := tree.NamespaceSize() // outputs 1
 ```
+
 ### Ignore Max Namespace
-If the NMT is configured with `IgnoreMaxNamespace` set to true, then the calculation of the namespace ID range of non-leaf nodes in the [namespace hash function](#namespaced-hash) will change slightly.
+
+If the NMT is configured with `IgnoreMaxNamespace` set to true, then the calculation of the namespace ID range of non-leaf nodes in the [namespace hash function](./spec/nmt.md#namespaced-hash) will change slightly.
 That is, when determining the upper limit of the namespace ID range for a tree node `n`, with children `l` and `r`, the maximum possible namespace ID, equivalent to `NamespaceIDSize()` bytes of `0xFF`, or `2^NamespaceIDSize()-1`,
 should be omitted if feasible (in the preceding code example with the ID size of `1` byte, the maximum possible namespace ID would be `0xFF`).
 This is achieved by taking the maximum value among the namespace IDs available in the range of node's left and right children (i.e., `n.maxNs = max(l.minNs, l.maxNs , r.minNs, r.maxNs))`, which is not equal to the maximum possible namespace ID value.
@@ -51,64 +59,71 @@ Non-compliance with either of these requirements cause `Push` to fail.
 ```go
 func (n *NamespacedMerkleTree) Push(namespacedData namespace.PrefixedData) error
 ```
+
 E.g.,
+
 ```go
 d := append(namespace.ID{0}, []byte("leaf_0")...) // the first `tree.NamespaceSize()` bytes of each data item is treated as its namespace ID.
 if err := tree.Push(d); err != nil {
 	// something went wrong
 }
 // add a few more data items
-d1 := append(namespace.ID{0}, []byte("leaf_1")...) 
+d1 := append(namespace.ID{0}, []byte("leaf_1")...)
 if err := tree.Push(d1); err != nil {
     // something went wrong
 }
-d2 := append(namespace.ID{1}, []byte("leaf_2")...) 
+d2 := append(namespace.ID{1}, []byte("leaf_2")...)
 if err := tree.Push(d2); err != nil {
     // something went wrong
 }
-d3 := append(namespace.ID{3}, []byte("leaf_3")...) 
+d3 := append(namespace.ID{3}, []byte("leaf_3")...)
 if err := tree.Push(d3); err != nil {
     // something went wrong
 }
 ```
 
-The above code snippets generate the NMT illustrated in Figure 1. 
-The tree employs SHA256 as its underlying hash function and a namespace ID size of `1` byte. 
-Both data items and tree nodes are represented as hexadecimal strings. 
+The above code snippets generate the NMT illustrated in Figure 1.
+The tree employs SHA256 as its underlying hash function and a namespace ID size of `1` byte.
+Both data items and tree nodes are represented as hexadecimal strings.
 To keep the diagram concise, we have only included the first seven digits of each namespace hash's SHA256 value.
 
 ```markdown
                                  00 03 b1c2cc5                                Tree Root
                            /                       \
                           /                         \
-                        NsH()                       NsH()  
+                        NsH()                       NsH()
                         /                             \
-                       /                               \    
+                       /                               \
                00 00 ead8d25                      01 03 52c7c03               Non-Leaf Nodes
               /            \                    /               \
-            NsH()          NsH()              NsH()             NsH() 
+            NsH()          NsH()              NsH()             NsH()
             /                \                /                   \
     00 00 5fa0c9c       00 00 52385a0    01 01 71ca46a       03 03 b4a2792    Leaf Nodes
         |                   |                 |                   |
       NsH()               NsH()              NsH()               NsH()
         |                   |                 |                   |
-00 6c6561665f30      00 6c6561665f31    01 6c6561665f32      03 6c6561665f33  Namespaced Data Items 
+00 6c6561665f30      00 6c6561665f31    01 6c6561665f32      03 6c6561665f33  Namespaced Data Items
 
         0                   1                  2                  3           Leaf Indices
-``` 
+```
+
 Figure 1.
 
 ## Get Root
 
 The `Root()` method calculates the NMT root based on the data that has been added through the use of the `Push` method.
+
 ```go
 func (n *NamespacedMerkleTree) Root() []byte
 ```
+
 For example:
+
 ```go
 // compute the root
-root := tree.Root() 
+root := tree.Root()
 ```
+
 In the provided code example, the root would be `00 03 b1c2cc5` (as also illustrated in Figure 1).
 
 The minimum and maximum namespace IDs of the tree root can be obtained through the following methods:
@@ -117,6 +132,7 @@ The minimum and maximum namespace IDs of the tree root can be obtained through t
 minNS := nmt.MinNamespace(root, tree.NamespaceSize())
 maxNS := nmt.MaxNamespace(root, tree.NamespaceSize())
 ```
+
 The `minNs` and `maxNs` are equal to `00` and `03` in the supplied example.
 
 ## Generate Namespace Proof
@@ -126,7 +142,9 @@ The `ProveNamespace` method can be used to generate a namespace proof for a spec
 ```go
 func (n *NamespacedMerkleTree) ProveNamespace(nID namespace.ID) (Proof, error)
 ```
+
 For example:
+
 ```go
 nID := namespace.ID{0}
 proof, err := tree.ProveNamespace(nID)
@@ -146,6 +164,7 @@ type Proof struct {
 	isMaxNamespaceIDIgnored bool
 }
 ```
+
 The fields can be interpreted as follows:
 
 `start, end`:  They represent the starting index and the ending index of leaves that match the provided namespace ID `nID`.
@@ -153,10 +172,10 @@ Note that `end` is non-inclusive.
 
 `nodes`: The `nodes` hold the tree nodes necessary for the Merkle range proof of `[start, end)`  ordered according to in-order traversal of the tree.
 `nodes` embodies an ordered list of byte slices, where each byte slice contains an NMT node.
-Nodes have identical size and all follow the [namespaced hash format](#namespaced-hash).
+Nodes have identical size and all follow the [namespaced hash format](./spec/nmt.md#namespaced-hash).
 In the example given earlier, each node is `34` bytes in length and takes the following form:  `minNs<1 byte>||maxNs<1 byte>||h<32 byte>`.
 
-`leafHash`: This field is non-empty only for absence proofs and contains a leaf hash required for such a proof (see [namespace absence proofs](#namespace-absence-proof) section).
+`leafHash`: This field is non-empty only for absence proofs and contains a leaf hash required for such a proof (see [namespace absence proofs](./spec/nmt.md#namespace-absence-proof) section).
 
 `isMaxNamespaceIDIgnored`: If this field is true, then namespace range of the tree nodes are set as explained in the [Ignore Max Namespace](#ignore-max-namespace) section.
 
@@ -165,7 +184,7 @@ In the example given earlier, each node is `34` bytes in length and takes the fo
 The correctness of a namespace `Proof` for a specific namespace ID `nID` can be verified using the [`VerifyNamespace`](https://github.com/celestiaorg/nmt/blob/master/proof.go) method.
 
 ```go
-func (proof Proof) VerifyNamespace(h hash.Hash, nID namespace.ID, leaves [][]byte, root []byte) bool 
+func (proof Proof) VerifyNamespace(h hash.Hash, nID namespace.ID, leaves [][]byte, root []byte) bool
 ```
 
 - `h` MUST be the same as the underlying hash function used to generate the proof, otherwise, the verification fails.
@@ -176,6 +195,7 @@ func (proof Proof) VerifyNamespace(h hash.Hash, nID namespace.ID, leaves [][]byt
 - `root` is the root of the NMT against which the `proof` is verified.
 
 E.g.,
+
 ```go
 leaves := [][]byte{
    append(namespace.ID{0}, []byte("leaf_0")...),
