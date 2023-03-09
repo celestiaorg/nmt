@@ -159,7 +159,7 @@ func (n *Hasher) HashLeaf(ndata []byte) ([]byte, error) {
 	h.Reset()
 
 	if err := n.IsNamespacedData(ndata); err != nil {
-		panic(err)
+		return []byte{}, err
 	}
 
 	nID := ndata[:n.NamespaceLen]
@@ -176,7 +176,7 @@ func (n *Hasher) HashLeaf(ndata []byte) ([]byte, error) {
 
 	// compute h(LeafPrefix || ndata) and append it to the minMaxNIDs
 	nameSpacedHash := h.Sum(minMaxNIDs) // nID || nID || h(LeafPrefix || ndata)
-	return nameSpacedHash
+	return nameSpacedHash, nil
 }
 
 // validateNodeFormat checks whether the supplied node conforms to the
