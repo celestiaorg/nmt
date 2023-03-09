@@ -84,7 +84,7 @@ func (n *Hasher) Write(data []byte) (int, error) {
 	// leaf nodes contain the namespace length and a share
 	default:
 		// validate leaf format
-		if err := n.IsNamespacedData(data); err != nil {
+		if err := n.ValidateLeaf(data); err != nil {
 			return 0, err
 		}
 		n.tp = LeafPrefix
@@ -140,8 +140,8 @@ func (n *Hasher) EmptyRoot() []byte {
 	return digest
 }
 
-// IsNamespacedData checks whether data is namespace prefixed.
-func (n *Hasher) IsNamespacedData(data []byte) (err error) {
+// ValidateLeaf checks whether data is namespace prefixed.
+func (n *Hasher) ValidateLeaf(data []byte) (err error) {
 	nidSize := int(n.NamespaceSize())
 	lenData := len(data)
 	if lenData < nidSize {
@@ -161,7 +161,7 @@ func (n *Hasher) HashLeaf(ndata []byte) ([]byte, error) {
 	h := n.baseHasher
 	h.Reset()
 
-	if err := n.IsNamespacedData(ndata); err != nil {
+	if err := n.ValidateLeaf(ndata); err != nil {
 		return []byte{}, err
 	}
 

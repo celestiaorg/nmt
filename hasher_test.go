@@ -336,7 +336,7 @@ func TestIsNamespacedData(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			n := NewNmtHasher(sha256.New(), tt.nIDLen, false)
-			assert.Equal(t, tt.wantErr, n.IsNamespacedData(tt.data) != nil)
+			assert.Equal(t, tt.wantErr, n.ValidateLeaf(tt.data) != nil)
 		})
 	}
 }
@@ -365,7 +365,7 @@ func TestHashLeafWithIsNamespacedData(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			n := NewNmtHasher(sha256.New(), tt.nIDLen, false)
 			if tt.wantErr {
-				require.Error(t, n.IsNamespacedData(tt.data))
+				require.Error(t, n.ValidateLeaf(tt.data))
 				require.Panics(t, func() {
 					n.HashLeaf(tt.data)
 				})
