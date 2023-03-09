@@ -3,57 +3,10 @@ package nmt
 import (
 	"bytes"
 	"crypto/sha256"
-	"io"
 	"testing"
 
-	"github.com/celestiaorg/merkletree"
 	"github.com/celestiaorg/nmt/namespace"
 )
-
-type treeHasher interface {
-	merkletree.TreeHasher
-	Size() int
-}
-
-// CachedSubtreeHasher implements SubtreeHasher using a set of precomputed
-// leaf hashes.
-type cachedSubtreeHasher struct {
-	leafHashes [][]byte
-	treeHasher
-}
-
-// NextSubtreeRoot implements SubtreeHasher.
-func (csh *cachedSubtreeHasher) NextSubtreeRoot(subtreeSize int) ([]byte, error) {
-	if len(csh.leafHashes) == 0 {
-		return nil, io.EOF
-	}
-	tree := merkletree.NewFromTreehasher(csh.treeHasher)
-	for i := 0; i < subtreeSize && len(csh.leafHashes) > 0; i++ {
-		if err := tree.PushSubTree(0, csh.leafHashes[0]); err != nil {
-			return nil, err
-		}
-		csh.leafHashes = csh.leafHashes[1:]
-	}
-	return tree.Root(), nil
-}
-
-// Skip implements SubtreeHasher.
-func (csh *cachedSubtreeHasher) Skip(n int) error {
-	if n > len(csh.leafHashes) {
-		return io.ErrUnexpectedEOF
-	}
-	csh.leafHashes = csh.leafHashes[n:]
-	return nil
-}
-
-// newCachedSubtreeHasher creates a CachedSubtreeHasher using the specified
-// leaf hashes and hash function.
-func newCachedSubtreeHasher(leafHashes [][]byte, h treeHasher) *cachedSubtreeHasher {
-	return &cachedSubtreeHasher{
-		leafHashes: leafHashes,
-		treeHasher: h,
-	}
-}
 
 func TestProof_VerifyNamespace_False(t *testing.T) {
 	const testNidLen = 3
@@ -75,7 +28,7 @@ func TestProof_VerifyNamespace_False(t *testing.T) {
 	if err != nil {
 		t.Fatalf("invalid test setup: error on ProveNamespace(): %v", err)
 	}
-	incompleteFirstNs := NewInclusionProof(0, 1, rangeProof(t, n, 0, 1), false)
+	incompleteFirstNs := NewInclusionProof(0, 1, n.buildRangeProof(0, 1), false)
 	type args struct {
 		nID  namespace.ID
 		data [][]byte
@@ -86,7 +39,7 @@ func TestProof_VerifyNamespace_False(t *testing.T) {
 
 	// an invalid absence proof for an existing namespace ID (2) in the constructed tree
 	leafIndex := 3
-	inclusionProofOfLeafIndex := rangeProof(t, n, leafIndex, leafIndex+1)
+	inclusionProofOfLeafIndex := n.buildRangeProof(leafIndex, leafIndex+1)
 	n.computeLeafHashesIfNecessary()
 	leafHash := n.leafHashes[leafIndex] // the only data item with namespace ID = 2 in the constructed tree is at index 3
 	invalidAbsenceProof := NewAbsenceProof(leafIndex, leafIndex+1, inclusionProofOfLeafIndex, leafHash, false)
@@ -133,7 +86,7 @@ func TestProof_VerifyNamespace_False(t *testing.T) {
 			false,
 		},
 		{
-			"incomplete namespace proof (left)", NewInclusionProof(10, 11, rangeProof(t, n, 10, 11), false),
+			"incomplete namespace proof (left)", NewInclusionProof(10, 11, n.buildRangeProof(10, 11), false),
 			args{[]byte{0, 0, 8}, pushedLastNs[1:], n.Root()},
 			false,
 		},
@@ -170,16 +123,6 @@ func TestProof_VerifyNamespace_False(t *testing.T) {
 			}
 		})
 	}
-}
-
-func rangeProof(t *testing.T, n *NamespacedMerkleTree, start, end int) [][]byte {
-	n.computeLeafHashesIfNecessary()
-	subTreeHasher := newCachedSubtreeHasher(n.leafHashes, n.treeHasher)
-	incompleteRange, err := merkletree.BuildRangeProof(start, end, subTreeHasher)
-	if err != nil {
-		t.Fatalf("Could not create range proof: %v", err)
-	}
-	return incompleteRange
 }
 
 func TestProof_MultipleLeaves(t *testing.T) {

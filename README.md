@@ -95,8 +95,7 @@ Where `nid_0 = nid_1 = 0` and `nid_2 = nid_3 = 1` and `data_i = "leaf_i"` for `i
 
 ## Related
 
-This implementation (currently) uses NebulousLabs' [merkletree][NebulousLabs'] implementation
-and was heavily inspired by the initial implementation in the celestiaorg [prototype].
+This implementation was heavily inspired by the initial implementation in the celestiaorg [prototype].
 
 <!--- TODO references --->
 [academic paper]: https://arxiv.org/abs/1905.09274
