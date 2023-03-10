@@ -143,6 +143,10 @@ func New(h hash.Hash, setters ...Option) *NamespacedMerkleTree {
 // Prove returns a NMT inclusion proof for the leaf at the supplied index. Note
 // this is not really NMT specific but the tree supports inclusions proofs like
 // any vanilla Merkle tree. Prove is a thin wrapper around the ProveRange.
+// Prove may return the following errors:
+// ErrInvalidRange: if the index is out of range i.e., index<0 or index exceeds the total number of leaves in the tree.
+// ErrInvalidNodeLen: if the nodes of the tree (n) do not comply by the namespace hash format.
+// ErrUnorderedSiblings: if tree nodes are out of order based on their namespace IDs.
 func (n *NamespacedMerkleTree) Prove(index int) (Proof, error) {
 	return n.ProveRange(index, index+1)
 }
@@ -163,16 +167,24 @@ func (n *NamespacedMerkleTree) Prove(index int) (Proof, error) {
 // generated using a modified version of the namespace hash with a custom
 // namespace ID range calculation. For more information on this, please refer to
 // the HashNode method in the Hasher.
+// ProveRange may return the following errors:
+// ErrInvalidRange: if the range [start, end) is invalid i.e., start < 0 or  start >= end or end exceeds the number of leaves in the tree.
+// ErrInvalidNodeLen: if the nodes of the tree (n) do not comply by the namespace hash format.
+// ErrUnorderedSiblings: if tree nodes are out of order based on their namespace IDs.
 func (n *NamespacedMerkleTree) ProveRange(start, end int) (Proof, error) {
 	isMaxNsIgnored := n.treeHasher.IsMaxNamespaceIDIgnored()
-	n.computeLeafHashesIfNecessary()
+	if err := n.computeLeafHashesIfNecessary(); err != nil {
+		return Proof{}, err
+	}
 	// TODO: store nodes and re-use the hashes instead recomputing parts of the
 	// tree here
-	if start < 0 || start >= end || end > len(n.leafHashes) {
+	if start < 0 || start >= end || end > len(n.leaves) {
 		return NewEmptyRangeProof(isMaxNsIgnored), ErrInvalidRange
 	}
-	proof := n.buildRangeProof(start, end)
-
+	proof, err := n.buildRangeProof(start, end)
+	if err != nil {
+		return Proof{}, err
+	}
 	return NewInclusionProof(start, end, proof, isMaxNsIgnored), nil
 }
 
@@ -206,6 +218,10 @@ func (n *NamespacedMerkleTree) ProveRange(start, end int) (Proof, error) {
 // generated using a modified version of the namespace hash with a custom
 // namespace ID range calculation. For more information on this, please refer to
 // the HashNode method in the Hasher.
+// ProveNamespace may return error:
+// ErrInvalidNodeLen: if the nodes of the tree (n) do not comply by the namespace hash format.
+// ErrUnorderedSiblings: if tree nodes are out of order based on their namespace IDs.
+// ErrMismatchedNamespaceSize: if tree leaves are not namespaced with the same namespace ID size the tree is configured with.
 func (n *NamespacedMerkleTree) ProveNamespace(nID namespace.ID) (Proof, error) {
 	isMaxNsIgnored := n.treeHasher.IsMaxNamespaceIDIgnored()
 	// case 1) In the cases (n.nID < minNID) or (n.maxNID < nID), return empty
@@ -228,8 +244,14 @@ func (n *NamespacedMerkleTree) ProveNamespace(nID namespace.ID) (Proof, error) {
 	// case 3) At this point we either found leaves with the namespace nID in
 	// the tree or calculated the range it would be in (to generate a proof of
 	// absence and to return the corresponding leaf hashes).
-	n.computeLeafHashesIfNecessary()
-	proof := n.buildRangeProof(proofStart, proofEnd)
+	if err := n.computeLeafHashesIfNecessary(); err != nil {
+		return Proof{}, err
+	}
+
+	proof, err := n.buildRangeProof(proofStart, proofEnd)
+	if err != nil {
+		return Proof{}, err
+	}
 
 	if found {
 		return NewInclusionProof(proofStart, proofEnd, proof, isMaxNsIgnored), nil
@@ -241,18 +263,21 @@ func (n *NamespacedMerkleTree) ProveNamespace(nID namespace.ID) (Proof, error) {
 // buildRangeProof returns the nodes (as byte slices) in the range proof of the
 // supplied range i.e., [proofStart, proofEnd) where proofEnd is non-inclusive.
 // The nodes are ordered according to in order traversal of the namespaced tree.
-func (n *NamespacedMerkleTree) buildRangeProof(proofStart, proofEnd int) [][]byte {
+// buildRangeProof may return thw following errors:
+// ErrInvalidNodeLen: if the nodes of the tree (n) do not comply by the namespace hash format.
+// ErrUnorderedSiblings: if tree nodes are out of order based on their namespace IDs.
+func (n *NamespacedMerkleTree) buildRangeProof(proofStart, proofEnd int) ([][]byte, error) {
 	proof := [][]byte{} // it is the list of nodes hashes (as byte slices) with no index
-	var recurse func(start, end int, includeNode bool) []byte
+	var recurse func(start, end int, includeNode bool) ([]byte, error)
 
 	// start, end are indices of leaves in the tree hence they should be within
 	// the size of the tree i.e., less than or equal to the len(n.leaves)
 	// includeNode indicates whether the hash of the current subtree (covering
 	// the supplied range i.e., [start, end)) or one of its constituent subtrees
 	// should be part of the proof
-	recurse = func(start, end int, includeNode bool) []byte {
+	recurse = func(start, end int, includeNode bool) ([]byte, error) {
 		if start >= len(n.leafHashes) {
-			return nil
+			return nil, nil
 		}
 
 		// reached a leaf
@@ -268,7 +293,7 @@ func (n *NamespacedMerkleTree) buildRangeProof(proofStart, proofEnd int) [][]byt
 			// if the index of the leaf is within the queried range i.e.,
 			// [proofStart, proofEnd] OR if the leaf is not required as part of
 			// the proof i.e., includeNode == false
-			return leafHash
+			return leafHash, nil
 		}
 
 		// newIncludeNode indicates whether one of the subtrees of the current
@@ -289,15 +314,25 @@ func (n *NamespacedMerkleTree) buildRangeProof(proofStart, proofEnd int) [][]byt
 		// recursively get left and right subtree
 		k := getSplitPoint(end - start)
 
-		left := recurse(start, start+k, newIncludeNode)
-		right := recurse(start+k, end, newIncludeNode)
+		left, err := recurse(start, start+k, newIncludeNode)
+		if err != nil {
+			return nil, err
+		}
+		right, err := recurse(start+k, end, newIncludeNode)
+		if err != nil {
+			return nil, err
+		}
 
 		// only right leaf/subtree can be non-existent
 		var hash []byte
 		if right == nil {
 			hash = left
 		} else {
-			hash = n.treeHasher.HashNode(left, right)
+			var err error
+			hash, err = n.treeHasher.HashNode(left, right)
+			if err != nil { // if HashNode returns an error, it is a bug
+				return nil, err // this should never happen if the Push method is used to add leaves to the tree
+			}
 		}
 
 		// if the hash of the subtree representing [start, end) should be part
@@ -306,15 +341,17 @@ func (n *NamespacedMerkleTree) buildRangeProof(proofStart, proofEnd int) [][]byt
 			proof = append(proof, hash)
 		}
 
-		return hash
+		return hash, nil
 	}
 
 	fullTreeSize := getSplitPoint(len(n.leafHashes)) * 2
 	if fullTreeSize < 1 {
 		fullTreeSize = 1
 	}
-	recurse(0, fullTreeSize, true)
-	return proof
+	if _, err := recurse(0, fullTreeSize, true); err != nil {
+		return nil, err
+	}
+	return proof, nil
 }
 
 // Get returns leaves for the given namespace.ID.
@@ -407,7 +444,11 @@ func (n *NamespacedMerkleTree) Push(namespacedData namespace.PrefixedData) error
 // parsed as minND || maxNID || hash
 func (n *NamespacedMerkleTree) Root() []byte {
 	if n.rawRoot == nil {
-		n.rawRoot = n.computeRoot(0, len(n.leaves))
+		res, err := n.computeRoot(0, len(n.leaves))
+		if err != nil {
+			panic(err) // this is an illegal state, should never happen
+		}
+		n.rawRoot = res
 	}
 	return n.rawRoot
 }
@@ -535,14 +576,20 @@ func (n *NamespacedMerkleTree) updateMinMaxID(id namespace.ID) {
 
 // computes the leaf hashes if not already done in a previous call of
 // NamespacedMerkleTree.Root()
-func (n *NamespacedMerkleTree) computeLeafHashesIfNecessary() {
+// computeLeafHashesIfNecessary returns ErrMismatchedNamespaceSize if tree leaves are not well-format i.e., not namespaced with the same namespace ID size the tree is configured with.
+func (n *NamespacedMerkleTree) computeLeafHashesIfNecessary() error {
 	// check whether all the hash of all the existing leaves are available
 	if len(n.leafHashes) < len(n.leaves) {
 		n.leafHashes = make([][]byte, len(n.leaves))
 		for i, leaf := range n.leaves {
-			n.leafHashes[i] = n.treeHasher.HashLeaf(leaf)
+			res, err := n.treeHasher.HashLeaf(leaf)
+			if err != nil { // should never happen, it is an illegal state
+				return err
+			}
+			n.leafHashes[i] = res
 		}
 	}
+	return nil
 }
 
 type leafRange struct {
