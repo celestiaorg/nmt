@@ -125,13 +125,13 @@ func NewAbsenceProof(proofStart, proofEnd int, proofNodes [][]byte, leafHash []b
 //	`end-1` of the tree.
 //
 // `root` is the root of the NMT against which the `proof` is verified.
-func (proof Proof) VerifyNamespace(h hash.Hash, nID namespace.ID, data [][]byte, root []byte) (bool, error) {
+func (proof Proof) VerifyNamespace(h hash.Hash, nID namespace.ID, data [][]byte, root []byte) bool {
 	nth := NewNmtHasher(h, nID.Size(), proof.isMaxNamespaceIDIgnored)
 	min := namespace.ID(MinNamespace(root, nID.Size()))
 	max := namespace.ID(MaxNamespace(root, nID.Size()))
 	if nID.Size() != min.Size() || nID.Size() != max.Size() {
 		// conflicting namespace sizes
-		return false, nil
+		return false
 	}
 
 	isEmptyRange := proof.start == proof.end
@@ -143,7 +143,7 @@ func (proof Proof) VerifyNamespace(h hash.Hash, nID namespace.ID, data [][]byte,
 		if nID.Less(min) || max.Less(nID) || bytes.Equal(root, nth.EmptyRoot()) {
 			return true
 		}
-		return false, nil
+		return false
 	}
 	gotLeafHashes := make([][]byte, 0, len(data))
 	nIDLen := nID.Size()
@@ -153,7 +153,7 @@ func (proof Proof) VerifyNamespace(h hash.Hash, nID namespace.ID, data [][]byte,
 		leafMinNID := namespace.ID(proof.leafHash[:nIDLen])
 		if !nID.Less(leafMinNID) {
 			// leafHash.minNID  must be greater than nID
-			return false, nil
+			return false
 		}
 
 	} else {
@@ -162,12 +162,12 @@ func (proof Proof) VerifyNamespace(h hash.Hash, nID namespace.ID, data [][]byte,
 		for _, gotLeaf := range data {
 			if len(gotLeaf) < int(nIDLen) {
 				// conflicting namespace sizes
-				return false, nil
+				return false
 			}
 			gotLeafNid := namespace.ID(gotLeaf[:nIDLen])
 			if !gotLeafNid.Equal(nID) {
 				// conflicting namespace IDs in data
-				return false, nil
+				return false
 			}
 			leafData := append(
 				gotLeafNid, gotLeaf[nIDLen:]...,
@@ -175,7 +175,7 @@ func (proof Proof) VerifyNamespace(h hash.Hash, nID namespace.ID, data [][]byte,
 			// hash the leaf data
 			leafHash, err := hashLeafFunc(leafData)
 			if err != nil {
-				return false, fmt.Errorf("failed to hash leaf: %w", err)
+				return false
 			}
 			gotLeafHashes = append(gotLeafHashes, leafHash)
 		}
@@ -183,10 +183,14 @@ func (proof Proof) VerifyNamespace(h hash.Hash, nID namespace.ID, data [][]byte,
 	// check whether the number of leaves match the proof range i.e., end-start.
 	// If not, make an early return.
 	if !proof.IsOfAbsence() && len(gotLeafHashes) != (proof.End()-proof.Start()) {
-		return false, nil
+		return false
 	}
 	// with verifyCompleteness set to true:
-	return proof.verifyLeafHashes(nth, true, nID, gotLeafHashes, root)
+	res, err := proof.verifyLeafHashes(nth, true, nID, gotLeafHashes, root)
+	if err != nil {
+		return false
+	}
+	return res
 }
 
 // The verifyLeafHashes function checks whether the given proof is a valid Merkle
@@ -229,6 +233,7 @@ func (proof Proof) verifyLeafHashes(nth *Hasher, verifyCompleteness bool, nID na
 	}
 
 	var computeRoot func(start, end int) ([]byte, error)
+	// computeRoot can return error iff the HashNode function fails while calculating the root
 	computeRoot = func(start, end int) ([]byte, error) {
 		// reached a leaf
 		if end-start == 1 {
@@ -300,7 +305,7 @@ func (proof Proof) verifyLeafHashes(nth *Hasher, verifyCompleteness bool, nID na
 // data should not contain the prefixed namespace, unlike the tree.Push method,
 // which takes prefixed data. All leaves implicitly have the same namespace ID:
 // `nid`.
-func (proof Proof) VerifyInclusion(h hash.Hash, nid namespace.ID, leaves [][]byte, root []byte) (bool, error) {
+func (proof Proof) VerifyInclusion(h hash.Hash, nid namespace.ID, leaves [][]byte, root []byte) bool {
 	nth := NewNmtHasher(h, nid.Size(), proof.isMaxNamespaceIDIgnored)
 	hashes := make([][]byte, len(leaves))
 	for i, d := range leaves {
@@ -309,12 +314,16 @@ func (proof Proof) VerifyInclusion(h hash.Hash, nid namespace.ID, leaves [][]byt
 		)
 		res, err := nth.HashLeaf(leafData)
 		if err != nil {
-			return false, fmt.Errorf("failed to hash leaf %x: %w", leafData, err)
+			return false
 		}
 		hashes[i] = res
 	}
 
-	return proof.verifyLeafHashes(nth, false, nid, hashes, root), nil
+	res, err := proof.verifyLeafHashes(nth, false, nid, hashes, root)
+	if err != nil {
+		return false
+	}
+	return res
 }
 
 // nextSubtreeSize returns the number of leaves of the subtree adjacent to start
