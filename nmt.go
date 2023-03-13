@@ -576,7 +576,7 @@ func (n *NamespacedMerkleTree) updateMinMaxID(id namespace.ID) {
 
 // computes the leaf hashes if not already done in a previous call of
 // NamespacedMerkleTree.Root()
-// computeLeafHashesIfNecessary returns ErrMismatchedNamespaceSize if tree leaves are not well-format i.e., not namespaced with the same namespace ID size the tree is configured with.
+// computeLeafHashesIfNecessary returns ErrMismatchedNamespaceSize if tree leaves are not well-formatted i.e., not namespaced with the same namespace ID size the tree is configured with.
 func (n *NamespacedMerkleTree) computeLeafHashesIfNecessary() error {
 	// check whether all the hash of all the existing leaves are available
 	if len(n.leafHashes) < len(n.leaves) {

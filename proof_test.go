@@ -3,6 +3,7 @@ package nmt
 import (
 	"bytes"
 	"crypto/sha256"
+	"github.com/stretchr/testify/require"
 	"testing"
 
 	"github.com/celestiaorg/nmt/namespace"
@@ -28,7 +29,10 @@ func TestProof_VerifyNamespace_False(t *testing.T) {
 	if err != nil {
 		t.Fatalf("invalid test setup: error on ProveNamespace(): %v", err)
 	}
-	incompleteFirstNs := NewInclusionProof(0, 1, n.buildRangeProof(0, 1), false)
+	// inclusion proof of leaf index 0
+	incProof0, err := n.buildRangeProof(0, 1)
+	require.NoError(t, err)
+	incompleteFirstNs := NewInclusionProof(0, 1, incProof0, false)
 	type args struct {
 		nID  namespace.ID
 		data [][]byte
@@ -39,11 +43,15 @@ func TestProof_VerifyNamespace_False(t *testing.T) {
 
 	// an invalid absence proof for an existing namespace ID (2) in the constructed tree
 	leafIndex := 3
-	inclusionProofOfLeafIndex := n.buildRangeProof(leafIndex, leafIndex+1)
+	inclusionProofOfLeafIndex, err := n.buildRangeProof(leafIndex, leafIndex+1)
+	require.NoError(t, err)
 	n.computeLeafHashesIfNecessary()
 	leafHash := n.leafHashes[leafIndex] // the only data item with namespace ID = 2 in the constructed tree is at index 3
 	invalidAbsenceProof := NewAbsenceProof(leafIndex, leafIndex+1, inclusionProofOfLeafIndex, leafHash, false)
 
+	// inclusion proof of leaf index 10
+	incProof10, err := n.buildRangeProof(10, 11)
+	require.NoError(t, err)
 	tests := []struct {
 		name  string
 		proof Proof
@@ -86,7 +94,7 @@ func TestProof_VerifyNamespace_False(t *testing.T) {
 			false,
 		},
 		{
-			"incomplete namespace proof (left)", NewInclusionProof(10, 11, n.buildRangeProof(10, 11), false),
+			"incomplete namespace proof (left)", NewInclusionProof(10, 11, incProof10, false),
 			args{[]byte{0, 0, 8}, pushedLastNs[1:], n.Root()},
 			false,
 		},

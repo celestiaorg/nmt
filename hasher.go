@@ -145,7 +145,7 @@ func (n *Hasher) ValidateLeaf(data []byte) (err error) {
 	nidSize := int(n.NamespaceSize())
 	lenData := len(data)
 	if lenData < nidSize {
-		return fmt.Errorf("%w: got: %v, want >= %v", ErrMismatchedNamespaceSize, lenData, nidSize)
+		return fmt.Errorf("%w: got: %v, want >= %v", ErrInvalidNodeLen, lenData, nidSize)
 	}
 	return nil
 }
@@ -208,22 +208,6 @@ func (n *Hasher) validateSiblingsNamespaceOrder(left, right []byte) (err error) 
 	// check the namespace range of the left and right children
 	if rightMinNs.Less(leftMaxNs) {
 		return fmt.Errorf("%w: the maximum namespace of the left child %x is greater than the min namespace of the right child %x", ErrUnorderedSiblings, leftMaxNs, rightMinNs)
-	}
-	return nil
-}
-
-// validateNodes  is a helper function that verifies the inputs of HashNode.
-// It verifies whether the two siblings left and right comply by the namespace hash format,
-// and are correctly ordered according to their namespace IDs.
-func (n *Hasher) validateNodes(left, right []byte) error {
-	if err := n.ValidateNodeFormat(left); err != nil {
-		return err
-	}
-	if err := n.ValidateNodeFormat(right); err != nil {
-		return err
-	}
-	if err := n.validateSiblingsNamespaceOrder(left, right); err != nil {
-		return err
 	}
 	return nil
 }
