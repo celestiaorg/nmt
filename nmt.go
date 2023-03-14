@@ -442,15 +442,15 @@ func (n *NamespacedMerkleTree) Push(namespacedData namespace.PrefixedData) error
 // been added through the use of the Push method. the returned byte slice is of
 // size 2* n.NamespaceSize + the underlying hash output size, and should be
 // parsed as minND || maxNID || hash
-func (n *NamespacedMerkleTree) Root() []byte {
+func (n *NamespacedMerkleTree) Root() ([]byte, error) {
 	if n.rawRoot == nil {
 		res, err := n.computeRoot(0, len(n.leaves))
 		if err != nil {
-			panic(err) // this is an illegal state, should never happen
+			return nil, err // this should never happen since leaves are validated in the Push method
 		}
 		n.rawRoot = res
 	}
-	return n.rawRoot
+	return n.rawRoot, nil
 }
 
 // MinNamespace returns the minimum namespace ID in this Namespaced Merkle Tree.
