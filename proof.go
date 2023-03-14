@@ -160,21 +160,17 @@ func (proof Proof) VerifyNamespace(h hash.Hash, nID namespace.ID, data [][]byte,
 		// collect leaf hashes from provided data and do some sanity checks:
 		hashLeafFunc := nth.HashLeaf
 		for _, gotLeaf := range data {
-			if len(gotLeaf) < int(nIDLen) {
-				// conflicting namespace sizes
+			if nth.ValidateLeaf(gotLeaf) != nil {
 				return false
 			}
-			gotLeafNid := namespace.ID(gotLeaf[:nIDLen])
-			if !gotLeafNid.Equal(nID) {
+			// check whether the namespace ID of the data matches the queried nID
+			if gotLeafNid := namespace.ID(gotLeaf[:nIDLen]); !gotLeafNid.Equal(nID) {
 				// conflicting namespace IDs in data
 				return false
 			}
-			leafData := append(
-				gotLeafNid, gotLeaf[nIDLen:]...,
-			)
 			// hash the leaf data
-			leafHash, err := hashLeafFunc(leafData)
-			if err != nil {
+			leafHash, err := hashLeafFunc(gotLeaf)
+			if err != nil { // this can never happen due to the initial validation of the leaf at the beginning of the loop
 				return false
 			}
 			gotLeafHashes = append(gotLeafHashes, leafHash)

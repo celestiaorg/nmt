@@ -473,7 +473,7 @@ func (n *NamespacedMerkleTree) computeRoot(start, end int) ([]byte, error) {
 		return rootHash, nil
 	case 1:
 		leafHash, err := n.treeHasher.HashLeaf(n.leaves[start])
-		if err != nil {
+		if err != nil { // this should never happen since leaves are added through the Push method, during which leaves formats are validated to make sure they are hashable.
 			return nil, fmt.Errorf("failed to hash leaf: %w", err)
 		}
 		if len(n.leafHashes) < len(n.leaves) {
@@ -484,15 +484,15 @@ func (n *NamespacedMerkleTree) computeRoot(start, end int) ([]byte, error) {
 	default:
 		k := getSplitPoint(end - start)
 		left, err := n.computeRoot(start, start+k)
-		if err != nil {
+		if err != nil { // this should never happen since leaves are added through the Push method, during which leaves formats are validated and their namespace IDs are checked to be sequential.
 			return nil, fmt.Errorf("failed to compute subtree root [%d, %d): %w", start, start+k, err)
 		}
 		right, err := n.computeRoot(start+k, end)
-		if err != nil {
+		if err != nil { // this should never happen since leaves are added through the Push method, during which leaves formats are validated and their namespace IDs are checked to be sequential.
 			return nil, fmt.Errorf("failed to compute subtree root [%d, %d): %w", start+k, end, err)
 		}
 		hash, err := n.treeHasher.HashNode(left, right)
-		if err != nil {
+		if err != nil { // this error should never happen since leaves are added through the Push method, during which leaves formats are validated and their namespace IDs are checked to be sequential.
 			return nil, fmt.Errorf("failed to compute subtree root [%d, %d): %w", left, right, err)
 		}
 		n.visit(hash, left, right)
