@@ -3,6 +3,7 @@ package nmt
 import (
 	"bytes"
 	"crypto/sha256"
+	"github.com/stretchr/testify/require"
 	"testing"
 
 	"github.com/celestiaorg/nmt/namespace"
