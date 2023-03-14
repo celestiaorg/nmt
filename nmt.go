@@ -454,13 +454,21 @@ func (n *NamespacedMerkleTree) Root() ([]byte, error) {
 }
 
 // MinNamespace returns the minimum namespace ID in this Namespaced Merkle Tree.
-func (n *NamespacedMerkleTree) MinNamespace() namespace.ID {
-	return MinNamespace(n.Root(), n.NamespaceSize())
+func (n *NamespacedMerkleTree) MinNamespace() (namespace.ID, error) {
+	r, err := n.Root()
+	if err != nil {
+		return nil, err
+	}
+	return MinNamespace(r, n.NamespaceSize()), nil
 }
 
 // MaxNamespace returns the maximum namespace ID in this Namespaced Merkle Tree.
-func (n *NamespacedMerkleTree) MaxNamespace() namespace.ID {
-	return MaxNamespace(n.Root(), n.NamespaceSize())
+func (n *NamespacedMerkleTree) MaxNamespace() (namespace.ID, error) {
+	r, err := n.Root()
+	if err != nil {
+		return nil, err
+	}
+	return MaxNamespace(r, n.NamespaceSize()), nil
 }
 
 // computeRoot calculates the namespace Merkle root for a tree/sub-tree that

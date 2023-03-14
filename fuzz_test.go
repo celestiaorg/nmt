@@ -2,6 +2,7 @@ package nmt_test
 
 import (
 	"crypto/sha256"
+	"github.com/stretchr/testify/require"
 	"reflect"
 	"sort"
 	"testing"
@@ -44,7 +45,8 @@ func TestFuzzProveVerifyNameSpace(t *testing.T) {
 			}
 		}
 
-		treeRoot := tree.Root()
+		treeRoot, err := tree.Root()
+		require.NoError(t, err)
 		nonEmptyNsCount := 0
 		leafIdx := 0
 		for _, ns := range sortedKeys {

@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/binary"
 	"fmt"
+	"github.com/stretchr/testify/require"
 	"math"
 	"math/rand"
 	"reflect"
@@ -55,7 +56,8 @@ func ExampleNamespacedMerkleTree() {
 		}
 	}
 	// compute the root
-	root := tree.Root()
+	root, err := tree.Root()
+	panic(err)
 	// the root's min/max namespace is the min and max namespace of all leaves:
 	minNS := MinNamespace(root, tree.NamespaceSize())
 	maxNS := MaxNamespace(root, tree.NamespaceSize())
@@ -156,7 +158,8 @@ func TestNamespacedMerkleTreeRoot(t *testing.T) {
 					t.Errorf("Push() error = %v, expected no error", err)
 				}
 			}
-			gotRoot := n.Root()
+			gotRoot, err := n.Root()
+			require.NoError(t, err)
 			if !reflect.DeepEqual(gotRoot, tt.wantRoot) {
 				t.Errorf("Root() gotRoot = %v, want %v", gotRoot, tt.wantRoot)
 			}
@@ -287,7 +290,9 @@ func TestNamespacedMerkleTree_ProveNamespace_Ranges_And_Verify(t *testing.T) {
 
 			// Verification round-trip should always pass:
 			gotGetLeaves := n.Get(tt.proveNID)
-			gotChecksOut := gotProof.VerifyNamespace(sha256.New(), tt.proveNID, gotGetLeaves, n.Root())
+			r, err := n.Root()
+			require.NoError(t, err)
+			gotChecksOut := gotProof.VerifyNamespace(sha256.New(), tt.proveNID, gotGetLeaves, r)
 			if !gotChecksOut {
 				t.Errorf("Proof.VerifyNamespace() gotChecksOut: %v, want: true", gotChecksOut)
 			}
@@ -299,7 +304,9 @@ func TestNamespacedMerkleTree_ProveNamespace_Ranges_And_Verify(t *testing.T) {
 					if err != nil {
 						t.Fatalf("unexpected error on Prove(): %v", err)
 					}
-					gotChecksOut := gotSingleProof.VerifyInclusion(sha256.New(), data.ID, [][]byte{data.Data}, n.Root())
+					r, err := n.Root()
+					require.NoError(t, err)
+					gotChecksOut := gotSingleProof.VerifyInclusion(sha256.New(), data.ID, [][]byte{data.Data}, r)
 					if !gotChecksOut {
 						t.Errorf("Proof.VerifyInclusion() gotChecksOut: %v, want: true", gotChecksOut)
 					}
@@ -482,7 +489,9 @@ func TestIgnoreMaxNamespace(t *testing.T) {
 					panic("unexpected error")
 				}
 			}
-			gotRootMaxNID := tree.Root()[tree.NamespaceSize() : tree.NamespaceSize()*2]
+			r, err := tree.Root()
+			require.NoError(t, err)
+			gotRootMaxNID := r[tree.NamespaceSize() : tree.NamespaceSize()*2]
 			if !bytes.Equal(tc.wantRootMaxNID, gotRootMaxNID) {
 				t.Fatalf("Case: %v, '%v', root.Max() got: %x, want: %x", i, tc.name, gotRootMaxNID, tc.wantRootMaxNID)
 			}
@@ -495,7 +504,9 @@ func TestIgnoreMaxNamespace(t *testing.T) {
 					t.Fatalf("Proof.IsMaxNamespaceIDIgnored() got: %v, want: %v", gotIgnored, tc.ignoreMaxNamespace)
 				}
 				leaves := tree.Get(d.NamespaceID())
-				if !proof.VerifyNamespace(hash, d.NamespaceID(), leaves, tree.Root()) {
+				r, err := tree.Root()
+				require.NoError(t, err)
+				if !proof.VerifyNamespace(hash, d.NamespaceID(), leaves, r) {
 					t.Errorf("VerifyNamespace() failed on ID: %x", d.NamespaceID())
 				}
 
@@ -503,7 +514,9 @@ func TestIgnoreMaxNamespace(t *testing.T) {
 				if err != nil {
 					t.Fatalf("ProveNamespace() unexpected error: %v", err)
 				}
-				if !singleProof.VerifyInclusion(hash, d.NamespaceID(), [][]byte{d.Data()}, tree.Root()) {
+				r, err = tree.Root()
+				require.NoError(t, err)
+				if !singleProof.VerifyInclusion(hash, d.NamespaceID(), [][]byte{d.Data()}, r) {
 					t.Errorf("VerifyInclusion() failed on leaves: %#v with index: %v", d, idx)
 				}
 				if gotIgnored := singleProof.IsMaxNamespaceIDIgnored(); gotIgnored != tc.ignoreMaxNamespace {
@@ -532,7 +545,8 @@ func TestNodeVisitor(t *testing.T) {
 			t.Errorf("err: %v", err)
 		}
 	}
-	root := n.Root()
+	root, err := n.Root()
+	require.NoError(t, err)
 	last := nodeHashes[len(nodeHashes)-1]
 	if !bytes.Equal(root, last) {
 		t.Fatalf("last visited node's digest does not match the tree root's.")
@@ -600,7 +614,8 @@ func TestNamespacedMerkleTree_calculateAbsenceIndex_Panic(t *testing.T) {
 // This test checks for a regression of https://github.com/celestiaorg/nmt/issues/86
 func TestNMT_absenceProofOfZeroNamespace_InEmptyTree(t *testing.T) {
 	tree := New(sha256.New(), NamespaceIDSize(1))
-	root := tree.Root()
+	root, err := tree.Root()
+	require.NoError(t, err)
 	emptyleaves, proof, err := tree.GetWithProof(namespace.ID{0})
 	if err != nil {
 		t.Fatalf("GetWithProof()  could not get namespace{0}. err: %v ", err)
@@ -630,7 +645,8 @@ func TestNMT_forgedNamespaceEmptinessProof(t *testing.T) {
 		}
 	}
 
-	root := tree.Root()
+	root, err := tree.Root()
+	require.NoError(t, err)
 	actualLeaves := tree.Get(namespace.ID{1})
 	if len(actualLeaves) == 0 {
 		t.Fatalf("Get(namespace.ID{1}) should have returned two leaves but returned none.")
@@ -686,7 +702,7 @@ func BenchmarkComputeRoot(b *testing.B) {
 						b.Errorf("err: %v", err)
 					}
 				}
-				_ = n.Root()
+				_, _ = n.Root()
 			}
 		})
 	}
@@ -707,7 +723,8 @@ func Test_Root_RaceCondition(t *testing.T) {
 				}
 				wg.Done()
 			}()
-			_ = tree.Root()
+			_, err := tree.Root()
+			require.NoError(t, err)
 		}()
 	}
 
@@ -800,8 +817,12 @@ func TestMinMaxNamespace(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			assert.Equal(t, tc.wantMin, tc.tree.MinNamespace())
-			assert.Equal(t, tc.wantMax, tc.tree.MaxNamespace())
+			min, err := tc.tree.MinNamespace()
+			require.NoError(t, err)
+			assert.Equal(t, tc.wantMin, min)
+			max, err := tc.tree.MaxNamespace()
+			require.NoError(t, err)
+			assert.Equal(t, tc.wantMax, max)
 		})
 	}
 }

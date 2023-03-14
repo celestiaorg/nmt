@@ -52,6 +52,11 @@ func TestProof_VerifyNamespace_False(t *testing.T) {
 	// inclusion proof of leaf index 10
 	incProof10, err := n.buildRangeProof(10, 11)
 	require.NoError(t, err)
+
+	// root
+	root, err := n.Root()
+	require.NoError(t, err)
+
 	tests := []struct {
 		name  string
 		proof Proof
@@ -60,52 +65,52 @@ func TestProof_VerifyNamespace_False(t *testing.T) {
 	}{
 		{
 			"invalid nid (too long)", validProof,
-			args{[]byte{0, 0, 0, 0}, pushedZeroNs, n.Root()},
+			args{[]byte{0, 0, 0, 0}, pushedZeroNs, root},
 			false,
 		},
 		{
 			"invalid leaf data (too short)", validProof,
-			args{[]byte{0, 0, 0}, [][]byte{{0, 1}}, n.Root()},
+			args{[]byte{0, 0, 0}, [][]byte{{0, 1}}, root},
 			false,
 		},
 		{
 			"mismatching IDs in data", validProof,
-			args{[]byte{0, 0, 0}, append(append([][]byte(nil), pushedZeroNs...), []byte{1, 1, 1}), n.Root()},
+			args{[]byte{0, 0, 0}, append(append([][]byte(nil), pushedZeroNs...), []byte{1, 1, 1}), root},
 			false,
 		},
 		{
 			"added another leaf", validProof,
-			args{[]byte{0, 0, 0}, append(append([][]byte(nil), pushedZeroNs...), []byte{0, 0, 0}), n.Root()},
+			args{[]byte{0, 0, 0}, append(append([][]byte(nil), pushedZeroNs...), []byte{0, 0, 0}), root},
 			false,
 		},
 		{
 			"remove one leaf, errors", validProof,
-			args{[]byte{0, 0, 0}, pushedZeroNs[:len(pushedZeroNs)-1], n.Root()},
+			args{[]byte{0, 0, 0}, pushedZeroNs[:len(pushedZeroNs)-1], root},
 			false,
 		},
 		{
 			"remove one leaf & update proof range, errors", NewInclusionProof(validProof.Start(), validProof.End()-1, validProof.Nodes(), false),
-			args{[]byte{0, 0, 0}, pushedZeroNs[:len(pushedZeroNs)-1], n.Root()},
+			args{[]byte{0, 0, 0}, pushedZeroNs[:len(pushedZeroNs)-1], root},
 			false,
 		},
 		{
 			"incomplete namespace proof (right)", incompleteFirstNs,
-			args{[]byte{0, 0, 0}, pushedZeroNs[:len(pushedZeroNs)-1], n.Root()},
+			args{[]byte{0, 0, 0}, pushedZeroNs[:len(pushedZeroNs)-1], root},
 			false,
 		},
 		{
 			"incomplete namespace proof (left)", NewInclusionProof(10, 11, incProof10, false),
-			args{[]byte{0, 0, 8}, pushedLastNs[1:], n.Root()},
+			args{[]byte{0, 0, 8}, pushedLastNs[1:], root},
 			false,
 		},
 		{
 			"remove all leaves, errors", validProof,
-			args{[]byte{0, 0, 0}, pushedZeroNs[:len(pushedZeroNs)-2], n.Root()},
+			args{[]byte{0, 0, 0}, pushedZeroNs[:len(pushedZeroNs)-2], root},
 			false,
 		},
 		{
 			"invalid absence proof of an existing nid", invalidAbsenceProof,
-			args{[]byte{0, 0, 2}, [][]byte{}, n.Root()},
+			args{[]byte{0, 0, 2}, [][]byte{}, root},
 			false,
 		},
 	}
@@ -154,6 +159,9 @@ func TestProof_MultipleLeaves(t *testing.T) {
 		}
 	}
 
+	root, err := n.Root()
+	require.NoError(t, err)
+
 	type args struct {
 		start, end int
 		root       []byte
@@ -164,16 +172,16 @@ func TestProof_MultipleLeaves(t *testing.T) {
 		want bool
 	}{
 		{
-			"3rd through 5th leaf", args{2, 4, n.Root()}, true,
+			"3rd through 5th leaf", args{2, 4, root}, true,
 		},
 		{
-			"single leaf", args{2, 3, n.Root()}, true,
+			"single leaf", args{2, 3, root}, true,
 		},
 		{
-			"first leaf", args{0, 1, n.Root()}, true,
+			"first leaf", args{0, 1, root}, true,
 		},
 		{
-			"most leaves", args{0, 7, n.Root()}, true,
+			"most leaves", args{0, 7, root}, true,
 		},
 		{
 			"most leaves", args{0, 7, bytes.Repeat([]byte{1}, 48)}, false,
