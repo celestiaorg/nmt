@@ -227,7 +227,7 @@ func (n *Hasher) validateSiblingsNamespaceOrder(left, right []byte) (err error) 
 // IDs available in the range of its left and right children that are not
 // equal to the maximum possible namespace ID value. If all the namespace IDs are equal
 // to the maximum possible value, then the maximum possible value is used.
-func (n *Hasher) HashNode(left, right []byte) []byte {
+func (n *Hasher) HashNode(left, right []byte) ([]byte, error) {
 	h := n.baseHasher
 	h.Reset()
 
