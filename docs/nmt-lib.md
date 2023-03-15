@@ -44,16 +44,18 @@ idSize := tree.NamespaceSize() // outputs 1
 
 ### Ignore Max Namespace
 
-If the NMT is configured with `IgnoreMaxNamespace` set to true, then the calculation of the namespace ID range of non-leaf nodes in the [namespace hash function](./spec/nmt.md#namespaced-hash) will change slightly.
-That is, when determining the upper limit of the namespace ID range for a tree node `n`, with children `l` and `r`, the maximum possible namespace ID, equivalent to `NamespaceIDSize()` bytes of `0xFF`, or `2^NamespaceIDSize()-1`,
-should be omitted if feasible (in the preceding code example with the ID size of `1` byte, the maximum possible namespace ID would be `0xFF`).
-This is achieved by taking the maximum value among the namespace IDs available in the range of node's left and right children (i.e., `n.maxNs = max(l.minNs, l.maxNs , r.minNs, r.maxNs))`, which is not equal to the maximum possible namespace ID value.
-If such a namespace ID does not exist, the `maxNs` is calculated as normal, i.e., `n.maxNs = max(l.maxNs , r.maxNs)`.
+If the NMT is configured with `IgnoreMaxNamespace` set to true (the flag is explained [here](#nmt-initialization-and-configuration)), then the calculation of the namespace ID range of non-leaf nodes in the [namespace hash function](./spec/nmt.md#namespaced-hash) will change slightly.
+That is, when determining the upper limit of the namespace ID range for a tree node, the maximum possible namespace `maxPossibleNamespace` should not be taken into account.
+(In the preceding code example with the ID size of `1` byte, the value of `maxPossibleNamespace` is $2^8-1 = 0xFF$.)
+
+Concretely, for a node `n` with children `l` and `r`, the namespace ID is the largest namespace value from `l` and `r` smaller than  `maxPossibleNamespace`, if such a namespace ID exists.
+Otherwise, if all candidate values are equal to `maxPossibleNamespace`, the namespace ID of `n` is set to `maxPossibleNamespace`.
+Precisely, if a set `C` $= \bigl \lbrace$ `ns` $\in \lbrace$`l.minNs`, `l.maxNs`, `r.minNs`, `r.maxNs` $\rbrace:$ `ns` $<$ `maxPossibleNamespace` $\bigr \rbrace$ is not empty, `n.maxNs = max(C)`. If `C` is empty, `n.maxNs = maxPossibleNamespace`.
 
 ## Add Leaves
 
 Data items are added to the tree using the `Push` method.
-Data items should be prefixed with namespaces of size set out for the NMT (i.e.,   `tree.NamespaceSize()`) and added in ascending order of their namespace IDs to avoid errors during the `Push` process.
+Data items should be prefixed with namespaces of size set out for the NMT (i.e., `tree.NamespaceSize()`) and added in ascending order of their namespace IDs to avoid errors during the `Push` process.
 Non-compliance with either of these requirements cause `Push` to fail.
 
 ```go

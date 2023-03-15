@@ -223,13 +223,11 @@ func (n *Hasher) validateSiblingsNamespaceOrder(left, right []byte) (err error) 
 // is set to true, the calculation of the namespace ID range of the node
 // slightly changes. In this case, when setting the upper range, the maximum
 // possible namespace ID (i.e., 2^NamespaceIDSize-1) should be ignored if
-// possible. This is achieved by taking the maximum value among the namespace
-// IDs available in the range of its left and right children (i.e.,
-// max(left.minNID, left.maxNID , right.minNID, right.maxNID)), which is not
-// equal to the maximum possible namespace ID value. If such a namespace ID does
-// not exist, the maximum NID is calculated as normal, i.e., res.maxNID =
-// max(left.maxNID , right.maxNID).
-func (n *Hasher) HashNode(left, right []byte) ([]byte, error) {
+// possible. This is achieved by taking the maximum value among only those namespace
+// IDs available in the range of its left and right children that are not
+// equal to the maximum possible namespace ID value. If all the namespace IDs are equal
+// to the maximum possible value, then the maximum possible value is used.
+func (n *Hasher) HashNode(left, right []byte) []byte {
 	h := n.baseHasher
 	h.Reset()
 
