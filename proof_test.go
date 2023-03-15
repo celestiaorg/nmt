@@ -3,8 +3,9 @@ package nmt
 import (
 	"bytes"
 	"crypto/sha256"
-	"github.com/stretchr/testify/require"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 
 	"github.com/celestiaorg/nmt/namespace"
 )
@@ -45,7 +46,7 @@ func TestProof_VerifyNamespace_False(t *testing.T) {
 	leafIndex := 3
 	inclusionProofOfLeafIndex, err := n.buildRangeProof(leafIndex, leafIndex+1)
 	require.NoError(t, err)
-	n.computeLeafHashesIfNecessary()
+	require.NoError(t, n.computeLeafHashesIfNecessary())
 	leafHash := n.leafHashes[leafIndex] // the only data item with namespace ID = 2 in the constructed tree is at index 3
 	invalidAbsenceProof := NewAbsenceProof(leafIndex, leafIndex+1, inclusionProofOfLeafIndex, leafHash, false)
 

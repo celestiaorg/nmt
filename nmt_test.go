@@ -6,13 +6,14 @@ import (
 	"crypto/sha256"
 	"encoding/binary"
 	"fmt"
-	"github.com/stretchr/testify/require"
 	"math"
 	"math/rand"
 	"reflect"
 	"sort"
 	"sync"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 
 	"github.com/celestiaorg/nmt/namespace"
 	"github.com/stretchr/testify/assert"
@@ -57,7 +58,9 @@ func ExampleNamespacedMerkleTree() {
 	}
 	// compute the root
 	root, err := tree.Root()
-	panic(err)
+	if err != nil {
+		panic("unexpected error")
+	}
 	// the root's min/max namespace is the min and max namespace of all leaves:
 	minNS := MinNamespace(root, tree.NamespaceSize())
 	maxNS := MaxNamespace(root, tree.NamespaceSize())

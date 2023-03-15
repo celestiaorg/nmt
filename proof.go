@@ -10,9 +10,7 @@ import (
 	"github.com/celestiaorg/nmt/namespace"
 )
 
-var (
-	ErrFailedCompletenessCheck = errors.New("failed completeness check")
-)
+var ErrFailedCompletenessCheck = errors.New("failed completeness check")
 
 // Proof represents a namespace proof of a namespace.ID in an NMT. In case this
 // proof proves the absence of a namespace.ID in a tree it also contains the

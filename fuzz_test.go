@@ -2,10 +2,11 @@ package nmt_test
 
 import (
 	"crypto/sha256"
-	"github.com/stretchr/testify/require"
 	"reflect"
 	"sort"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 
 	"github.com/celestiaorg/nmt"
 	"github.com/celestiaorg/nmt/namespace"
