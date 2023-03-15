@@ -45,7 +45,7 @@ idSize := tree.NamespaceSize() // outputs 1
 ### Ignore Max Namespace
 
 If the NMT is configured with `IgnoreMaxNamespace` set to true (the flag is explained [here](#nmt-initialization-and-configuration)), then the calculation of the namespace ID range of non-leaf nodes in the [namespace hash function](./spec/nmt.md#namespaced-hash) will change slightly.
-That is, when determining the upper limit of the namespace ID range for a tree node, the maximum possible namespace `maxPossibleNamespace` should not be taken into account. 
+That is, when determining the upper limit of the namespace ID range for a tree node, the maximum possible namespace `maxPossibleNamespace` should not be taken into account.
 (In the preceding code example with the ID size of `1` byte, the value of `maxPossibleNamespace` is $2^8-1 = 0xFF$.)
 
 Concretely, for a node `n` with children `l` and `r`, the namespace ID is the largest namespace value from `l` and `r` different from  `maxPossibleNamespace`, if such a namespace ID exists.
