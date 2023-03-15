@@ -48,7 +48,7 @@ If the NMT is configured with `IgnoreMaxNamespace` set to true (the flag is expl
 That is, when determining the upper limit of the namespace ID range for a tree node, the maximum possible namespace `maxPossibleNamespace` should not be taken into account.
 (In the preceding code example with the ID size of `1` byte, the value of `maxPossibleNamespace` is $2^8-1 = 0xFF$.)
 
-Concretely, for a node `n` with children `l` and `r`, the namespace ID is the largest namespace value from `l` and `r` different from  `maxPossibleNamespace`, if such a namespace ID exists.
+Concretely, for a node `n` with children `l` and `r`, the namespace ID is the largest namespace value from `l` and `r` smaller than  `maxPossibleNamespace`, if such a namespace ID exists.
 Otherwise, if all candidate values are equal to `maxPossibleNamespace`, the namespace ID of `n` is set to `maxPossibleNamespace`.
 Precisely, if a set `C = {ns `$\in$` {l.minNs, l.maxNs, r.minNs, r.maxNs}: ns < maxPossibleNamespace}` is not empty, `n.maxNs = max(C)`. If `C` is empty, `n.maxNs = maxPossibleNamespace`.
 
