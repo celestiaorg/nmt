@@ -19,6 +19,7 @@ var _ hash.Hash = (*Hasher)(nil)
 var (
 	ErrUnorderedSiblings = errors.New("NMT sibling nodes should be ordered lexicographically by namespace IDs")
 	ErrInvalidNodeLen    = errors.New("invalid NMT node size")
+	ErrInvalidLeafLen    = errors.New("invalid NMT leaf size")
 )
 
 type Hasher struct {
@@ -66,7 +67,7 @@ func (n *Hasher) Size() int {
 // Requires data of fixed size to match leaf or inner NMT nodes. Only a single
 // write is allowed.
 // It panics if more than one single write is attempted.
-// It returns error if the data does not match an NMT non-leaf node or leaf node.
+// If the data does not match an NMT non-leaf node or leaf node, an error will be returned.
 func (n *Hasher) Write(data []byte) (int, error) {
 	if n.data != nil {
 		panic("only a single Write is allowed")
@@ -96,8 +97,7 @@ func (n *Hasher) Write(data []byte) (int, error) {
 
 // Sum computes the hash. Does not append the given suffix, violating the
 // interface.
-// It may panic if the data being hashed is invalid.
-// This should never happen if the error returned by the Write method is checked before attempting the Sum method.
+// It may panic if the data being hashed is invalid. This should never happen since the Write method refuses an invalid data and errors out.
 func (n *Hasher) Sum([]byte) []byte {
 	switch n.tp {
 	case LeafPrefix:
@@ -145,7 +145,7 @@ func (n *Hasher) ValidateLeaf(data []byte) (err error) {
 	nidSize := int(n.NamespaceSize())
 	lenData := len(data)
 	if lenData < nidSize {
-		return fmt.Errorf("%w: got: %v, want >= %v", ErrInvalidNodeLen, lenData, nidSize)
+		return fmt.Errorf("%w: got: %v, want >= %v", ErrInvalidLeafLen, lenData, nidSize)
 	}
 	return nil
 }
@@ -153,8 +153,7 @@ func (n *Hasher) ValidateLeaf(data []byte) (err error) {
 // HashLeaf computes namespace hash of the namespaced data item `ndata` as
 // ns(ndata) || ns(ndata) || hash(leafPrefix || ndata), where ns(ndata) is the
 // namespaceID inside the data item namely leaf[:n.NamespaceLen]). Note that for
-// leaves minNs = maxNs = ns(leaf) = leaf[:NamespaceLen]. HashLeaf can return error if
-// the input is not properly namespaced.
+// leaves minNs = maxNs = ns(leaf) = leaf[:NamespaceLen]. HashLeaf can return the ErrInvalidNodeLen error if the input is not namespaced.
 //
 //nolint:errcheck
 func (n *Hasher) HashLeaf(ndata []byte) ([]byte, error) {
@@ -183,7 +182,7 @@ func (n *Hasher) HashLeaf(ndata []byte) ([]byte, error) {
 }
 
 // ValidateNodeFormat checks whether the supplied node conforms to the
-// namespaced hash format.
+// namespaced hash format and returns an error if it does not.
 func (n *Hasher) ValidateNodeFormat(node []byte) (err error) {
 	totalNamespaceLen := 2 * n.NamespaceLen
 	nodeLen := len(node)
@@ -214,10 +213,10 @@ func (n *Hasher) validateSiblingsNamespaceOrder(left, right []byte) (err error) 
 
 // HashNode calculates a namespaced hash of a node using the supplied left and
 // right children. The input values, `left` and `right,` are namespaced hash
-// values with the format `minNID || maxNID || hash.` The HashNode function may
-// return an error if the inputs provided are invalid, i.e., when left and right are not
-// in the namespaced hash format or when left.maxNID is greater than
-// right.minNID. By default, the normal namespace hash calculation is
+// values with the format `minNID || maxNID || hash.`
+// The HashNode function returns an error if the provided inputs are invalid. Specifically, it returns the ErrInvalidNodeLen error if the left and right inputs are not in the namespaced hash format,
+// and the ErrUnorderedSiblings error if left.maxNID is greater than right.minNID.
+// By default, the normal namespace hash calculation is
 // followed, which is `res = min(left.minNID, right.minNID) || max(left.maxNID,
 // right.maxNID) || H(NodePrefix, left, right)`. `res` refers to the return
 // value of the HashNode. However, if the `ignoreMaxNs` property of the Hasher
@@ -228,7 +227,7 @@ func (n *Hasher) validateSiblingsNamespaceOrder(left, right []byte) (err error) 
 // IDs available in the range of its left and right children (i.e.,
 // max(left.minNID, left.maxNID , right.minNID, right.maxNID)), which is not
 // equal to the maximum possible namespace ID value. If such a namespace ID does
-// not exist, the maximum NID is calculated as normal, i.e., `res.maxNID =
+// not exist, the maximum NID is calculated as normal, i.e., res.maxNID =
 // max(left.maxNID , right.maxNID).
 func (n *Hasher) HashNode(left, right []byte) ([]byte, error) {
 	h := n.baseHasher

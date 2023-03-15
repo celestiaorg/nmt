@@ -349,30 +349,30 @@ func TestIsNamespacedData(t *testing.T) {
 func TestHashLeafWithIsNamespacedData(t *testing.T) {
 	tests := []struct {
 		name    string
-		data    []byte
+		leaf    []byte
 		nIDLen  namespace.IDSize
 		wantErr bool
 		errType error
 	}{
 		{
-			"valid namespaced data",
+			"valid namespaced leaf",
 			[]byte{0, 0},
 			2,
 			false,
 			nil,
 		},
 		{
-			"non-namespaced data",
+			"non-namespaced leaf",
 			[]byte{1},
 			2,
 			true,
-			ErrInvalidNodeLen,
+			ErrInvalidLeafLen,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			n := NewNmtHasher(sha256.New(), tt.nIDLen, false)
-			_, err := n.HashLeaf(tt.data)
+			_, err := n.HashLeaf(tt.leaf)
 			assert.Equal(t, tt.wantErr, err != nil)
 			if tt.wantErr {
 				assert.True(t, errors.Is(err, tt.errType))
@@ -381,8 +381,7 @@ func TestHashLeafWithIsNamespacedData(t *testing.T) {
 	}
 }
 
-// TestHashNodeWithValidateNodes checks whether the HashNode errors out when invalid inputs are given.
-// It also checks that the HashNode does not error out for valid inputs.
+// TestHashNodeWithValidateNodes checks that the HashNode emits error only on invalid inputs and whether the returned error types are correct.
 func TestHashNode_ErrorsCheck(t *testing.T) {
 	type children struct {
 		l []byte // namespace hash of the left child with the format of MinNs||MaxNs||h
