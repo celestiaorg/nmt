@@ -50,7 +50,7 @@ That is, when determining the upper limit of the namespace ID range for a tree n
 
 Concretely, for a node `n` with children `l` and `r`, the namespace ID is the largest namespace value from `l` and `r` different from  `maxPossibleNamespace`, if such a namespace ID exists.
 Otherwise, if all candidate values are equal to `maxPossibleNamespace`, the namespace ID of `n` is set to `maxPossibleNamespace`.
-Precisely, if a set `C = {ns \in {l.minNs, l.maxNs, r.minNs, r.maxNs}: ns < maxPossibleNamespace}` is not empty, `n.maxNs = max(C)`. If `C` is empty, `n.maxNs = maxPossibleNamespace`.
+Precisely, if a set `C = {ns `$\in$` {l.minNs, l.maxNs, r.minNs, r.maxNs}: ns < maxPossibleNamespace}` is not empty, `n.maxNs = max(C)`. If `C` is empty, `n.maxNs = maxPossibleNamespace`.
 
 ## Add Leaves
 
