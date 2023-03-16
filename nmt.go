@@ -163,7 +163,8 @@ func (n *NamespacedMerkleTree) Prove(index int) (Proof, error) {
 // generated using a modified version of the namespace hash with a custom
 // namespace ID range calculation. For more information on this, please refer to
 // the HashNode method in the Hasher.
-// If the supplied (start, end) range is invalid i.e., if start < 0 or end > len(n.leaves), then ProveRange returns an ErrInvalidRange error. Any errors rather than ErrInvalidRange are irrecoverable and indicate an illegal state of the tree (n).
+// If the supplied (start, end) range is invalid i.e., if start < 0 or end > len(n.leafHashes) or start >= end,
+// then ProveRange returns an ErrInvalidRange error. Any errors rather than ErrInvalidRange are irrecoverable and indicate an illegal state of the tree (n).
 func (n *NamespacedMerkleTree) ProveRange(start, end int) (Proof, error) {
 	isMaxNsIgnored := n.treeHasher.IsMaxNamespaceIDIgnored()
 	if err := n.computeLeafHashesIfNecessary(); err != nil {
@@ -579,7 +580,7 @@ func (n *NamespacedMerkleTree) updateMinMaxID(id namespace.ID) {
 
 // computes the leaf hashes if not already done in a previous call of
 // NamespacedMerkleTree.Root()
-// computeLeafHashesIfNecessary returns ErrInvalidLeafLen if tree leaves are not namespaced with the same namespace ID size the tree is configured with.
+// Any errors return by this method is irrecoverable and indicate an illegal state of the tree (n).
 func (n *NamespacedMerkleTree) computeLeafHashesIfNecessary() error {
 	// check whether all the hash of all the existing leaves are available
 	if len(n.leafHashes) < len(n.leaves) {
