@@ -182,7 +182,7 @@ func (n *Hasher) HashLeaf(ndata []byte) ([]byte, error) {
 }
 
 // ValidateNodeFormat checks whether the supplied node conforms to the
-// namespaced hash format and returns an error if it does not.
+// namespaced hash format and returns an error if it does not. Specifically, it returns ErrInvalidNodeLen if the length of the node is less than the 2*namespace length which indicates it does not match the namespaced hash format.
 func (n *Hasher) ValidateNodeFormat(node []byte) (err error) {
 	totalNamespaceLen := 2 * n.NamespaceLen
 	nodeLen := len(node)
@@ -195,9 +195,9 @@ func (n *Hasher) ValidateNodeFormat(node []byte) (err error) {
 // validateSiblingsNamespaceOrder checks whether left and right as two sibling
 // nodes in an NMT have correct namespace IDs relative to each other, more
 // specifically, the maximum namespace ID of the left sibling should not exceed
-// the minimum namespace ID of the right sibling. Note that the function assumes
+// the minimum namespace ID of the right sibling. It returns ErrUnorderedSiblings error if the check fails. Note that the function assumes
 // that the left and right nodes are in correct format, i.e., they are
-// namespaced hash values.
+// namespaced hash values. Otherwise, it panics.
 func (n *Hasher) validateSiblingsNamespaceOrder(left, right []byte) (err error) {
 	// each NMT node has two namespace IDs for the min and max
 	totalNamespaceLen := 2 * n.NamespaceLen
