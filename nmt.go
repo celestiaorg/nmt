@@ -142,11 +142,7 @@ func New(h hash.Hash, setters ...Option) *NamespacedMerkleTree {
 // Prove returns a NMT inclusion proof for the leaf at the supplied index. Note
 // this is not really NMT specific but the tree supports inclusions proofs like
 // any vanilla Merkle tree. Prove is a thin wrapper around the ProveRange.
-// Prove may return the following errors:
-// ErrInvalidRange: This error occurs when the index is out of range, either when it is less than 0 or exceeds the total number of leaves in the tree.
-// ErrInvalidLeafLen: This error is triggered when the leaves of the tree (n) are not namespaced.
-// ErrInvalidNodeLen: This error is triggered when the non-leaf nodes of the tree (n) are not namespaced hashes.
-// ErrUnorderedSiblings: This error arises when tree nodes are improperly ordered based on their namespace IDs.
+// If the supplied index is invalid i.e., if index < 0 or index > len(n.leaves), then Prove returns an ErrInvalidRange error. Any other errors rather than this are irrecoverable and indicate an illegal state of the tree (n).
 func (n *NamespacedMerkleTree) Prove(index int) (Proof, error) {
 	return n.ProveRange(index, index+1)
 }
@@ -167,15 +163,11 @@ func (n *NamespacedMerkleTree) Prove(index int) (Proof, error) {
 // generated using a modified version of the namespace hash with a custom
 // namespace ID range calculation. For more information on this, please refer to
 // the HashNode method in the Hasher.
-// Prove may return one of the following errors:
-// ErrInvalidRange: This error occurs when the index is out of range, either when it is less than 0 or exceeds the total number of leaves in the tree.
-// ErrInvalidLeafLen: This error is triggered when the leaves of the tree (n) are not namespaced.
-// ErrInvalidNodeLen: This error is triggered when the non-leaf nodes of the tree (n) are not namespaced hashes.
-// ErrUnorderedSiblings: This error arises when tree nodes are ordered based on their namespace IDs.
+// If the supplied (start, end) range is invalid i.e., if start < 0 or end > len(n.leaves), then ProveRange returns an ErrInvalidRange error. Any errors rather than ErrInvalidRange are irrecoverable and indicate an illegal state of the tree (n).
 func (n *NamespacedMerkleTree) ProveRange(start, end int) (Proof, error) {
 	isMaxNsIgnored := n.treeHasher.IsMaxNamespaceIDIgnored()
 	if err := n.computeLeafHashesIfNecessary(); err != nil {
-		return Proof{}, err
+		return Proof{}, err // this never happens
 	}
 	// TODO: store nodes and re-use the hashes instead recomputing parts of the
 	// tree here
@@ -219,11 +211,7 @@ func (n *NamespacedMerkleTree) ProveRange(start, end int) (Proof, error) {
 // generated using a modified version of the namespace hash with a custom
 // namespace ID range calculation. For more information on this, please refer to
 // the HashNode method in the Hasher.
-//
-// ProveNamespace may return one of the following errors:
-// ErrInvalidNodeLen: if the non-leaf nodes of the tree (n) are not namespace hashes.
-// ErrInvalidLeafLen: if the leaves of the tree (n) are not namespaced.
-// ErrUnorderedSiblings: if the (non-leaf) nodes of the tree are not in order according to their namespace IDs.
+// Any error returned by this method is irrecoverable and indicates an illegal state of the tree (n).
 func (n *NamespacedMerkleTree) ProveNamespace(nID namespace.ID) (Proof, error) {
 	isMaxNsIgnored := n.treeHasher.IsMaxNamespaceIDIgnored()
 	// case 1) In the cases (n.nID < minNID) or (n.maxNID < nID), return empty
@@ -265,9 +253,7 @@ func (n *NamespacedMerkleTree) ProveNamespace(nID namespace.ID) (Proof, error) {
 // buildRangeProof returns the nodes (as byte slices) in the range proof of the
 // supplied range i.e., [proofStart, proofEnd) where proofEnd is non-inclusive.
 // The nodes are ordered according to in order traversal of the namespaced tree.
-// buildRangeProof may return the following errors:
-// ErrInvalidNodeLen: if the nodes of the tree (n) are not namespaced.
-// ErrUnorderedSiblings: if tree nodes are out of order based on their namespace IDs.
+// Any errors returned by this method are irrecoverable and indicate an illegal state of the tree (n).
 func (n *NamespacedMerkleTree) buildRangeProof(proofStart, proofEnd int) ([][]byte, error) {
 	proof := [][]byte{} // it is the list of nodes hashes (as byte slices) with no index
 	var recurse func(start, end int, includeNode bool) ([]byte, error)
@@ -444,10 +430,7 @@ func (n *NamespacedMerkleTree) Push(namespacedData namespace.PrefixedData) error
 // been added through the use of the Push method. the returned byte slice is of
 // size 2* n.NamespaceSize + the underlying hash output size, and should be
 // parsed as minND || maxNID || hash
-// Root returns one of the following errors:
-// ErrInvalidLeafLen: This error is triggered when the leaves of the tree (n) are not namespaced.
-// ErrInvalidNodeLen: This error is triggered when the non-leaf nodes of the tree (n) are not namespaced hashes.
-// ErrUnorderedSiblings: This error arises when tree nodes are not ordered based on their namespace IDs.
+// Any error returned by this method is irrecoverable and indicate an illegal state of the tree (n).
 func (n *NamespacedMerkleTree) Root() ([]byte, error) {
 	if n.rawRoot == nil {
 		res, err := n.computeRoot(0, len(n.leaves))
@@ -461,9 +444,7 @@ func (n *NamespacedMerkleTree) Root() ([]byte, error) {
 
 // MinNamespace returns the minimum namespace ID in this Namespaced Merkle Tree.
 // MinNamespace returns one of the following errors:
-// ErrInvalidLeafLen: This error is triggered when the leaves of the tree (n) are not namespaced.
-// ErrInvalidNodeLen: This error is triggered when the non-leaf nodes of the tree (n) are not namespaced hashes.
-// ErrUnorderedSiblings: This error arises when tree nodes are not ordered based on their namespace IDs.
+// Any errors returned by this method are irrecoverable and indicate an illegal state of the tree (n).
 func (n *NamespacedMerkleTree) MinNamespace() (namespace.ID, error) {
 	r, err := n.Root()
 	if err != nil {
@@ -474,9 +455,7 @@ func (n *NamespacedMerkleTree) MinNamespace() (namespace.ID, error) {
 
 // MaxNamespace returns the maximum namespace ID in this Namespaced Merkle Tree.
 // MaxNamespace returns one of the following errors:
-// ErrInvalidLeafLen: This error is triggered when the leaves of the tree (n) are not namespaced.
-// ErrInvalidNodeLen: This error is triggered when the non-leaf nodes of the tree (n) are not namespaced hashes.
-// ErrUnorderedSiblings: This error arises when tree nodes are not ordered based on their namespace IDs.
+// Any errors returned by this method are irrecoverable and indicate an illegal state of the tree (n).
 func (n *NamespacedMerkleTree) MaxNamespace() (namespace.ID, error) {
 	r, err := n.Root()
 	if err != nil {
@@ -488,9 +467,7 @@ func (n *NamespacedMerkleTree) MaxNamespace() (namespace.ID, error) {
 // computeRoot calculates the namespace Merkle root for a tree/sub-tree that
 // encompasses the leaves within the range of [start, end).
 // computeRoot returns one of the following errors:
-// ErrInvalidLeafLen: This error is triggered when the leaves of the tree (n) are not namespaced.
-// ErrInvalidNodeLen: This error is triggered when the non-leaf nodes of the tree (n) are not namespaced hashes.
-// ErrUnorderedSiblings: This error arises when tree nodes are not ordered based on their namespace IDs.
+// Any errors returned by this method are irrecoverable and indicate an illegal state of the tree (n).
 func (n *NamespacedMerkleTree) computeRoot(start, end int) ([]byte, error) {
 	switch end - start {
 	case 0:
@@ -569,6 +546,9 @@ func (n *NamespacedMerkleTree) updateNamespaceRanges() {
 // namespace-prefixed (i.e., its size is smaller than the tree's NamespaceSize),
 // or if its namespace ID is smaller than the last leaf data in the tree (i.e.,
 // the n.leaves should be sorted in ascending order by their namespace ID).
+// validateAndExtractNamespace returns one of the following errors:
+// - ErrInvalidLeafLen: indicates the length of the namespaced data is smaller than the tree's NamespaceSize. This is an irrecoverable error.
+// - ErrInvalidPushOrder: indicates the namespace ID of the namespaced data is smaller than the last leaf data in the tree. This is an irrecoverable error.
 func (n *NamespacedMerkleTree) validateAndExtractNamespace(ndata namespace.PrefixedData) (namespace.ID, error) {
 	nidSize := int(n.NamespaceSize())
 	if len(ndata) < nidSize {
