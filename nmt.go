@@ -443,7 +443,6 @@ func (n *NamespacedMerkleTree) Root() ([]byte, error) {
 }
 
 // MinNamespace returns the minimum namespace ID in this Namespaced Merkle Tree.
-// MinNamespace returns one of the following errors:
 // Any errors returned by this method are irrecoverable and indicate an illegal state of the tree (n).
 func (n *NamespacedMerkleTree) MinNamespace() (namespace.ID, error) {
 	r, err := n.Root()
@@ -454,7 +453,6 @@ func (n *NamespacedMerkleTree) MinNamespace() (namespace.ID, error) {
 }
 
 // MaxNamespace returns the maximum namespace ID in this Namespaced Merkle Tree.
-// MaxNamespace returns one of the following errors:
 // Any errors returned by this method are irrecoverable and indicate an illegal state of the tree (n).
 func (n *NamespacedMerkleTree) MaxNamespace() (namespace.ID, error) {
 	r, err := n.Root()
@@ -466,7 +464,6 @@ func (n *NamespacedMerkleTree) MaxNamespace() (namespace.ID, error) {
 
 // computeRoot calculates the namespace Merkle root for a tree/sub-tree that
 // encompasses the leaves within the range of [start, end).
-// computeRoot returns one of the following errors:
 // Any errors returned by this method are irrecoverable and indicate an illegal state of the tree (n).
 func (n *NamespacedMerkleTree) computeRoot(start, end int) ([]byte, error) {
 	switch end - start {
@@ -547,8 +544,8 @@ func (n *NamespacedMerkleTree) updateNamespaceRanges() {
 // or if its namespace ID is smaller than the last leaf data in the tree (i.e.,
 // the n.leaves should be sorted in ascending order by their namespace ID).
 // validateAndExtractNamespace returns one of the following errors:
-// - ErrInvalidLeafLen: indicates the length of the namespaced data is smaller than the tree's NamespaceSize. This is an irrecoverable error.
-// - ErrInvalidPushOrder: indicates the namespace ID of the namespaced data is smaller than the last leaf data in the tree. This is an irrecoverable error.
+// - ErrInvalidLeafLen: indicates the length of the ndata is smaller than the tree's NamespaceSize.
+// - ErrInvalidPushOrder: indicates the namespace ID of the ndata is smaller than the last leaf data in the tree.
 func (n *NamespacedMerkleTree) validateAndExtractNamespace(ndata namespace.PrefixedData) (namespace.ID, error) {
 	nidSize := int(n.NamespaceSize())
 	if len(ndata) < nidSize {

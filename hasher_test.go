@@ -211,7 +211,7 @@ func TestHashNode_ChildrenNamespaceRange(t *testing.T) {
 		{
 			"left.maxNs>right.minNs", 2,
 			children{[]byte{0, 0, 1, 1}, []byte{0, 0, 1, 1}},
-			true, // this test case should emit error since in an ordered NMT, left.maxNs cannot be greater than right.minNs
+			true, // this test case should emit an error since in an ordered NMT, left.maxNs cannot be greater than right.minNs
 			ErrUnorderedSiblings,
 		},
 		{

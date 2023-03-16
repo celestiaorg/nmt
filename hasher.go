@@ -140,7 +140,7 @@ func (n *Hasher) EmptyRoot() []byte {
 	return digest
 }
 
-// ValidateLeaf checks whether data is namespace prefixed.
+// ValidateLeaf verifies if data is namespaced and returns an error if not.
 func (n *Hasher) ValidateLeaf(data []byte) (err error) {
 	nidSize := int(n.NamespaceSize())
 	lenData := len(data)
