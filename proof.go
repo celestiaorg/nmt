@@ -192,14 +192,12 @@ func (proof Proof) VerifyNamespace(h hash.Hash, nID namespace.ID, data [][]byte,
 // The leafHashes parameter is a list of leaf hashes, where each leaf hash is represented
 // by a byte slice.
 // If the verifyCompleteness parameter is set to true, the function also checks
-// the completeness of the proof by verifying that there is no leaf in the Merkle
+// the completeness of the proof by verifying that there is no leaf in the
 // tree represented by the root parameter that matches the namespace ID nID
 // but is not present in the leafHashes list.
-// verifyLeafHashed returns one of the following errors:
-// - ErrFailedCompletenessCheck: if the completeness check of the proof fails.
-// - ErrInvalidNodeLen: if the leafHashes or the proof.nodes are not namespace hashes.
-// - ErrUnorderedSiblings: if the nodes of the proof or the leafHashes are not in order according to their namespace IDs.
-func (proof Proof) verifyLeafHashes(nth *Hasher, verifyCompleteness bool, nID namespace.ID, leafHashes [][]byte, root []byte) (bool, error) {
+// verifyLeafHashes returns  verified=true if the proof is valid, false otherwise.
+// In verified=false, the value of proofFailureCause indicates the cause of the unsuccessful proof verification.
+func (proof Proof) verifyLeafHashes(nth *Hasher, verifyCompleteness bool, nID namespace.ID, leafHashes [][]byte, root []byte) (verified bool, proofFailureCause error) {
 	var leafIndex uint64
 	// leftSubtrees is to be populated by the subtree roots upto [0, r.Start)
 	leftSubtrees := make([][]byte, 0, len(proof.nodes))
