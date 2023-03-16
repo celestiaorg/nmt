@@ -3,6 +3,7 @@ package nmt
 import (
 	"bytes"
 	"crypto/sha256"
+	"github.com/stretchr/testify/assert"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -204,4 +205,25 @@ func TestProof_MultipleLeaves(t *testing.T) {
 
 func safeAppend(id, data []byte) []byte {
 	return append(append(make([]byte, 0, len(id)+len(data)), id...), data...)
+}
+
+func Test_verifyLeafHashes_wrong_LeafHash(t *testing.T) {
+	// create a sample tree
+	nmt := exampleTreeWithEightLeaves()
+	root, err := nmt.Root()
+	require.NoError(t, err)
+
+	// create a nmt proof
+	nID := namespace.ID{5, 5}
+	proof, err := nmt.ProveNamespace(nID)
+	require.NoError(t, err)
+	// corrupt the leafHash so that the proof verification fails
+	// it causes failure in root computation when verifying the proof
+	leafHash := nmt.leafHashes[4][:nmt.NamespaceSize()]
+
+	// verify the proof
+	hasher := nmt.treeHasher
+	_, err = proof.verifyLeafHashes(hasher, true, nID, [][]byte{leafHash}, root)
+	assert.Equal(t, true, err != nil)
+
 }
