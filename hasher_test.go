@@ -381,7 +381,7 @@ func TestHashLeafWithIsNamespacedData(t *testing.T) {
 	}
 }
 
-// TestHashNodeWithValidateNodes checks that the HashNode emits error only on invalid inputs and whether the returned error types are correct.
+// TestHashNode_ErrorsCheck checks that the HashNode emits error only on invalid inputs. It also checks whether the returned error types are correct.
 func TestHashNode_ErrorsCheck(t *testing.T) {
 	type children struct {
 		l []byte // namespace hash of the left child with the format of MinNs||MaxNs||h
