@@ -887,13 +887,11 @@ func Test_buildRangeProof_Err(t *testing.T) {
 	treeWithCorruptLeafHash.leafHashes[4] = treeWithCorruptLeafHash.leafHashes[4][:treeWithCorruptLeafHash.NamespaceSize()]
 
 	// create a nmt, 8 leaves namespaced sequentially from 1-8
-	// swap the order of the 4th and the 5th leaf
 	treeWithUnorderedLeafHashes := exampleTreeWithEightLeaves()
+	// swap the order of the 4th and the 5th leaf
+	swap(treeWithUnorderedLeafHashes.leaves, 4, 5)
 	err = treeWithUnorderedLeafHashes.computeLeafHashesIfNecessary()
 	require.NoError(t, err)
-	// reorder the leaves and leaf hashes
-	swap(treeWithUnorderedLeafHashes.leafHashes, 4, 5)
-	swap(treeWithUnorderedLeafHashes.leaves, 4, 5)
 
 	tests := []struct {
 		name                 string
@@ -930,13 +928,11 @@ func Test_ProveRange_Err(t *testing.T) {
 	treeWithCorruptLeafHash.leafHashes[4] = treeWithCorruptLeafHash.leafHashes[4][:treeWithCorruptLeafHash.NamespaceSize()]
 
 	// create a nmt, 8 leaves namespaced sequentially from 1-8
-	// swap the order of the 4th and the 5th leaf
 	treeWithUnorderedLeafHashes := exampleTreeWithEightLeaves()
+	// swap the order of the 4th and the 5th leaf
+	swap(treeWithUnorderedLeafHashes.leaves, 4, 5)
 	err = treeWithUnorderedLeafHashes.computeLeafHashesIfNecessary()
 	require.NoError(t, err)
-	// reorder the leaves and leaf hashes
-	swap(treeWithUnorderedLeafHashes.leafHashes, 4, 5)
-	swap(treeWithUnorderedLeafHashes.leaves, 4, 5)
 
 	tests := []struct {
 		name                 string
@@ -955,6 +951,48 @@ func Test_ProveRange_Err(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			_, err := tt.tree.ProveRange(tt.proofStart, tt.proofEnd)
+			assert.Equal(t, tt.wantErr, err != nil)
+			if tt.wantErr {
+				assert.True(t, errors.Is(err, tt.errType))
+			}
+		})
+	}
+}
+
+// The Test_ProveNamespace_Err function tests that ProveNamespace returns an error when the underlying tree is in an invalid state, such as when the leaves are not ordered by namespace ID or when a leaf hash is corrupt.
+func Test_ProveNamespace_Err(t *testing.T) {
+	// create a nmt, 8 leaves namespaced sequentially from 1-8
+	treeWithCorruptLeafHash := exampleTreeWithEightLeaves()
+	err := treeWithCorruptLeafHash.computeLeafHashesIfNecessary()
+	require.NoError(t, err)
+	// corrupt a leaf hash
+	treeWithCorruptLeafHash.leafHashes[4] = treeWithCorruptLeafHash.leafHashes[4][:treeWithCorruptLeafHash.NamespaceSize()]
+
+	// create a nmt, 8 leaves namespaced sequentially from 1-8
+	// swap the order of the 4th and the 5th leaf
+	treeWithUnorderedLeafHashes := exampleTreeWithEightLeaves()
+	// reorder the leaves
+	swap(treeWithUnorderedLeafHashes.leaves, 4, 5)
+	err = treeWithUnorderedLeafHashes.computeLeafHashesIfNecessary()
+	require.NoError(t, err)
+
+	tests := []struct {
+		name    string
+		tree    *NamespacedMerkleTree
+		nID     namespace.ID
+		wantErr bool
+		errType error
+	}{
+		{"corrupt leaf hash", treeWithCorruptLeafHash, namespace.ID{5, 5}, true, ErrInvalidNodeLen},
+		{"unordered leaf hashes: the queried namespace falls in the corrupted range", treeWithUnorderedLeafHashes, namespace.ID{5, 5}, true, ErrUnorderedSiblings},
+		{"unordered leaf hashes: query for the first namespace", treeWithUnorderedLeafHashes, namespace.ID{1, 1}, true, ErrUnorderedSiblings}, // for a tree with an unordered set of leaves,
+		// the ProveNamespace method  should produce an error for any input namespace ID.
+		{"unordered leaf hashes: query for the last namespace", treeWithUnorderedLeafHashes, namespace.ID{8, 8}, true, ErrUnorderedSiblings}, // for a tree with an unordered set of leaves,
+		// the ProveNamespace method  should produce an error for any namespace ID.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := tt.tree.ProveNamespace(tt.nID)
 			assert.Equal(t, tt.wantErr, err != nil)
 			if tt.wantErr {
 				assert.True(t, errors.Is(err, tt.errType))
