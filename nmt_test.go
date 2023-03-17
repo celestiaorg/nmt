@@ -1032,3 +1032,75 @@ func Test_Root_Error(t *testing.T) {
 		})
 	}
 }
+
+// Test_computeRoot_Error tests that the Root method returns an error when the underlying tree is in an invalid state, such as when the leaves are not ordered by namespace ID or when a leaf is corrupt.
+func Test_computeRoot_Error(t *testing.T) {
+	// create a nmt, 8 leaves namespaced sequentially from 1-8
+	treeWithCorruptLeaf := exampleTreeWithEightLeaves()
+	// corrupt a leaf
+	treeWithCorruptLeaf.leaves[4] = treeWithCorruptLeaf.leaves[4][:treeWithCorruptLeaf.NamespaceSize()-1]
+
+	// create a nmt, 8 leaves namespaced sequentially from 1-8
+	treeWithUnorderedLeaves := exampleTreeWithEightLeaves()
+	// swap the order of the 4th and the 5th leaf
+	swap(treeWithUnorderedLeaves.leaves, 4, 5)
+
+	tests := []struct {
+		name    string
+		tree    *NamespacedMerkleTree
+		wantErr bool
+		errType error
+	}{
+		{"corrupt leaf", treeWithCorruptLeaf, true, ErrInvalidLeafLen},
+		{"unordered leaves", treeWithUnorderedLeaves, true, ErrUnorderedSiblings},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := tt.tree.Root()
+			assert.Equal(t, tt.wantErr, err != nil)
+			if tt.wantErr {
+				assert.True(t, errors.Is(err, tt.errType))
+			}
+		})
+	}
+}
+
+// Test_MinMaxNamespace_Err tests that the MinNamespace and MaxNamespace methods return an error when the underlying tree is in an invalid state, such as when the leaves are not ordered by namespace ID or when a leaf is corrupt.
+func Test_MinMaxNamespace_Err(t *testing.T) {
+	// create a nmt, 8 leaves namespaced sequentially from 1-8
+	treeWithCorruptLeaf := exampleTreeWithEightLeaves()
+	// corrupt a leaf
+	treeWithCorruptLeaf.leaves[4] = treeWithCorruptLeaf.leaves[4][:treeWithCorruptLeaf.NamespaceSize()-1]
+
+	// create a nmt, 8 leaves namespaced sequentially from 1-8
+	treeWithUnorderedLeaves := exampleTreeWithEightLeaves()
+	// swap the order of the 4th and the 5th leaf
+	swap(treeWithUnorderedLeaves.leaves, 4, 5)
+
+	tests := []struct {
+		name    string
+		tree    *NamespacedMerkleTree
+		wantErr bool
+		errType error
+	}{
+		{"corrupt leaf", treeWithCorruptLeaf, true, ErrInvalidLeafLen},
+		{"unordered leaves", treeWithUnorderedLeaves, true, ErrUnorderedSiblings},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := tt.tree.MinNamespace()
+			assert.Equal(t, tt.wantErr, err != nil)
+			if tt.wantErr {
+				assert.True(t, errors.Is(err, tt.errType))
+			}
+
+			_, err = tt.tree.MaxNamespace()
+			assert.Equal(t, tt.wantErr, err != nil)
+			if tt.wantErr {
+				assert.True(t, errors.Is(err, tt.errType))
+			}
+
+		})
+	}
+
+}
