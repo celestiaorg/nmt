@@ -903,15 +903,58 @@ func Test_buildRangeProof_Err(t *testing.T) {
 		errType              error
 	}{
 		{"corrupt leaf hash", treeWithCorruptLeafHash, 4, 5, true, ErrInvalidNodeLen},
-		{"unordered leaf hashes", treeWithUnorderedLeafHashes, 4, 5, true, ErrUnorderedSiblings},
-		{"unordered leaf hashes", treeWithUnorderedLeafHashes, 1, 2, true, ErrUnorderedSiblings}, // for a tree with an unordered set of leaves, the buildRangeProof function  should produce an error for any input range,
+		{"unordered leaf hashes: the out of order range", treeWithUnorderedLeafHashes, 4, 5, true, ErrUnorderedSiblings},
+		{"unordered leaf hashes: the first leaf", treeWithUnorderedLeafHashes, 1, 2, true, ErrUnorderedSiblings}, // for a tree with an unordered set of leaves, the buildRangeProof function  should produce an error for any input range,
 		// not just the corrupted range.
-		{"unordered leaf hashes", treeWithUnorderedLeafHashes, 7, 8, true, ErrUnorderedSiblings}, // for a tree with an unordered set of leaves, the buildRangeProof function  should produce an error for any input range,
+		{"unordered leaf hashes: the last leaf", treeWithUnorderedLeafHashes, 7, 8, true, ErrUnorderedSiblings}, // for a tree with an unordered set of leaves, the buildRangeProof function  should produce an error for any input range,
 		// not just the corrupted range.
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			_, err := tt.tree.buildRangeProof(tt.proofStart, tt.proofEnd)
+			assert.Equal(t, tt.wantErr, err != nil)
+			if tt.wantErr {
+				assert.True(t, errors.Is(err, tt.errType))
+			}
+		})
+	}
+}
+
+// Test_ProveRange_Err tests that ProveRange returns an error when the underlying tree has an invalid state e.g., leaves are not ordered by namespace ID or a leaf hash is corrupted.
+func Test_ProveRange_Err(t *testing.T) {
+	// create a nmt, 8 leaves namespaced sequentially from 1-8
+	treeWithCorruptLeafHash := exampleTreeWithEightLeaves()
+	err := treeWithCorruptLeafHash.computeLeafHashesIfNecessary()
+	require.NoError(t, err)
+	// corrupt a leaf hash
+	treeWithCorruptLeafHash.leafHashes[4] = treeWithCorruptLeafHash.leafHashes[4][:treeWithCorruptLeafHash.NamespaceSize()]
+
+	// create a nmt, 8 leaves namespaced sequentially from 1-8
+	// swap the order of the 4th and the 5th leaf
+	treeWithUnorderedLeafHashes := exampleTreeWithEightLeaves()
+	err = treeWithUnorderedLeafHashes.computeLeafHashesIfNecessary()
+	require.NoError(t, err)
+	// reorder the leaves and leaf hashes
+	swap(treeWithUnorderedLeafHashes.leafHashes, 4, 5)
+	swap(treeWithUnorderedLeafHashes.leaves, 4, 5)
+
+	tests := []struct {
+		name                 string
+		tree                 *NamespacedMerkleTree
+		proofStart, proofEnd int
+		wantErr              bool
+		errType              error
+	}{
+		{"corrupt leaf hash", treeWithCorruptLeafHash, 4, 5, true, ErrInvalidNodeLen},
+		{"unordered leaf hashes: the out of order leaf", treeWithUnorderedLeafHashes, 4, 5, true, ErrUnorderedSiblings},
+		{"unordered leaf hashes: first leaf", treeWithUnorderedLeafHashes, 1, 2, true, ErrUnorderedSiblings}, // for a tree with an unordered set of leaves, the ProveRange method  should produce an error for any input range,
+		// not just the corrupted range.
+		{"unordered leaf hashes: last leaf", treeWithUnorderedLeafHashes, 7, 8, true, ErrUnorderedSiblings}, // for a tree with an unordered set of leaves, the ProveRange method  should produce an error for any input range,
+		// not just the corrupted range.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := tt.tree.ProveRange(tt.proofStart, tt.proofEnd)
 			assert.Equal(t, tt.wantErr, err != nil)
 			if tt.wantErr {
 				assert.True(t, errors.Is(err, tt.errType))
