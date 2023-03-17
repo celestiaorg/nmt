@@ -1099,8 +1099,6 @@ func Test_MinMaxNamespace_Err(t *testing.T) {
 			if tt.wantErr {
 				assert.True(t, errors.Is(err, tt.errType))
 			}
-
 		})
 	}
-
 }
