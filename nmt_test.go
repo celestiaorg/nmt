@@ -962,6 +962,11 @@ func Test_ProveRange_Err(t *testing.T) {
 // The Test_ProveNamespace_Err function tests that ProveNamespace returns an error when the underlying tree is in an invalid state, such as when the leaves are not ordered by namespace ID or when a leaf hash is corrupt.
 func Test_ProveNamespace_Err(t *testing.T) {
 	// create a nmt, 8 leaves namespaced sequentially from 1-8
+	treeWithCorruptLeaf := exampleTreeWithEightLeaves()
+	// corrupt a leaf
+	treeWithCorruptLeaf.leaves[4] = treeWithCorruptLeaf.leaves[4][:treeWithCorruptLeaf.NamespaceSize()-1]
+
+	// create a nmt, 8 leaves namespaced sequentially from 1-8
 	treeWithCorruptLeafHash := exampleTreeWithEightLeaves()
 	err := treeWithCorruptLeafHash.computeLeafHashesIfNecessary()
 	require.NoError(t, err)
@@ -983,6 +988,7 @@ func Test_ProveNamespace_Err(t *testing.T) {
 		wantErr bool
 		errType error
 	}{
+		{"corrupt leaf", treeWithCorruptLeaf, namespace.ID{5, 5}, true, ErrInvalidLeafLen},
 		{"corrupt leaf hash", treeWithCorruptLeafHash, namespace.ID{5, 5}, true, ErrInvalidNodeLen},
 		{"unordered leaf hashes: the queried namespace falls in the corrupted range", treeWithUnorderedLeafHashes, namespace.ID{5, 5}, true, ErrUnorderedSiblings},
 		{"unordered leaf hashes: query for the first namespace", treeWithUnorderedLeafHashes, namespace.ID{1, 1}, true, ErrUnorderedSiblings}, // for a tree with an unordered set of leaves,
