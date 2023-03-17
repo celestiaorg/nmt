@@ -3,8 +3,9 @@ package nmt
 import (
 	"bytes"
 	"crypto/sha256"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 
 	"github.com/stretchr/testify/require"
 
@@ -239,7 +240,5 @@ func Test_verifyLeafHashes_Err(t *testing.T) {
 			_, err := tt.proof.verifyLeafHashes(tt.Hasher, tt.verifyCompleteness, tt.nID, tt.leafHashes, tt.root)
 			assert.Equal(t, tt.wantErr, err != nil)
 		})
-
 	}
-
 }
