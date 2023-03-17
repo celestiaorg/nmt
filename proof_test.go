@@ -207,23 +207,39 @@ func safeAppend(id, data []byte) []byte {
 	return append(append(make([]byte, 0, len(id)+len(data)), id...), data...)
 }
 
-func Test_verifyLeafHashes_wrong_LeafHash(t *testing.T) {
+func Test_verifyLeafHashes_Err(t *testing.T) {
 	// create a sample tree
 	nmt := exampleTreeWithEightLeaves()
+	hasher := nmt.treeHasher
 	root, err := nmt.Root()
 	require.NoError(t, err)
 
 	// create a nmt proof
-	nID := namespace.ID{5, 5}
-	proof, err := nmt.ProveNamespace(nID)
+	nID5 := namespace.ID{5, 5}
+	proof5, err := nmt.ProveNamespace(nID5)
 	require.NoError(t, err)
 	// corrupt the leafHash so that the proof verification fails
-	// it causes failure in root computation when verifying the proof
-	leafHash := nmt.leafHashes[4][:nmt.NamespaceSize()]
+	// it causes failure in the root computation when verifying the proof
+	leafHash5 := nmt.leafHashes[4][:nmt.NamespaceSize()]
 
-	// verify the proof
-	hasher := nmt.treeHasher
-	_, err = proof.verifyLeafHashes(hasher, true, nID, [][]byte{leafHash}, root)
-	assert.Equal(t, true, err != nil)
+	tests := []struct {
+		name               string
+		proof              Proof
+		Hasher             *Hasher
+		verifyCompleteness bool
+		nID                namespace.ID
+		leafHashes         [][]byte
+		root               []byte
+		wantErr            bool
+	}{
+		{" wrong leafHash: not namespaced", proof5, hasher, true, nID5, [][]byte{leafHash5}, root, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := tt.proof.verifyLeafHashes(tt.Hasher, tt.verifyCompleteness, tt.nID, tt.leafHashes, tt.root)
+			assert.Equal(t, tt.wantErr, err != nil)
+		})
+
+	}
 
 }
