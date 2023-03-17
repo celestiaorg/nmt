@@ -881,14 +881,16 @@ func swap(slice [][]byte, i int, j int) {
 func Test_buildRangeProof_Err(t *testing.T) {
 	// create a nmt, 8 leaves namespaced sequentially from 1-8
 	treeWithCorruptLeafHash := exampleTreeWithEightLeaves()
-	treeWithCorruptLeafHash.computeLeafHashesIfNecessary()
+	err := treeWithCorruptLeafHash.computeLeafHashesIfNecessary()
+	require.NoError(t, err)
 	// corrupt a leaf hash
 	treeWithCorruptLeafHash.leafHashes[4] = treeWithCorruptLeafHash.leafHashes[4][:treeWithCorruptLeafHash.NamespaceSize()]
 
 	// create a nmt, 8 leaves namespaced sequentially from 1-8
 	// swap the order of the 4th and the 5th leaf
 	treeWithUnorderedLeafHashes := exampleTreeWithEightLeaves()
-	treeWithUnorderedLeafHashes.computeLeafHashesIfNecessary()
+	err = treeWithUnorderedLeafHashes.computeLeafHashesIfNecessary()
+	require.NoError(t, err)
 	// reorder the leaves and leaf hashes
 	swap(treeWithUnorderedLeafHashes.leafHashes, 4, 5)
 	swap(treeWithUnorderedLeafHashes.leaves, 4, 5)
@@ -903,7 +905,7 @@ func Test_buildRangeProof_Err(t *testing.T) {
 		{"corrupt leaf hash", treeWithCorruptLeafHash, 4, 5, true, ErrInvalidNodeLen},
 		{"unordered leaf hashes", treeWithUnorderedLeafHashes, 4, 5, true, ErrUnorderedSiblings},
 		{"unordered leaf hashes", treeWithUnorderedLeafHashes, 1, 2, true, ErrUnorderedSiblings}, // the buildRangeProof should error out for any input range, not just the corrupted range
-		{"unordered leaf hashes", treeWithUnorderedLeafHashes, 7, 8, true, ErrUnorderedSiblings},
+		{"unordered leaf hashes", treeWithUnorderedLeafHashes, 7, 8, true, ErrUnorderedSiblings}, // the buildRangeProof should error out for any input range, not just the corrupted range
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
