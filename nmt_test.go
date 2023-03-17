@@ -5,6 +5,7 @@ import (
 	"crypto"
 	"crypto/sha256"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"math"
 	"math/rand"
@@ -868,4 +869,49 @@ func exampleTreeWithEightLeaves() *NamespacedMerkleTree {
 		}
 	}
 	return tree
+}
+
+func swap(slice [][]byte, i int, j int) {
+	temp := slice[i]
+	slice[i] = slice[j]
+	slice[j] = temp
+}
+
+// Test_buildRangeProof_Err tests that buildRangeProof returns an error when the undelring tree has an invalid state e.g., leaves are not ordered by namespace ID or a leaf hash is corrupted.
+func Test_buildRangeProof_Err(t *testing.T) {
+	// create a nmt, 8 leaves namespaced sequentially from 1-8
+	treeWithCorruptLeafHash := exampleTreeWithEightLeaves()
+	treeWithCorruptLeafHash.computeLeafHashesIfNecessary()
+	// corrupt a leaf hash
+	treeWithCorruptLeafHash.leafHashes[4] = treeWithCorruptLeafHash.leafHashes[4][:treeWithCorruptLeafHash.NamespaceSize()]
+
+	// create a nmt, 8 leaves namespaced sequentially from 1-8
+	// swap the order of the 4th and the 5th leaf
+	treeWithUnorderedLeafHashes := exampleTreeWithEightLeaves()
+	treeWithUnorderedLeafHashes.computeLeafHashesIfNecessary()
+	// reorder the leaves and leaf hashes
+	swap(treeWithUnorderedLeafHashes.leafHashes, 4, 5)
+	swap(treeWithUnorderedLeafHashes.leaves, 4, 5)
+
+	tests := []struct {
+		name                 string
+		tree                 *NamespacedMerkleTree
+		proofStart, proofEnd int
+		wantErr              bool
+		errType              error
+	}{
+		{"corrupt leaf hash", treeWithCorruptLeafHash, 4, 5, true, ErrInvalidNodeLen},
+		{"unordered leaf hashes", treeWithUnorderedLeafHashes, 4, 5, true, ErrUnorderedSiblings},
+		{"unordered leaf hashes", treeWithUnorderedLeafHashes, 1, 2, true, ErrUnorderedSiblings}, // the buildRangeProof should error out for any input range, not just the corrupted range
+		{"unordered leaf hashes", treeWithUnorderedLeafHashes, 7, 8, true, ErrUnorderedSiblings},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := tt.tree.buildRangeProof(tt.proofStart, tt.proofEnd)
+			assert.Equal(t, tt.wantErr, err != nil)
+			if tt.wantErr {
+				assert.True(t, errors.Is(err, tt.errType))
+			}
+		})
+	}
 }
