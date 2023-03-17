@@ -921,6 +921,11 @@ func Test_buildRangeProof_Err(t *testing.T) {
 // Test_ProveRange_Err tests that ProveRange returns an error when the underlying tree has an invalid state e.g., leaves are not ordered by namespace ID or a leaf hash is corrupted.
 func Test_ProveRange_Err(t *testing.T) {
 	// create a nmt, 8 leaves namespaced sequentially from 1-8
+	treeWithCorruptLeaf := exampleTreeWithEightLeaves()
+	// corrupt a leaf
+	treeWithCorruptLeaf.leaves[4] = treeWithCorruptLeaf.leaves[4][:treeWithCorruptLeaf.NamespaceSize()-1]
+
+	// create a nmt, 8 leaves namespaced sequentially from 1-8
 	treeWithCorruptLeafHash := exampleTreeWithEightLeaves()
 	err := treeWithCorruptLeafHash.computeLeafHashesIfNecessary()
 	require.NoError(t, err)
@@ -941,6 +946,7 @@ func Test_ProveRange_Err(t *testing.T) {
 		wantErr              bool
 		errType              error
 	}{
+		{"corrupt leaf", treeWithCorruptLeaf, 4, 5, true, ErrInvalidLeafLen},
 		{"corrupt leaf hash", treeWithCorruptLeafHash, 4, 5, true, ErrInvalidNodeLen},
 		{"unordered leaf hashes: the out of order leaf", treeWithUnorderedLeafHashes, 4, 5, true, ErrUnorderedSiblings},
 		{"unordered leaf hashes: first leaf", treeWithUnorderedLeafHashes, 1, 2, true, ErrUnorderedSiblings}, // for a tree with an unordered set of leaves, the ProveRange method  should produce an error for any input range,
