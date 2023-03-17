@@ -877,7 +877,7 @@ func swap(slice [][]byte, i int, j int) {
 	slice[j] = temp
 }
 
-// Test_buildRangeProof_Err tests that buildRangeProof returns an error when the undelring tree has an invalid state e.g., leaves are not ordered by namespace ID or a leaf hash is corrupted.
+// Test_buildRangeProof_Err tests that buildRangeProof returns an error when the underlying tree has an invalid state e.g., leaves are not ordered by namespace ID or a leaf hash is corrupted.
 func Test_buildRangeProof_Err(t *testing.T) {
 	// create a nmt, 8 leaves namespaced sequentially from 1-8
 	treeWithCorruptLeafHash := exampleTreeWithEightLeaves()
@@ -904,8 +904,10 @@ func Test_buildRangeProof_Err(t *testing.T) {
 	}{
 		{"corrupt leaf hash", treeWithCorruptLeafHash, 4, 5, true, ErrInvalidNodeLen},
 		{"unordered leaf hashes", treeWithUnorderedLeafHashes, 4, 5, true, ErrUnorderedSiblings},
-		{"unordered leaf hashes", treeWithUnorderedLeafHashes, 1, 2, true, ErrUnorderedSiblings}, // the buildRangeProof should error out for any input range, not just the corrupted range
-		{"unordered leaf hashes", treeWithUnorderedLeafHashes, 7, 8, true, ErrUnorderedSiblings}, // the buildRangeProof should error out for any input range, not just the corrupted range
+		{"unordered leaf hashes", treeWithUnorderedLeafHashes, 1, 2, true, ErrUnorderedSiblings}, // for a tree with an unordered set of leaves, the buildRangeProof function  should produce an error for any input range,
+		// not just the corrupted range.
+		{"unordered leaf hashes", treeWithUnorderedLeafHashes, 7, 8, true, ErrUnorderedSiblings}, // for a tree with an unordered set of leaves, the buildRangeProof function  should produce an error for any input range,
+		// not just the corrupted range.
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
