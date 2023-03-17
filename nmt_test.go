@@ -1127,5 +1127,4 @@ func Test_computeLeafHashesIfNecessary_err(t *testing.T) {
 			}
 		})
 	}
-
 }
