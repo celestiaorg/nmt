@@ -1102,3 +1102,30 @@ func Test_MinMaxNamespace_Err(t *testing.T) {
 		})
 	}
 }
+
+// Test_computeLeafHashesIfNecessary_err tests that the computeLeafHashesIfNecessary method returns an error when the underlying tree is in an invalid state, such as when a leaf is corrupt.
+func Test_computeLeafHashesIfNecessary_err(t *testing.T) {
+	// create a nmt, 8 leaves namespaced sequentially from 1-8
+	treeWithCorruptLeaf := exampleTreeWithEightLeaves()
+	// corrupt a leaf
+	treeWithCorruptLeaf.leaves[4] = treeWithCorruptLeaf.leaves[4][:treeWithCorruptLeaf.NamespaceSize()-1]
+
+	tests := []struct {
+		name    string
+		tree    *NamespacedMerkleTree
+		wantErr bool
+		errType error
+	}{
+		{"corrupt leaf", treeWithCorruptLeaf, true, ErrInvalidLeafLen},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.tree.computeLeafHashesIfNecessary()
+			assert.Equal(t, tt.wantErr, err != nil)
+			if tt.wantErr {
+				assert.True(t, errors.Is(err, tt.errType))
+			}
+		})
+	}
+
+}
