@@ -447,7 +447,8 @@ func Test_Write_Err(t *testing.T) {
 		wantErr bool
 		errType error
 	}{
-		{"invalid leaf",
+		{
+			"invalid leaf",
 			[]byte{0},
 			true,
 			ErrInvalidLeafLen,

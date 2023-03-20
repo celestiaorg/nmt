@@ -244,7 +244,7 @@ func Test_verifyLeafHashes_Err(t *testing.T) {
 		wantErr            bool
 	}{
 		{" wrong leafHash: not namespaced", proof5, hasher, true, nID5, [][]byte{leafHash5}, root, true},
-		{" wrong leafHash: incorrect namespace", proof5, hasher, true, nID5, [][]byte{[]byte{10, 10, 10, 10}}, root, true},
+		{" wrong leafHash: incorrect namespace", proof5, hasher, true, nID5, [][]byte{{10, 10, 10, 10}}, root, true},
 		{" wrong proof.nodes: corrupt last node", proof4, hasher, false, nID4, [][]byte{leafHash4}, root, true},
 		//  the verifyCompleteness parameter in the verifyProof function should be set to false in order to ensure the faulty proof fails when constructing the tree root from the computed subtree root and the proof.
 		//  nodes on the right side of the proof.end index.
