@@ -77,6 +77,7 @@ func (n *Hasher) Write(data []byte) (int, error) {
 	switch ln {
 	// inner nodes are made up of the nmt hashes of the left and right children
 	case n.Size() * 2:
+		// check the format of the data
 		leftChild := data[:n.Size()]
 		rightChild := data[n.Size():]
 		if err := n.ValidateNodes(leftChild, rightChild); err != nil {
