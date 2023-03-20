@@ -82,17 +82,15 @@ func (n *Hasher) Write(data []byte) (int, error) {
 		rightChild := data[n.Size():]
 		if err := n.ValidateNodes(leftChild, rightChild); err != nil {
 			return 0, err
-		} else {
-			n.tp = NodePrefix
 		}
+		n.tp = NodePrefix
 	// leaf nodes contain the namespace length and a share
 	default:
 		// validate leaf format
 		if err := n.ValidateLeaf(data); err != nil {
 			return 0, err
-		} else {
-			n.tp = LeafPrefix
 		}
+		n.tp = LeafPrefix
 	}
 
 	n.data = data
