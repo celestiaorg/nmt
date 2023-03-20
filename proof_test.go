@@ -228,8 +228,9 @@ func Test_verifyLeafHashes_Err(t *testing.T) {
 	nID4 := namespace.ID{4, 4}
 	proof4, err := nmt.ProveNamespace(nID4)
 	require.NoError(t, err)
-	// corrupt the last node in the proof4.nodes, it resides on the right side of the proof4.end index
-	// it causes failure in the root computation when verifying the proof
+	// corrupt the last node in the proof4.nodes, it resides on the right side of the proof4.end index.
+	// this test scenario makes the proof verification fail when constructing the tree root from the
+	// computed subtree root and the proof.nodes on the right side of the proof.end index.
 	proof4.nodes[2] = proof4.nodes[2][:nmt.NamespaceSize()-1]
 	leafHash4 := nmt.leafHashes[3]
 
@@ -246,8 +247,7 @@ func Test_verifyLeafHashes_Err(t *testing.T) {
 		{" wrong leafHash: not namespaced", proof5, hasher, true, nID5, [][]byte{leafHash5}, root, true},
 		{" wrong leafHash: incorrect namespace", proof5, hasher, true, nID5, [][]byte{{10, 10, 10, 10}}, root, true},
 		{" wrong proof.nodes: corrupt last node", proof4, hasher, false, nID4, [][]byte{leafHash4}, root, true},
-		//  the verifyCompleteness parameter in the verifyProof function should be set to false in order to ensure the faulty proof fails when constructing the tree root from the computed subtree root and the proof.
-		//  nodes on the right side of the proof.end index.
+		//  the verifyCompleteness parameter in the verifyProof function should be set to false in order to bypass nodes correctness check during the completeness verification (otherwise it panics).
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
