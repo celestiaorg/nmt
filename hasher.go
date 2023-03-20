@@ -115,7 +115,7 @@ func (n *Hasher) Sum([]byte) []byte {
 		rightChild := n.data[flagLen+sha256Len:]
 		res, err := n.HashNode(leftChild, rightChild)
 		if err != nil {
-			panic(err)
+			panic(err) // this should never happen since the data is already validated in the Write method
 		}
 		return res
 	default:
