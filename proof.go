@@ -10,6 +10,7 @@ import (
 	"github.com/celestiaorg/nmt/namespace"
 )
 
+// ErrFailedCompletenessCheck indicates that the verification of a namespace proof failed due to the lack of completeness property.
 var ErrFailedCompletenessCheck = errors.New("failed completeness check")
 
 // Proof represents a namespace proof of a namespace.ID in an NMT. In case this
@@ -81,6 +82,8 @@ func (proof Proof) IsNonEmptyRange() bool {
 	return proof.start >= 0 && proof.start < proof.end
 }
 
+// IsMaxNamespaceIDIgnored returns true if the proof has been created under the ignore max namespace logic.
+// see ./docs/nmt-lib.md for more details.
 func (proof Proof) IsMaxNamespaceIDIgnored() bool {
 	return proof.isMaxNamespaceIDIgnored
 }
