@@ -86,7 +86,7 @@ func (n *Hasher) Write(data []byte) (int, error) {
 		n.tp = NodePrefix
 	// leaf nodes contain the namespace length and a share
 	default:
-		// validate leaf format
+		// validate the format of the leaf
 		if err := n.ValidateLeaf(data); err != nil {
 			return 0, err
 		}
@@ -224,10 +224,7 @@ func (n *Hasher) ValidateNodes(left, right []byte) error {
 	if err := n.ValidateNodeFormat(right); err != nil {
 		return err
 	}
-	if err := n.validateSiblingsNamespaceOrder(left, right); err != nil {
-		return err
-	}
-	return nil
+	return n.validateSiblingsNamespaceOrder(left, right)
 }
 
 // HashNode calculates a namespaced hash of a node using the supplied left and
