@@ -77,8 +77,9 @@ func (n *Hasher) Write(data []byte) (int, error) {
 	switch ln {
 	// inner nodes are made up of the nmt hashes of the left and right children
 	case n.Size() * 2:
-		// validate node format
-		if err := n.ValidateNodeFormat(data); err != nil {
+		leftChild := data[:n.Size()]
+		rightChild := data[n.Size():]
+		if err := n.ValidateNodes(leftChild, rightChild); err != nil {
 			return 0, err
 		}
 		n.tp = NodePrefix
@@ -113,7 +114,7 @@ func (n *Hasher) Sum([]byte) []byte {
 		rightChild := n.data[flagLen+sha256Len:]
 		res, err := n.HashNode(leftChild, rightChild)
 		if err != nil {
-			panic(err) // this should never happen since the data is already validated in the Write method
+			panic(err)
 		}
 		return res
 	default:
@@ -207,6 +208,23 @@ func (n *Hasher) validateSiblingsNamespaceOrder(left, right []byte) (err error) 
 	// check the namespace range of the left and right children
 	if rightMinNs.Less(leftMaxNs) {
 		return fmt.Errorf("%w: the maximum namespace of the left child %x is greater than the min namespace of the right child %x", ErrUnorderedSiblings, leftMaxNs, rightMinNs)
+	}
+	return nil
+}
+
+// ValidateNodes is helper function  to verify the
+// validity of the inputs of HashNode. It verifies whether left
+// and right comply by the namespace hash format, and are correctly ordered
+// according to their namespace IDs.
+func (n *Hasher) ValidateNodes(left, right []byte) error {
+	if err := n.ValidateNodeFormat(left); err != nil {
+		return err
+	}
+	if err := n.ValidateNodeFormat(right); err != nil {
+		return err
+	}
+	if err := n.validateSiblingsNamespaceOrder(left, right); err != nil {
+		return err
 	}
 	return nil
 }
