@@ -465,6 +465,7 @@ func TestWrite_Err(t *testing.T) {
 	}
 }
 
+// TestValidateNodes checks that the ValidateNodes method only emits error on invalid inputs. It also checks whether the returned error types are correct.
 func TestValidateNodes(t *testing.T) {
 	tests := []struct {
 		name    string

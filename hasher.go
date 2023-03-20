@@ -80,18 +80,19 @@ func (n *Hasher) Write(data []byte) (int, error) {
 		// check the format of the data
 		leftChild := data[:n.Size()]
 		rightChild := data[n.Size():]
-		err := n.ValidateNodes(leftChild, rightChild)
-		if err != nil {
+		if err := n.ValidateNodes(leftChild, rightChild); err != nil {
 			return 0, err
+		} else {
+			n.tp = NodePrefix
 		}
-		n.tp = NodePrefix
 	// leaf nodes contain the namespace length and a share
 	default:
 		// validate leaf format
 		if err := n.ValidateLeaf(data); err != nil {
 			return 0, err
+		} else {
+			n.tp = LeafPrefix
 		}
-		n.tp = LeafPrefix
 	}
 
 	n.data = data
