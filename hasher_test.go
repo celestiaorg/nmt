@@ -437,3 +437,29 @@ func TestHashNode_ErrorsCheck(t *testing.T) {
 		})
 	}
 }
+
+// Test_Write_Err checks that the Write method emits error on invalid inputs.
+func Test_Write_Err(t *testing.T) {
+	hasher := NewNmtHasher(sha256.New(), 2, false)
+	tests := []struct {
+		name    string
+		data    []byte
+		wantErr bool
+		errType error
+	}{
+		{"invalid leaf",
+			[]byte{0},
+			true,
+			ErrInvalidLeafLen,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := hasher.Write(tt.data)
+			assert.Equal(t, tt.wantErr, err != nil)
+			if tt.wantErr {
+				assert.True(t, errors.Is(err, tt.errType))
+			}
+		})
+	}
+}
