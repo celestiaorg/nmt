@@ -438,7 +438,7 @@ func TestHashNode_ErrorsCheck(t *testing.T) {
 	}
 }
 
-// Test_Write_Err checks that the Write method emits error on invalid inputs.
+// TestWrite_Err checks that the Write method emits error on invalid inputs.
 func TestWrite_Err(t *testing.T) {
 	hash := sha256.New()
 	hash.Write([]byte("random data"))
