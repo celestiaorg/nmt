@@ -439,7 +439,7 @@ func TestHashNode_ErrorsCheck(t *testing.T) {
 }
 
 // Test_Write_Err checks that the Write method emits error on invalid inputs.
-func Test_Write_Err(t *testing.T) {
+func TestWrite_Err(t *testing.T) {
 	hasher := NewNmtHasher(sha256.New(), 2, false)
 	tests := []struct {
 		name    string
@@ -457,6 +457,67 @@ func Test_Write_Err(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			_, err := hasher.Write(tt.data)
+			assert.Equal(t, tt.wantErr, err != nil)
+			if tt.wantErr {
+				assert.True(t, errors.Is(err, tt.errType))
+			}
+		})
+	}
+}
+
+func TestValidateNodes(t *testing.T) {
+	tests := []struct {
+		name    string
+		nIDLen  namespace.IDSize
+		left    []byte
+		right   []byte
+		wantErr bool
+		errType error
+	}{
+		{
+			"left.maxNs<right.minNs",
+			2,
+			[]byte{0, 0, 1, 1},
+			[]byte{2, 2, 3, 3},
+			false,
+			nil,
+		},
+		{
+			"left.maxNs=right.minNs",
+			2,
+			[]byte{0, 0, 1, 1},
+			[]byte{1, 1, 2, 2},
+			false,
+			nil,
+		},
+		{
+			"left.maxNs>right.minNs",
+			2,
+			[]byte{0, 0, 1, 1},
+			[]byte{0, 0, 1, 1},
+			true,
+			ErrUnorderedSiblings,
+		},
+		{
+			"len(left)<NamespaceLen",
+			2,
+			[]byte{0, 0, 1},
+			[]byte{2, 2, 3, 3},
+			true,
+			ErrInvalidNodeLen,
+		},
+		{
+			"len(right)<NamespaceLen", 2,
+			[]byte{0, 0, 1, 1},
+			[]byte{2, 2, 3},
+			true,
+			ErrInvalidNodeLen,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			n := NewNmtHasher(sha256.New(), tt.nIDLen, false)
+			err := n.ValidateNodes(tt.left, tt.right)
 			assert.Equal(t, tt.wantErr, err != nil)
 			if tt.wantErr {
 				assert.True(t, errors.Is(err, tt.errType))
