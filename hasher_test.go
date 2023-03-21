@@ -318,7 +318,7 @@ func TestValidateNodeFormat(t *testing.T) {
 	}
 }
 
-func TestIsNamespacedData(t *testing.T) {
+func TestValidateLeaf(t *testing.T) {
 	tests := []struct {
 		name    string
 		data    []byte
@@ -342,6 +342,38 @@ func TestIsNamespacedData(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			n := NewNmtHasher(sha256.New(), tt.nIDLen, false)
 			assert.Equal(t, tt.wantErr, n.ValidateLeaf(tt.data) != nil)
+		})
+	}
+}
+
+// TestValidateLeafWithHash tests the HashLeaf does not error out for the leaves that are validated by ValidateLeaf.
+func TestValidateLeafWithHash(t *testing.T) {
+	tests := []struct {
+		name    string
+		data    []byte
+		nIDLen  namespace.IDSize
+		wantErr bool
+	}{
+		{
+			"valid namespaced data",
+			[]byte{0, 0},
+			2,
+			false,
+		},
+		{
+			"non-namespaced data",
+			[]byte{1},
+			2,
+			true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			n := NewNmtHasher(sha256.New(), tt.nIDLen, false)
+			validationRes := n.ValidateLeaf(tt.data)
+			assert.Equal(t, tt.wantErr, validationRes != nil)
+			_, err := n.HashLeaf(tt.data)
+			assert.Equal(t, validationRes != nil, err != nil)
 		})
 	}
 }
