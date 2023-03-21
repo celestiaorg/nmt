@@ -438,8 +438,8 @@ func TestHashNode_ErrorsCheck(t *testing.T) {
 	}
 }
 
-// Test_Write_Err checks that the Write method emits error on invalid inputs.
-func Test_Write_Err(t *testing.T) {
+// TestWrite_Err checks that the Write method emits error on invalid inputs.
+func TestWrite_Err(t *testing.T) {
 	hash := sha256.New()
 	hash.Write([]byte("random data"))
 	randData := hash.Sum(nil)
@@ -477,8 +477,8 @@ func Test_Write_Err(t *testing.T) {
 	}
 }
 
-// Test_NamespaceHasherSum_Err checks that the Sum method emits error on invalid inputs and when the hasher is not in the correct state.
-func Test_NamespaceHasherSum_Err(t *testing.T) {
+// TestSum_Err checks that the Sum method emits error on invalid inputs and when the hasher is not in the correct state.
+func TestSum_Err(t *testing.T) {
 	hash := sha256.New()
 	hash.Write([]byte("random data"))
 	randData := hash.Sum(nil)
@@ -526,8 +526,8 @@ func Test_NamespaceHasherSum_Err(t *testing.T) {
 	}
 }
 
-// Test_ValidateNodes checks that the ValidateNodes method only emits error on invalid inputs. It also checks whether the returned error types are correct.
-func Test_ValidateNodes(t *testing.T) {
+// TestValidateNodes checks that the ValidateNodes method only emits error on invalid inputs. It also checks whether the returned error types are correct.
+func TestValidateNodes(t *testing.T) {
 	tests := []struct {
 		name    string
 		nIDLen  namespace.IDSize
