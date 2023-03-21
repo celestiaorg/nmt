@@ -477,6 +477,56 @@ func TestWrite_Err(t *testing.T) {
 	}
 }
 
+// TestNamespaceHasherSum_Err checks that the Sum method emits error on invalid inputs and when the hasher is not in the correct state.
+func TestNamespaceHasherSum_Err(t *testing.T) {
+	hash := sha256.New()
+	hash.Write([]byte("random data"))
+	randData := hash.Sum(nil)
+
+	tests := []struct {
+		name     string
+		hasher   *Hasher
+		data     []byte
+		nodeType byte
+		wantErr  bool
+	}{
+		{
+			"invalid leaf: not namespaced",
+			NewNmtHasher(sha256.New(), 2, false),
+			[]byte{0},
+			LeafPrefix,
+			true,
+		},
+		{
+			"invalid node: left.max > right.min",
+			NewNmtHasher(sha256.New(), 2, false),
+			append(append(append([]byte{0, 0, 2, 2}, randData...), []byte{1, 1, 3, 3}...), randData...),
+			NodePrefix,
+			true,
+		},
+	}
+	for _, tt := range tests {
+		// Write -> Sum should never panic
+		_, err := tt.hasher.Write(tt.data)
+		require.Equal(t, tt.wantErr, err != nil)
+		if err == nil {
+			require.NotPanics(t, func() {
+				tt.hasher.Sum(nil)
+			})
+		}
+		// Sum without a preceding Write for a wrong data should panic
+		if err != nil {
+			tt.hasher.Reset()
+			tt.hasher.data = tt.data   // by-pass the Write method
+			tt.hasher.tp = tt.nodeType // by-pass the Write method
+			require.Panics(t, func() {
+				_ = tt.hasher.Sum(nil)
+			})
+		}
+	}
+
+}
+
 // TestValidateNodes checks that the ValidateNodes method only emits error on invalid inputs. It also checks whether the returned error types are correct.
 func TestValidateNodes(t *testing.T) {
 	tests := []struct {
