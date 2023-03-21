@@ -208,7 +208,7 @@ func safeAppend(id, data []byte) []byte {
 	return append(append(make([]byte, 0, len(id)+len(data)), id...), data...)
 }
 
-func Test_verifyLeafHashes_Err(t *testing.T) {
+func TestVerifyLeafHashes_Err(t *testing.T) {
 	// create a sample tree
 	nmt := exampleTreeWithEightLeaves()
 	hasher := nmt.treeHasher
@@ -252,6 +252,47 @@ func Test_verifyLeafHashes_Err(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			_, err := tt.proof.verifyLeafHashes(tt.Hasher, tt.verifyCompleteness, tt.nID, tt.leafHashes, tt.root)
 			assert.Equal(t, tt.wantErr, err != nil)
+		})
+	}
+}
+
+func TestVerifyInclusion_False(t *testing.T) {
+	// create a sample tree
+	nmt := exampleTreeWithEightLeaves()
+	hasher := nmt.treeHasher
+	root, err := nmt.Root()
+	require.NoError(t, err)
+
+	// create nmt proof for namespace ID 4
+	nID4 := namespace.ID{4, 4}
+	proof4, err := nmt.ProveNamespace(nID4)
+	require.NoError(t, err)
+	// proof4 is the inclusion proof for the leaf at index 3
+	leaf4WONamespace := nmt.leaves[3][nmt.NamespaceSize():] // the VerifyInclusion function expects the leaf without the namespace ID
+
+	// corrupt the last node in the proof4.nodes, it resides on the right side of the proof4.end index.
+	// this test scenario makes the VerifyInclusion fail when constructing the tree root from the
+	// computed subtree root and the proof.nodes on the right side of the proof.end index.
+	proof4.nodes[2] = proof4.nodes[2][:nmt.NamespaceSize()-1]
+
+	type args struct {
+		Hasher     *Hasher
+		nID        namespace.ID
+		leafHashes [][]byte
+		root       []byte
+	}
+	tests := []struct {
+		name   string
+		proof  Proof
+		args   args
+		result bool
+	}{
+		{" wrong proof.nodes: the last node has an incorrect format", proof4, args{hasher, nID4, [][]byte{leaf4WONamespace}, root}, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := tt.proof.VerifyInclusion(tt.args.Hasher, tt.args.nID, tt.args.leafHashes, tt.args.root)
+			assert.Equal(t, tt.result, got)
 		})
 	}
 }
