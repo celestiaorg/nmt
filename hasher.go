@@ -67,7 +67,7 @@ func (n *Hasher) Size() int {
 // Requires data of fixed size to match leaf or inner NMT nodes. Only a single
 // write is allowed.
 // It panics if more than one single write is attempted.
-// If the data does not match an NMT non-leaf node or leaf node, an error will be returned.
+// If the data does not match the format of an NMT non-leaf node or leaf node, an error will be returned.
 func (n *Hasher) Write(data []byte) (int, error) {
 	if n.data != nil {
 		panic("only a single Write is allowed")
@@ -213,7 +213,7 @@ func (n *Hasher) validateSiblingsNamespaceOrder(left, right []byte) (err error) 
 	return nil
 }
 
-// ValidateNodes is helper function  to verify the
+// ValidateNodes is a helper function  to verify the
 // validity of the inputs of HashNode. It verifies whether left
 // and right comply by the namespace hash format, and are correctly ordered
 // according to their namespace IDs.

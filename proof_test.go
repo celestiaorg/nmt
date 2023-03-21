@@ -32,7 +32,7 @@ func TestProof_VerifyNamespace_False(t *testing.T) {
 	if err != nil {
 		t.Fatalf("invalid test setup: error on ProveNamespace(): %v", err)
 	}
-	// inclusion proof of leaf index 0
+	// inclusion proof of the leaf index 0
 	incProof0, err := n.buildRangeProof(0, 1)
 	require.NoError(t, err)
 	incompleteFirstNs := NewInclusionProof(0, 1, incProof0, false)
@@ -52,7 +52,7 @@ func TestProof_VerifyNamespace_False(t *testing.T) {
 	leafHash := n.leafHashes[leafIndex] // the only data item with namespace ID = 2 in the constructed tree is at index 3
 	invalidAbsenceProof := NewAbsenceProof(leafIndex, leafIndex+1, inclusionProofOfLeafIndex, leafHash, false)
 
-	// inclusion proof of leaf index 10
+	// inclusion proof of the leaf index 10
 	incProof10, err := n.buildRangeProof(10, 11)
 	require.NoError(t, err)
 
@@ -215,13 +215,12 @@ func Test_verifyLeafHashes_Err(t *testing.T) {
 	root, err := nmt.Root()
 	require.NoError(t, err)
 
-	// create a nmt proof
+	// create an NMT proof
 	nID5 := namespace.ID{5, 5}
 	proof5, err := nmt.ProveNamespace(nID5)
 	require.NoError(t, err)
-	// corrupt the leafHash so that the proof verification fails
-	// it causes failure in the root computation when verifying the proof
-	// leaf at index 4 has the namespace ID of 5
+	// corrupt the leafHash so that the proof verification fails during the root computation.
+	// note that the leaf at index 4 has the namespace ID of 5
 	leafHash5 := nmt.leafHashes[4][:nmt.NamespaceSize()]
 
 	// create nmt proof for namespace ID 4
@@ -246,7 +245,7 @@ func Test_verifyLeafHashes_Err(t *testing.T) {
 	}{
 		{" wrong leafHash: not namespaced", proof5, hasher, true, nID5, [][]byte{leafHash5}, root, true},
 		{" wrong leafHash: incorrect namespace", proof5, hasher, true, nID5, [][]byte{{10, 10, 10, 10}}, root, true},
-		{" wrong proof.nodes: corrupt last node", proof4, hasher, false, nID4, [][]byte{leafHash4}, root, true},
+		{" wrong proof.nodes: the last node has an incorrect format", proof4, hasher, false, nID4, [][]byte{leafHash4}, root, true},
 		//  the verifyCompleteness parameter in the verifyProof function should be set to false in order to bypass nodes correctness check during the completeness verification (otherwise it panics).
 	}
 	for _, tt := range tests {
