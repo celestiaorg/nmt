@@ -220,7 +220,7 @@ func Test_verifyLeafHashes_Err(t *testing.T) {
 	proof5, err := nmt.ProveNamespace(nID5)
 	require.NoError(t, err)
 	// corrupt the leafHash so that the proof verification fails during the root computation.
-	// note that the leaf at index 4 has the namespace ID of 5
+	// note that the leaf at index 4 has the namespace ID of 5.
 	leafHash5 := nmt.leafHashes[4][:nmt.NamespaceSize()]
 
 	// create nmt proof for namespace ID 4
