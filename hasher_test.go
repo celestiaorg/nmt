@@ -524,7 +524,6 @@ func Test_NamespaceHasherSum_Err(t *testing.T) {
 			})
 		}
 	}
-
 }
 
 // Test_ValidateNodes checks that the ValidateNodes method only emits error on invalid inputs. It also checks whether the returned error types are correct.
