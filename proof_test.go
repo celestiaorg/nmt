@@ -268,7 +268,7 @@ func TestVerifyInclusion_False(t *testing.T) {
 	proof4, err := nmt.ProveNamespace(nID4)
 	require.NoError(t, err)
 	// proof4 is the inclusion proof for the leaf at index 3
-	leaf4WONamespace := nmt.leaves[3][nmt.NamespaceSize():] // the VerifyInclusion function expects the leaf without the namespace ID
+	leaf4WithoutNamespace := nmt.leaves[3][nmt.NamespaceSize():] // the VerifyInclusion function expects the leaf without the namespace ID, that's why we cut the namespace ID from the leaf.
 
 	// corrupt the last node in the proof4.nodes, it resides on the right side of the proof4.end index.
 	// this test scenario makes the VerifyInclusion fail when constructing the tree root from the
@@ -287,7 +287,7 @@ func TestVerifyInclusion_False(t *testing.T) {
 		args   args
 		result bool
 	}{
-		{" wrong proof.nodes: the last node has an incorrect format", proof4, args{hasher, nID4, [][]byte{leaf4WONamespace}, root}, false},
+		{" wrong proof.nodes: the last node has an incorrect format", proof4, args{hasher, nID4, [][]byte{leaf4WithoutNamespace}, root}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
