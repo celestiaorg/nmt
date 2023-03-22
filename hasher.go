@@ -231,9 +231,6 @@ func (n *Hasher) ValidateNodes(left, right []byte) error {
 // not exist, the maximum NID is calculated as normal, i.e., "res.maxNID =
 // max(left.maxNID , right.maxNID).
 func (n *Hasher) HashNode(left, right []byte) []byte {
-	h := n.baseHasher
-	h.Reset()
-
 	if err := n.validateNodeFormat(left); err != nil {
 		panic(err)
 	}
@@ -245,6 +242,8 @@ func (n *Hasher) HashNode(left, right []byte) []byte {
 	if err := n.validateSiblingsNamespaceOrder(left, right); err != nil {
 		panic(err)
 	}
+	h := n.baseHasher
+	h.Reset()
 
 	// the actual hash result of the children got extended (or flagged) by their
 	// children's minNs || maxNs; hence the flagLen = 2 * NamespaceLen:
