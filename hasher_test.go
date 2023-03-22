@@ -491,7 +491,7 @@ func TestWrite_Err(t *testing.T) {
 			ErrInvalidLeafLen,
 		},
 		{
-			"invalid node: left.max > right.imn",
+			"invalid node: left.max > right.min",
 			NewNmtHasher(sha256.New(), 2, false),
 			append(append(append([]byte{0, 0, 2, 2}, randData...), []byte{1, 1, 3, 3}...), randData...),
 			true,
