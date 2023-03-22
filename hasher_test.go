@@ -516,11 +516,11 @@ func TestSum_Err(t *testing.T) {
 	randData := hash.Sum(nil)
 
 	tests := []struct {
-		name     string
-		hasher   *Hasher
-		data     []byte
-		nodeType byte
-		wantErr  bool
+		name         string
+		hasher       *Hasher
+		data         []byte
+		nodeType     byte
+		wantWriteErr bool
 	}{
 		{
 			"invalid leaf: not namespaced",
@@ -540,7 +540,7 @@ func TestSum_Err(t *testing.T) {
 	for _, tt := range tests {
 		// Write -> Sum should never panic
 		_, err := tt.hasher.Write(tt.data)
-		require.Equal(t, tt.wantErr, err != nil)
+		require.Equal(t, tt.wantWriteErr, err != nil)
 		if err == nil {
 			require.NotPanics(t, func() {
 				tt.hasher.Sum(nil)
