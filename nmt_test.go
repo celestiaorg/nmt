@@ -1044,7 +1044,7 @@ func Test_Root_Error(t *testing.T) {
 	}
 }
 
-// Test_computeRoot_Error tests that the Root method returns an error when the underlying tree is in an invalid state, such as when the leaves are not ordered by namespace ID or when a leaf is corrupt.
+// Test_computeRoot_Error tests that the computeRoot method returns an error when the underlying tree is in an invalid state, such as when the leaves are not ordered by namespace ID or when a leaf is corrupt.
 func Test_computeRoot_Error(t *testing.T) {
 	// create an NMT with 8 sequentially namespaced leaves, numbered from 1 to 8.
 	treeWithCorruptLeaf := exampleTreeWithEightLeaves()
@@ -1057,17 +1057,23 @@ func Test_computeRoot_Error(t *testing.T) {
 	swap(treeWithUnorderedLeaves.leaves, 4, 5)
 
 	tests := []struct {
-		name    string
-		tree    *NamespacedMerkleTree
-		wantErr bool
-		errType error
+		name       string
+		tree       *NamespacedMerkleTree
+		start, end int
+		wantErr    bool
+		errType    error
 	}{
-		{"corrupt leaf", treeWithCorruptLeaf, true, ErrInvalidLeafLen},
-		{"unordered leaves", treeWithUnorderedLeaves, true, ErrUnorderedSiblings},
+		{"corrupt leaf: the entire tree", treeWithCorruptLeaf, 0, 7, true, ErrInvalidLeafLen},
+		{"corrupt leaf: the corrupt node", treeWithCorruptLeaf, 4, 5, true, ErrInvalidLeafLen},
+		{"corrupt leaf: from the corrupt node until the end of the tree", treeWithCorruptLeaf, 4, 7, true, ErrInvalidLeafLen},
+		{"corrupt leaf: the corrupt node and the node to its left", treeWithCorruptLeaf, 3, 5, true, ErrInvalidLeafLen},
+		{"unordered leaves: the entire tree", treeWithUnorderedLeaves, 0, 7, true, ErrUnorderedSiblings},
+		{"unordered leaves: the unordered portion", treeWithUnorderedLeaves, 4, 6, true, ErrUnorderedSiblings},
+		{"unordered leaves: a portion of the tree containing the unordered leaves", treeWithUnorderedLeaves, 3, 7, true, ErrUnorderedSiblings},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := tt.tree.Root()
+			_, err := tt.tree.computeRoot(tt.start, tt.end)
 			assert.Equal(t, tt.wantErr, err != nil)
 			if tt.wantErr {
 				assert.True(t, errors.Is(err, tt.errType))
