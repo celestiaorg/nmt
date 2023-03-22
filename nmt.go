@@ -165,12 +165,12 @@ func (n *NamespacedMerkleTree) Prove(index int) (Proof, error) {
 // the HashNode method in the Hasher.
 func (n *NamespacedMerkleTree) ProveRange(start, end int) (Proof, error) {
 	isMaxNsIgnored := n.treeHasher.IsMaxNamespaceIDIgnored()
-	n.computeLeafHashesIfNecessary()
 	// TODO: store nodes and re-use the hashes instead recomputing parts of the
 	// tree here
 	if start < 0 || start >= end || end > len(n.leafHashes) {
 		return NewEmptyRangeProof(isMaxNsIgnored), ErrInvalidRange
 	}
+	n.computeLeafHashesIfNecessary()
 	proof := n.buildRangeProof(start, end)
 
 	return NewInclusionProof(start, end, proof, isMaxNsIgnored), nil
