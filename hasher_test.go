@@ -54,7 +54,9 @@ func Test_namespacedTreeHasher_HashLeaf(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			n := NewNmtHasher(sha256.New(), tt.nsLen, false)
-			if got := n.HashLeaf(tt.leaf); !reflect.DeepEqual(got, tt.want) {
+			got, err := n.HashLeaf(tt.leaf)
+			require.NoError(t, err)
+			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("HashLeaf() = %v, want %v", got, tt.want)
 			}
 		})
@@ -103,7 +105,9 @@ func Test_namespacedTreeHasher_HashNode(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			n := NewNmtHasher(sha256.New(), tt.nidLen, false)
-			if got := n.HashNode(tt.children.l, tt.children.r); !reflect.DeepEqual(got, tt.want) {
+			got, err := n.HashNode(tt.children.l, tt.children.r)
+			require.NoError(t, err)
+			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("HashNode() = %v, want %v", got, tt.want)
 			}
 		})
@@ -198,38 +202,39 @@ func TestHashNode_ChildrenNamespaceRange(t *testing.T) {
 	}
 
 	tests := []struct {
-		name      string
-		nidLen    namespace.IDSize
-		children  children
-		wantPanic bool // whether the test should panic or nor
+		name     string
+		nidLen   namespace.IDSize
+		children children
+		wantErr  bool // whether the test should error out
+		errType  error
 	}{
 		{
 			"left.maxNs>right.minNs", 2,
 			children{[]byte{0, 0, 1, 1}, []byte{0, 0, 1, 1}},
-			true, // this test case should panic since in an ordered NMT, left.maxNs cannot be greater than right.minNs
+			true, // this test case should emit an error since in an ordered NMT, left.maxNs cannot be greater than right.minNs
+			ErrUnorderedSiblings,
 		},
 		{
 			"left.maxNs=right.minNs", 2,
 			children{[]byte{0, 0, 1, 1}, []byte{1, 1, 2, 2}},
 			false,
+			nil,
 		},
 		{
 			"left.maxNs<right.minNs", 2,
 			children{[]byte{0, 0, 1, 1}, []byte{2, 2, 3, 3}},
 			false,
+			nil,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			defer func() {
-				gotPanic := false
-				if r := recover(); r != nil { // here we check whether panic happened
-					gotPanic = true
-				}
-				assert.Equal(t, tt.wantPanic, gotPanic)
-			}()
 			n := NewNmtHasher(sha256.New(), tt.nidLen, false)
-			n.HashNode(tt.children.l, tt.children.r)
+			_, err := n.HashNode(tt.children.l, tt.children.r)
+			assert.Equal(t, tt.wantErr, err != nil)
+			if tt.wantErr {
+				assert.True(t, errors.Is(err, tt.errType))
+			}
 		})
 	}
 }
@@ -304,7 +309,7 @@ func TestValidateNodeFormat(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			n := NewNmtHasher(sha256.New(), tt.nIDLen, false)
-			err := n.validateNodeFormat(append(append(tt.minNID, tt.maxNID...), tt.hash...))
+			err := n.ValidateNodeFormat(append(append(tt.minNID, tt.maxNID...), tt.hash...))
 			assert.Equal(t, tt.wantErr, err != nil)
 			if tt.wantErr {
 				assert.True(t, errors.Is(err, tt.errType))
@@ -313,7 +318,7 @@ func TestValidateNodeFormat(t *testing.T) {
 	}
 }
 
-func TestIsNamespacedData(t *testing.T) {
+func TestValidateLeaf(t *testing.T) {
 	tests := []struct {
 		name    string
 		data    []byte
@@ -336,7 +341,39 @@ func TestIsNamespacedData(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			n := NewNmtHasher(sha256.New(), tt.nIDLen, false)
-			assert.Equal(t, tt.wantErr, n.IsNamespacedData(tt.data) != nil)
+			assert.Equal(t, tt.wantErr, n.ValidateLeaf(tt.data) != nil)
+		})
+	}
+}
+
+// TestValidateLeafWithHash tests the HashLeaf does not error out for the leaves that are validated by ValidateLeaf.
+func TestValidateLeafWithHash(t *testing.T) {
+	tests := []struct {
+		name    string
+		data    []byte
+		nIDLen  namespace.IDSize
+		wantErr bool
+	}{
+		{
+			"valid namespaced data",
+			[]byte{0, 0},
+			2,
+			false,
+		},
+		{
+			"non-namespaced data",
+			[]byte{1},
+			2,
+			true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			n := NewNmtHasher(sha256.New(), tt.nIDLen, false)
+			validationRes := n.ValidateLeaf(tt.data)
+			assert.Equal(t, tt.wantErr, validationRes != nil)
+			_, err := n.HashLeaf(tt.data)
+			assert.Equal(t, validationRes != nil, err != nil)
 		})
 	}
 }
@@ -344,37 +381,40 @@ func TestIsNamespacedData(t *testing.T) {
 func TestHashLeafWithIsNamespacedData(t *testing.T) {
 	tests := []struct {
 		name    string
-		data    []byte
+		leaf    []byte
 		nIDLen  namespace.IDSize
 		wantErr bool
+		errType error
 	}{
 		{
-			"valid namespaced data",
+			"valid namespaced leaf",
 			[]byte{0, 0},
 			2,
 			false,
+			nil,
 		},
 		{
-			"non-namespaced data",
+			"non-namespaced leaf",
 			[]byte{1},
 			2,
 			true,
+			ErrInvalidLeafLen,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			n := NewNmtHasher(sha256.New(), tt.nIDLen, false)
+			_, err := n.HashLeaf(tt.leaf)
+			assert.Equal(t, tt.wantErr, err != nil)
 			if tt.wantErr {
-				require.Error(t, n.IsNamespacedData(tt.data))
-				require.Panics(t, func() {
-					n.HashLeaf(tt.data)
-				})
+				assert.True(t, errors.Is(err, tt.errType))
 			}
 		})
 	}
 }
 
-func TestHashNodeWithValidateNodes(t *testing.T) {
+// TestHashNode_ErrorsCheck checks that the HashNode emits error only on invalid inputs. It also checks whether the returned error types are correct.
+func TestHashNode_ErrorsCheck(t *testing.T) {
 	type children struct {
 		l []byte // namespace hash of the left child with the format of MinNs||MaxNs||h
 		r []byte // namespace hash of the right child with the format of MinNs||MaxNs||h
@@ -385,41 +425,196 @@ func TestHashNodeWithValidateNodes(t *testing.T) {
 		nidLen   namespace.IDSize
 		children children
 		wantErr  bool
+		errType  error
 	}{
 		{
 			"left.maxNs<right.minNs", 2,
 			children{[]byte{0, 0, 1, 1}, []byte{2, 2, 3, 3}},
 			false,
+			nil,
 		},
 		{
 			"left.maxNs=right.minNs", 2,
 			children{[]byte{0, 0, 1, 1}, []byte{1, 1, 2, 2}},
 			false,
+			nil,
 		},
 		{
 			"left.maxNs>right.minNs", 2,
 			children{[]byte{0, 0, 1, 1}, []byte{0, 0, 1, 1}},
 			true,
+			ErrUnorderedSiblings,
 		},
 		{
 			"len(left)<NamespaceLen", 2,
 			children{[]byte{0, 0, 1}, []byte{2, 2, 3, 3}},
 			true,
+			ErrInvalidNodeLen,
 		},
 		{
 			"len(right)<NamespaceLen", 2,
 			children{[]byte{0, 0, 1, 1}, []byte{2, 2, 3}},
 			true,
+			ErrInvalidNodeLen,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			n := NewNmtHasher(sha256.New(), tt.nidLen, false)
+			_, err := n.HashNode(tt.children.l, tt.children.r)
+			assert.Equal(t, tt.wantErr, err != nil)
 			if tt.wantErr {
-				require.Error(t, n.ValidateNodes(tt.children.l, tt.children.r))
-				require.Panics(t, func() {
-					n.HashNode(tt.children.l, tt.children.r)
-				})
+				assert.True(t, errors.Is(err, tt.errType))
+			}
+		})
+	}
+}
+
+// TestWrite_Err checks that the Write method emits error on invalid inputs.
+func TestWrite_Err(t *testing.T) {
+	hash := sha256.New()
+	hash.Write([]byte("random data"))
+	randData := hash.Sum(nil)
+
+	tests := []struct {
+		name    string
+		hasher  *Hasher
+		data    []byte
+		wantErr bool
+		errType error
+	}{
+		{
+			"invalid leaf",
+			NewNmtHasher(sha256.New(), 2, false),
+			[]byte{0},
+			true,
+			ErrInvalidLeafLen,
+		},
+		{
+			"invalid node: left.max > right.min",
+			NewNmtHasher(sha256.New(), 2, false),
+			append(append(append([]byte{0, 0, 2, 2}, randData...), []byte{1, 1, 3, 3}...), randData...),
+			true,
+			ErrUnorderedSiblings,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := tt.hasher.Write(tt.data)
+			assert.Equal(t, tt.wantErr, err != nil)
+			if tt.wantErr {
+				assert.True(t, errors.Is(err, tt.errType))
+			}
+		})
+	}
+}
+
+// TestSum_Err checks that the Sum method emits error on invalid inputs and when the hasher is not in the correct state.
+func TestSum_Err(t *testing.T) {
+	hash := sha256.New()
+	hash.Write([]byte("random data"))
+	randData := hash.Sum(nil)
+
+	tests := []struct {
+		name         string
+		hasher       *Hasher
+		data         []byte
+		nodeType     byte
+		wantWriteErr bool
+	}{
+		{
+			"invalid leaf: not namespaced",
+			NewNmtHasher(sha256.New(), 2, false),
+			[]byte{0},
+			LeafPrefix,
+			true,
+		},
+		{
+			"invalid node: left.max > right.min",
+			NewNmtHasher(sha256.New(), 2, false),
+			append(append(append([]byte{0, 0, 2, 2}, randData...), []byte{1, 1, 3, 3}...), randData...),
+			NodePrefix,
+			true,
+		},
+	}
+	for _, tt := range tests {
+		// Write -> Sum should never panic
+		_, err := tt.hasher.Write(tt.data)
+		require.Equal(t, tt.wantWriteErr, err != nil)
+		if err == nil {
+			require.NotPanics(t, func() {
+				tt.hasher.Sum(nil)
+			})
+		}
+		// Sum without a preceding Write for a wrong data should panic
+		if err != nil {
+			tt.hasher.Reset()
+			tt.hasher.data = tt.data   // by-pass the Write method
+			tt.hasher.tp = tt.nodeType // by-pass the Write method
+			require.Panics(t, func() {
+				_ = tt.hasher.Sum(nil)
+			})
+		}
+	}
+}
+
+// TestValidateNodes checks that the ValidateNodes method only emits error on invalid inputs. It also checks whether the returned error types are correct.
+func TestValidateNodes(t *testing.T) {
+	tests := []struct {
+		name    string
+		nIDLen  namespace.IDSize
+		left    []byte
+		right   []byte
+		wantErr bool
+		errType error
+	}{
+		{
+			"left.maxNs<right.minNs",
+			2,
+			[]byte{0, 0, 1, 1},
+			[]byte{2, 2, 3, 3},
+			false,
+			nil,
+		},
+		{
+			"left.maxNs=right.minNs",
+			2,
+			[]byte{0, 0, 1, 1},
+			[]byte{1, 1, 2, 2},
+			false,
+			nil,
+		},
+		{
+			"left.maxNs>right.minNs",
+			2,
+			[]byte{0, 0, 1, 1},
+			[]byte{0, 0, 1, 1},
+			true,
+			ErrUnorderedSiblings,
+		},
+		{
+			"len(left)<NamespaceLen",
+			2,
+			[]byte{0, 0, 1},
+			[]byte{2, 2, 3, 3},
+			true,
+			ErrInvalidNodeLen,
+		},
+		{
+			"len(right)<NamespaceLen", 2,
+			[]byte{0, 0, 1, 1},
+			[]byte{2, 2, 3},
+			true,
+			ErrInvalidNodeLen,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			n := NewNmtHasher(sha256.New(), tt.nIDLen, false)
+			err := n.ValidateNodes(tt.left, tt.right)
+			assert.Equal(t, tt.wantErr, err != nil)
+			if tt.wantErr {
+				assert.True(t, errors.Is(err, tt.errType))
 			}
 		})
 	}
