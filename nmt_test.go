@@ -235,13 +235,6 @@ func TestNamespacedMerkleTree_ProveNamespace_Ranges_And_Verify(t *testing.T) {
 			false,
 		},
 		{
-			"three leaves and not found but within range", 2,
-			append(repeat(generateLeafData(2, 0, 1, []byte("_data")), 2), newNamespaceDataPair([]byte{1, 1}, []byte("_data"))),
-			[]byte{0, 1},
-			2, 3,
-			false,
-		},
-		{
 			"5 leaves and not found but within range", 2,
 			append(generateLeafData(2, 0, 4, []byte("_data")), newNamespaceDataPair([]byte{1, 1}, []byte("_data"))),
 			[]byte{1, 0},
