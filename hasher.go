@@ -250,8 +250,6 @@ func (n *Hasher) HashNode(left, right []byte) ([]byte, error) {
 	if err := n.ValidateNodeFormat(right); err != nil {
 		return nil, err
 	}
-  h := n.baseHasher
-	h.Reset()
 
 	// check the namespace range of the left and right children
 	if err := n.validateSiblingsNamespaceOrder(left, right); err != nil {
