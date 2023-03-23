@@ -6,6 +6,8 @@ import (
 	"sort"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/celestiaorg/nmt"
 	"github.com/celestiaorg/nmt/namespace"
 	fuzz "github.com/google/gofuzz"
@@ -44,7 +46,8 @@ func TestFuzzProveVerifyNameSpace(t *testing.T) {
 			}
 		}
 
-		treeRoot := tree.Root()
+		treeRoot, err := tree.Root()
+		require.NoError(t, err)
 		nonEmptyNsCount := 0
 		leafIdx := 0
 		for _, ns := range sortedKeys {

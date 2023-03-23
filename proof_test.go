@@ -5,6 +5,10 @@ import (
 	"crypto/sha256"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
+	"github.com/stretchr/testify/require"
+
 	"github.com/celestiaorg/nmt/namespace"
 )
 
@@ -28,7 +32,10 @@ func TestProof_VerifyNamespace_False(t *testing.T) {
 	if err != nil {
 		t.Fatalf("invalid test setup: error on ProveNamespace(): %v", err)
 	}
-	incompleteFirstNs := NewInclusionProof(0, 1, n.buildRangeProof(0, 1), false)
+	// inclusion proof of the leaf index 0
+	incProof0, err := n.buildRangeProof(0, 1)
+	require.NoError(t, err)
+	incompleteFirstNs := NewInclusionProof(0, 1, incProof0, false)
 	type args struct {
 		nID  namespace.ID
 		data [][]byte
@@ -39,10 +46,19 @@ func TestProof_VerifyNamespace_False(t *testing.T) {
 
 	// an invalid absence proof for an existing namespace ID (2) in the constructed tree
 	leafIndex := 3
-	inclusionProofOfLeafIndex := n.buildRangeProof(leafIndex, leafIndex+1)
-	n.computeLeafHashesIfNecessary()
+	inclusionProofOfLeafIndex, err := n.buildRangeProof(leafIndex, leafIndex+1)
+	require.NoError(t, err)
+	require.NoError(t, n.computeLeafHashesIfNecessary())
 	leafHash := n.leafHashes[leafIndex] // the only data item with namespace ID = 2 in the constructed tree is at index 3
 	invalidAbsenceProof := NewAbsenceProof(leafIndex, leafIndex+1, inclusionProofOfLeafIndex, leafHash, false)
+
+	// inclusion proof of the leaf index 10
+	incProof10, err := n.buildRangeProof(10, 11)
+	require.NoError(t, err)
+
+	// root
+	root, err := n.Root()
+	require.NoError(t, err)
 
 	tests := []struct {
 		name  string
@@ -52,52 +68,52 @@ func TestProof_VerifyNamespace_False(t *testing.T) {
 	}{
 		{
 			"invalid nid (too long)", validProof,
-			args{[]byte{0, 0, 0, 0}, pushedZeroNs, n.Root()},
+			args{[]byte{0, 0, 0, 0}, pushedZeroNs, root},
 			false,
 		},
 		{
 			"invalid leaf data (too short)", validProof,
-			args{[]byte{0, 0, 0}, [][]byte{{0, 1}}, n.Root()},
+			args{[]byte{0, 0, 0}, [][]byte{{0, 1}}, root},
 			false,
 		},
 		{
 			"mismatching IDs in data", validProof,
-			args{[]byte{0, 0, 0}, append(append([][]byte(nil), pushedZeroNs...), []byte{1, 1, 1}), n.Root()},
+			args{[]byte{0, 0, 0}, append(append([][]byte(nil), pushedZeroNs...), []byte{1, 1, 1}), root},
 			false,
 		},
 		{
 			"added another leaf", validProof,
-			args{[]byte{0, 0, 0}, append(append([][]byte(nil), pushedZeroNs...), []byte{0, 0, 0}), n.Root()},
+			args{[]byte{0, 0, 0}, append(append([][]byte(nil), pushedZeroNs...), []byte{0, 0, 0}), root},
 			false,
 		},
 		{
 			"remove one leaf, errors", validProof,
-			args{[]byte{0, 0, 0}, pushedZeroNs[:len(pushedZeroNs)-1], n.Root()},
+			args{[]byte{0, 0, 0}, pushedZeroNs[:len(pushedZeroNs)-1], root},
 			false,
 		},
 		{
 			"remove one leaf & update proof range, errors", NewInclusionProof(validProof.Start(), validProof.End()-1, validProof.Nodes(), false),
-			args{[]byte{0, 0, 0}, pushedZeroNs[:len(pushedZeroNs)-1], n.Root()},
+			args{[]byte{0, 0, 0}, pushedZeroNs[:len(pushedZeroNs)-1], root},
 			false,
 		},
 		{
 			"incomplete namespace proof (right)", incompleteFirstNs,
-			args{[]byte{0, 0, 0}, pushedZeroNs[:len(pushedZeroNs)-1], n.Root()},
+			args{[]byte{0, 0, 0}, pushedZeroNs[:len(pushedZeroNs)-1], root},
 			false,
 		},
 		{
-			"incomplete namespace proof (left)", NewInclusionProof(10, 11, n.buildRangeProof(10, 11), false),
-			args{[]byte{0, 0, 8}, pushedLastNs[1:], n.Root()},
+			"incomplete namespace proof (left)", NewInclusionProof(10, 11, incProof10, false),
+			args{[]byte{0, 0, 8}, pushedLastNs[1:], root},
 			false,
 		},
 		{
 			"remove all leaves, errors", validProof,
-			args{[]byte{0, 0, 0}, pushedZeroNs[:len(pushedZeroNs)-2], n.Root()},
+			args{[]byte{0, 0, 0}, pushedZeroNs[:len(pushedZeroNs)-2], root},
 			false,
 		},
 		{
 			"invalid absence proof of an existing nid", invalidAbsenceProof,
-			args{[]byte{0, 0, 2}, [][]byte{}, n.Root()},
+			args{[]byte{0, 0, 2}, [][]byte{}, root},
 			false,
 		},
 	}
@@ -146,6 +162,9 @@ func TestProof_MultipleLeaves(t *testing.T) {
 		}
 	}
 
+	root, err := n.Root()
+	require.NoError(t, err)
+
 	type args struct {
 		start, end int
 		root       []byte
@@ -156,16 +175,16 @@ func TestProof_MultipleLeaves(t *testing.T) {
 		want bool
 	}{
 		{
-			"3rd through 5th leaf", args{2, 4, n.Root()}, true,
+			"3rd through 5th leaf", args{2, 4, root}, true,
 		},
 		{
-			"single leaf", args{2, 3, n.Root()}, true,
+			"single leaf", args{2, 3, root}, true,
 		},
 		{
-			"first leaf", args{0, 1, n.Root()}, true,
+			"first leaf", args{0, 1, root}, true,
 		},
 		{
-			"most leaves", args{0, 7, n.Root()}, true,
+			"most leaves", args{0, 7, root}, true,
 		},
 		{
 			"most leaves", args{0, 7, bytes.Repeat([]byte{1}, 48)}, false,
@@ -187,4 +206,93 @@ func TestProof_MultipleLeaves(t *testing.T) {
 
 func safeAppend(id, data []byte) []byte {
 	return append(append(make([]byte, 0, len(id)+len(data)), id...), data...)
+}
+
+func TestVerifyLeafHashes_Err(t *testing.T) {
+	// create a sample tree
+	nmt := exampleTreeWithEightLeaves()
+	hasher := nmt.treeHasher
+	root, err := nmt.Root()
+	require.NoError(t, err)
+
+	// create an NMT proof
+	nID5 := namespace.ID{5, 5}
+	proof5, err := nmt.ProveNamespace(nID5)
+	require.NoError(t, err)
+	// corrupt the leafHash so that the proof verification fails during the root computation.
+	// note that the leaf at index 4 has the namespace ID of 5.
+	leafHash5 := nmt.leafHashes[4][:nmt.NamespaceSize()]
+
+	// create nmt proof for namespace ID 4
+	nID4 := namespace.ID{4, 4}
+	proof4, err := nmt.ProveNamespace(nID4)
+	require.NoError(t, err)
+	// corrupt the last node in the proof4.nodes, it resides on the right side of the proof4.end index.
+	// this test scenario makes the proof verification fail when constructing the tree root from the
+	// computed subtree root and the proof.nodes on the right side of the proof.end index.
+	proof4.nodes[2] = proof4.nodes[2][:nmt.NamespaceSize()-1]
+	leafHash4 := nmt.leafHashes[3]
+
+	tests := []struct {
+		name               string
+		proof              Proof
+		Hasher             *Hasher
+		verifyCompleteness bool
+		nID                namespace.ID
+		leafHashes         [][]byte
+		root               []byte
+		wantErr            bool
+	}{
+		{" wrong leafHash: not namespaced", proof5, hasher, true, nID5, [][]byte{leafHash5}, root, true},
+		{" wrong leafHash: incorrect namespace", proof5, hasher, true, nID5, [][]byte{{10, 10, 10, 10}}, root, true},
+		{" wrong proof.nodes: the last node has an incorrect format", proof4, hasher, false, nID4, [][]byte{leafHash4}, root, true},
+		//  the verifyCompleteness parameter in the verifyProof function should be set to false in order to bypass nodes correctness check during the completeness verification (otherwise it panics).
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := tt.proof.verifyLeafHashes(tt.Hasher, tt.verifyCompleteness, tt.nID, tt.leafHashes, tt.root)
+			assert.Equal(t, tt.wantErr, err != nil)
+		})
+	}
+}
+
+func TestVerifyInclusion_False(t *testing.T) {
+	// create a sample tree
+	nmt := exampleTreeWithEightLeaves()
+	hasher := nmt.treeHasher
+	root, err := nmt.Root()
+	require.NoError(t, err)
+
+	// create nmt proof for namespace ID 4
+	nID4 := namespace.ID{4, 4}
+	proof4, err := nmt.ProveNamespace(nID4)
+	require.NoError(t, err)
+	// proof4 is the inclusion proof for the leaf at index 3
+	leaf4WithoutNamespace := nmt.leaves[3][nmt.NamespaceSize():] // the VerifyInclusion function expects the leaf without the namespace ID, that's why we cut the namespace ID from the leaf.
+
+	// corrupt the last node in the proof4.nodes, it resides on the right side of the proof4.end index.
+	// this test scenario makes the VerifyInclusion fail when constructing the tree root from the
+	// computed subtree root and the proof.nodes on the right side of the proof.end index.
+	proof4.nodes[2] = proof4.nodes[2][:nmt.NamespaceSize()-1]
+
+	type args struct {
+		Hasher     *Hasher
+		nID        namespace.ID
+		leafHashes [][]byte
+		root       []byte
+	}
+	tests := []struct {
+		name   string
+		proof  Proof
+		args   args
+		result bool
+	}{
+		{" wrong proof.nodes: the last node has an incorrect format", proof4, args{hasher, nID4, [][]byte{leaf4WithoutNamespace}, root}, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := tt.proof.VerifyInclusion(tt.args.Hasher, tt.args.nID, tt.args.leafHashes, tt.args.root)
+			assert.Equal(t, tt.result, got)
+		})
+	}
 }
