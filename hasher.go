@@ -244,9 +244,6 @@ func (n *Hasher) ValidateNodes(left, right []byte) error {
 // equal to the maximum possible namespace ID value. If all the namespace IDs are equal
 // to the maximum possible value, then the maximum possible value is used.
 func (n *Hasher) HashNode(left, right []byte) ([]byte, error) {
-	h := n.baseHasher
-	h.Reset()
-
 	if err := n.ValidateNodeFormat(left); err != nil {
 		return nil, err
 	}
@@ -258,6 +255,8 @@ func (n *Hasher) HashNode(left, right []byte) ([]byte, error) {
 	if err := n.validateSiblingsNamespaceOrder(left, right); err != nil {
 		return nil, err
 	}
+	h := n.baseHasher
+	h.Reset()
 
 	// the actual hash result of the children got extended (or flagged) by their
 	// children's minNs || maxNs; hence the flagLen = 2 * NamespaceLen:
