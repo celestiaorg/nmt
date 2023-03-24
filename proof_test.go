@@ -236,6 +236,7 @@ func TestProof_VerifyInclusion_InvalidInput(t *testing.T) {
 	}
 
 	rawDataForNSOne := [][]byte{[]byte("leaf_0"), []byte("leaf_1")}
+	root, _ := n.Root()
 	tests := []struct {
 		name  string
 		proof Proof
@@ -244,8 +245,8 @@ func TestProof_VerifyInclusion_InvalidInput(t *testing.T) {
 	}{
 		{
 			"invalid nid (too long)", validProof,
-			args{[]byte{1, 1}, rawDataForNSOne, n.Root()},
-			false,
+			args{[]byte{1, 1}, rawDataForNSOne, root},
+			true,
 		},
 	}
 	for _, tt := range tests {
