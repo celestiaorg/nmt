@@ -204,6 +204,61 @@ func TestProof_MultipleLeaves(t *testing.T) {
 	}
 }
 
+func TestProof_VerifyInclusion_InvalidInput(t *testing.T) {
+	const testNidLen = 1
+
+	n := New(sha256.New(), NamespaceIDSize(testNidLen))
+
+	data := [][]byte{
+		append(namespace.ID{1}, []byte("leaf_0")...),
+		append(namespace.ID{1}, []byte("leaf_1")...),
+		append(namespace.ID{2}, []byte("leaf_2")...),
+		append(namespace.ID{2}, []byte("leaf_3")...),
+		append(namespace.ID{3}, []byte("leaf_4")...),
+		append(namespace.ID{3}, []byte("leaf_5")...),
+	}
+	for _, d := range data {
+		err := n.Push(d)
+		if err != nil {
+			t.Fatalf("invalid test setup: error on Push(): %v", err)
+		}
+	}
+
+	validProof, err := n.ProveNamespace([]byte{1})
+	if err != nil {
+		t.Fatalf("invalid test setup: error on ProveNamespace(): %v", err)
+	}
+
+	type args struct {
+		nID  namespace.ID
+		data [][]byte
+		root []byte
+	}
+
+	rawDataForNSOne := [][]byte{[]byte("leaf_0"), []byte("leaf_1")}
+	tests := []struct {
+		name  string
+		proof Proof
+		args  args
+		want  bool
+	}{
+		{
+			"invalid nid (too long)", validProof,
+			args{[]byte{1, 1}, rawDataForNSOne, n.Root()},
+			false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+
+			got := tt.proof.VerifyInclusion(sha256.New(), tt.args.nID, tt.args.data, tt.args.root)
+			if got != tt.want {
+				t.Errorf("VerifyInclusion() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func safeAppend(id, data []byte) []byte {
 	return append(append(make([]byte, 0, len(id)+len(data)), id...), data...)
 }
