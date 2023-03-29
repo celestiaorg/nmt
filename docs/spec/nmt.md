@@ -145,9 +145,9 @@ If the queried `nID` falls outside the namespace range of the tree root, or the 
 
 ### Index-based Merkle Range Proof
 NMTs also support regular index-based Merkle Proof that allows for both Merkle inclusion proof for a single leaf index and Merkle range proof for a range of leaf indices `[start, end)`,
-where `end` is strictly greater than `start`.
+where `end` is greater than `start`.
 The Merkle inclusion proof for a single leaf is actually a special case of the Merkle range proof where the range represents a single leaf index, or in other words, when `end` is equal to `start+1`.
-As such, we focus on the Merkle range proof where the range is `[start, end)`.
+As such, we only focus on the Merkle range proof in this section.
 The `start` and `end` are zero-based indices of the leaves in the tree, where `start` is inclusive and `end` is exclusive.
 The `start` ranges from `0` to `n-1`, where `n` is the number of leaves in the tree, while end ranges from `1` to `n`.
 
