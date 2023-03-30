@@ -263,7 +263,7 @@ module nmt {
     
 
     
-    pure val MAX_POWER = 3
+    pure val MAX_POWER = 5
     pure val MAX_NAMESPACE_ID = 100
     pure val EMPTY_PROOF = {start: -1, end: -1, supporting_hashes: []}
     pure val EMPTY_TREE = {leaves: Map(), hashes: Map()}
