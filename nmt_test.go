@@ -596,12 +596,17 @@ func TestNamespacedMerkleTree_calculateAbsenceIndex_Panic(t *testing.T) {
 		nID      namespace.ID
 		pushData []namespaceDataPair
 	}{
-		{"((0,0) == nID < minNID == (0,1))", []byte{0, 0}, generateLeafData(nidLen, 1, 3, []byte{})},
-		{"((0,3) == nID > maxNID == (0,2))", []byte{0, 3}, generateLeafData(nidLen, 1, 3, []byte{})},
+		{"empty tree", []byte{0, 0}, []namespaceDataPair{}},
+		{"non-empty tree with 2 leaves: ((0,0) == nID < minNID == (0,1))", []byte{0, 0}, generateLeafData(nidLen, 1, 3, []byte{})},
+		{"non-empty tree with 2 leaves: ((0,3) == nID > maxNID == (0,2))", []byte{0, 3}, generateLeafData(nidLen, 1, 3, []byte{})},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			n := New(sha256.New(), NamespaceIDSize(2))
+			for _, d := range tt.pushData {
+				err := n.Push(namespace.PrefixedData(append(d.ID, d.Data...)))
+				assert.NoError(t, err)
+			}
 			shouldPanic(t,
 				func() { n.calculateAbsenceIndex(tt.nID) })
 		})
