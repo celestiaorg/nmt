@@ -134,7 +134,7 @@ func TestProof_VerifyNamespace_False(t *testing.T) {
 			// check if proof was mutated during verification
 			for i := range tt.proof.nodes {
 				if !bytes.Equal(duplicateNodes[i], tt.proof.nodes[i]) {
-					t.Errorf("VerifyNameSpace() proof got mutated during verification")
+					t.Errorf("VerifyNamespace() proof got mutated during verification")
 				}
 			}
 		})

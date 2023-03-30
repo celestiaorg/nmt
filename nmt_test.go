@@ -192,6 +192,7 @@ func TestNamespacedMerkleTree_ProveNamespace_Ranges_And_Verify(t *testing.T) {
 		wantProofStart int
 		wantProofEnd   int
 		wantFound      bool
+		wantErr        bool
 	}{
 		{
 			"found", 1,
@@ -199,6 +200,7 @@ func TestNamespacedMerkleTree_ProveNamespace_Ranges_And_Verify(t *testing.T) {
 			[]byte{0},
 			0, 1,
 			true,
+			false,
 		},
 		{
 			"not found", 1,
@@ -206,6 +208,7 @@ func TestNamespacedMerkleTree_ProveNamespace_Ranges_And_Verify(t *testing.T) {
 			[]byte{1},
 			0, 0,
 			false,
+			true,
 		},
 		{
 			"two leaves and found", 1,
@@ -213,12 +216,14 @@ func TestNamespacedMerkleTree_ProveNamespace_Ranges_And_Verify(t *testing.T) {
 			[]byte{1},
 			1, 2,
 			true,
+			false,
 		},
 		{
-			"two leaves and found2", 1,
-			repeat(generateLeafData(1, 0, 1, []byte("_data")), 2),
-			[]byte{1},
-			0, 0, false,
+			name:     "two leaves and not found",
+			nidLen:   1,
+			pushData: repeat(generateLeafData(1, 0, 1, []byte("_data")), 2),
+			proveNID: []byte{1},
+			wantErr:  true,
 		},
 		{
 			"three leaves and found", 1,
@@ -226,12 +231,14 @@ func TestNamespacedMerkleTree_ProveNamespace_Ranges_And_Verify(t *testing.T) {
 			[]byte{1},
 			2, 3,
 			true,
+			false,
 		},
 		{
-			"three leaves and not found but with range", 2,
+			"three leaves and not found but within range", 2,
 			append(repeat(generateLeafData(2, 0, 1, []byte("_data")), 2), newNamespaceDataPair([]byte{1, 1}, []byte("_data"))),
 			[]byte{0, 1},
 			2, 3,
+			false,
 			false,
 		},
 		{
@@ -239,6 +246,7 @@ func TestNamespacedMerkleTree_ProveNamespace_Ranges_And_Verify(t *testing.T) {
 			append(generateLeafData(2, 0, 4, []byte("_data")), newNamespaceDataPair([]byte{1, 1}, []byte("_data"))),
 			[]byte{1, 0},
 			4, 5,
+			false,
 			false,
 		},
 		// In the cases (nID < minNID) or (maxNID < nID) we do not generate any proof
@@ -249,6 +257,7 @@ func TestNamespacedMerkleTree_ProveNamespace_Ranges_And_Verify(t *testing.T) {
 			[]byte("00"),
 			0, 0,
 			false,
+			true,
 		},
 		{
 			"4 leaves, not found and nID > maxNID ", 2,
@@ -256,6 +265,7 @@ func TestNamespacedMerkleTree_ProveNamespace_Ranges_And_Verify(t *testing.T) {
 			[]byte("11"),
 			0, 0,
 			false,
+			true,
 		},
 	}
 	for _, tt := range tests {
@@ -268,9 +278,11 @@ func TestNamespacedMerkleTree_ProveNamespace_Ranges_And_Verify(t *testing.T) {
 				}
 			}
 			gotProof, err := n.ProveNamespace(tt.proveNID)
-			if err != nil {
-				t.Fatalf("ProveNamespace() unexpected error: %v", err)
+			if tt.wantErr {
+				assert.Error(t, err)
+				return
 			}
+			assert.NoError(t, err)
 			if gotProof.Start() != tt.wantProofStart {
 				t.Errorf("ProveNamespace() gotProofStart = %v, want %v", gotProof.Start(), tt.wantProofStart)
 			}
@@ -611,17 +623,10 @@ func TestNamespacedMerkleTree_calculateAbsenceIndex_Panic(t *testing.T) {
 // This test checks for a regression of https://github.com/celestiaorg/nmt/issues/86
 func TestNMT_absenceProofOfZeroNamespace_InEmptyTree(t *testing.T) {
 	tree := New(sha256.New(), NamespaceIDSize(1))
-	root, err := tree.Root()
-	require.NoError(t, err)
-	emptyleaves, proof, err := tree.GetWithProof(namespace.ID{0})
-	if err != nil {
-		t.Fatalf("GetWithProof()  could not get namespace{0}. err: %v ", err)
-	}
+	emptyleaves, _, err := tree.GetWithProof(namespace.ID{0})
+	assert.Error(t, err)
 	if len(emptyleaves) != 0 {
 		t.Fatalf("Get(namespace.ID{0}) should have returned no leaves but returned %v", emptyleaves)
-	}
-	if !proof.VerifyNamespace(sha256.New(), namespace.ID{0}, emptyleaves, root) {
-		t.Fatalf("Could not verify proof of absence of namespace zero in empty tree")
 	}
 }
 

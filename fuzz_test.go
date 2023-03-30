@@ -6,6 +6,7 @@ import (
 	"sort"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/celestiaorg/nmt"
@@ -13,9 +14,9 @@ import (
 	fuzz "github.com/google/gofuzz"
 )
 
-func TestFuzzProveVerifyNameSpace(t *testing.T) {
+func TestFuzzProveVerifyNamespace(t *testing.T) {
 	if testing.Short() {
-		t.Skip("TestFuzzProveVerifyNameSpace skipped in short mode.")
+		t.Skip("TestFuzzProveVerifyNamespace skipped in short mode.")
 	}
 	var (
 		minNumberOfNamespaces = 4
@@ -53,7 +54,15 @@ func TestFuzzProveVerifyNameSpace(t *testing.T) {
 		for _, ns := range sortedKeys {
 			nid := namespace.ID(ns)
 			data := tree.Get(nid)
+			min, err := tree.MinNamespace()
+			assert.NoError(t, err)
+			max, err := tree.MaxNamespace()
+			assert.NoError(t, err)
 			proof, err := tree.ProveNamespace(nid)
+			if nid.Less(min) || max.Less(nid) {
+				assert.Error(t, err)
+				continue
+			}
 			if err != nil {
 				t.Fatalf("error on ProveNamespace(%x): %v", ns, err)
 			}

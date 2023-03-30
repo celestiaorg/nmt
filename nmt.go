@@ -17,9 +17,10 @@ const (
 )
 
 var (
-	ErrInvalidRange     = errors.New("invalid proof range")
-	ErrInvalidPushOrder = errors.New("pushed data has to be lexicographically ordered by namespace IDs")
-	noOp                = func(hash []byte, children ...[]byte) {}
+	ErrInvalidRange        = errors.New("invalid proof range")
+	ErrInvalidPushOrder    = errors.New("pushed data has to be lexicographically ordered by namespace IDs")
+	ErrNamespaceOutOfRange = errors.New("requested namespace does not exist in this NMT")
+	noOp                   = func(hash []byte, children ...[]byte) {}
 )
 
 type NodeVisitorFn = func(hash []byte, children ...[]byte)
@@ -186,9 +187,7 @@ func (n *NamespacedMerkleTree) ProveRange(start, end int) (Proof, error) {
 //
 // case 1) If the namespace nID is out of the range of the tree's min and max
 // namespace i.e., (nID < n.minNID) or (n.maxNID < nID) ProveNamespace returns
-// an error and does not generate any range proof, instead it returns an empty
-// Proof with empty nodes and the range (0,0) i.e., Proof.start = 0 and
-// Proof.end = 0 to indicate that this namespace is not contained in the tree.
+// an error.
 //
 // case 2) If the namespace nID is within the range of the tree's min and max
 // namespace i.e., n.minNID<= n.ID <=n.maxNID and the tree does not have any
@@ -215,10 +214,10 @@ func (n *NamespacedMerkleTree) ProveRange(start, end int) (Proof, error) {
 // Any error returned by this method is irrecoverable and indicates an illegal state of the tree (n).
 func (n *NamespacedMerkleTree) ProveNamespace(nID namespace.ID) (Proof, error) {
 	isMaxNsIgnored := n.treeHasher.IsMaxNamespaceIDIgnored()
-	// case 1) In the cases (n.nID < minNID) or (n.maxNID < nID), return empty
-	// range and no proof
+	// case 1) In the cases (n.nID < minNID) or (n.maxNID < nID), return an
+	// error
 	if nID.Less(n.minNID) || n.maxNID.Less(nID) {
-		return NewEmptyRangeProof(isMaxNsIgnored), nil
+		return Proof{}, ErrNamespaceOutOfRange
 	}
 
 	// find the range of indices of leaves with the given nID
