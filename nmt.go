@@ -185,7 +185,9 @@ func (n *NamespacedMerkleTree) ProveRange(start, end int) (Proof, error) {
 // ProveNamespace returns a range proof for the given NamespaceID.
 //
 // case 1) If the namespace nID is out of the range of the tree's min and max
-// namespace, returns an empty range proof.
+// namespace i.e., (nID < n.minNID) or (n.maxNID < nID) ProveNamespace returns an empty
+// Proof with empty nodes and the range (0,0) i.e., Proof.start = 0 and
+// Proof.end = 0 to indicate that this namespace is not contained in the tree.
 //
 // case 2) If the namespace nID is within the range of the tree's min and max
 // namespace i.e., n.minNID<= n.ID <=n.maxNID and the tree does not have any
