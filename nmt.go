@@ -29,15 +29,7 @@ type Options struct {
 	InitialCapacity int
 	// NamespaceIDSize is the size of a namespace ID in bytes
 	NamespaceIDSize namespace.IDSize
-	// The "IgnoreMaxNamespace" flag influences the calculation of the namespace
-	// ID range for intermediate nodes in the tree. This flag signals that, when
-	// determining the upper limit of the namespace ID range for a tree node,
-	// the maximum possible namespace ID (equivalent to "NamespaceIDSize" bytes
-	// of 0xFF, or 2^NamespaceIDSize-1) should be omitted if feasible. For a
-	// more in-depth understanding of this field, refer to the "HashNode" method
-	// in the "Hasher.
-	IgnoreMaxNamespace bool
-	NodeVisitor        NodeVisitorFn
+	NodeVisitor     NodeVisitorFn
 }
 
 type Option func(*Options)
@@ -61,17 +53,6 @@ func NamespaceIDSize(size int) Option {
 	}
 	return func(opts *Options) {
 		opts.NamespaceIDSize = namespace.IDSize(size)
-	}
-}
-
-// IgnoreMaxNamespace sets whether the largest possible namespace.ID MAX_NID
-// should be 'ignored'. If set to true, this allows for shorter proofs in
-// particular use-cases. E.g., see:
-// https://github.com/celestiaorg/celestiaorg-specs/blob/master/specs/data_structures.md#namespace-merkle-tree
-// Defaults to true.
-func IgnoreMaxNamespace(ignore bool) Option {
-	return func(opts *Options) {
-		opts.IgnoreMaxNamespace = ignore
 	}
 }
 
@@ -118,16 +99,15 @@ type NamespacedMerkleTree struct {
 func New(h hash.Hash, setters ...Option) *NamespacedMerkleTree {
 	// default options:
 	opts := &Options{
-		InitialCapacity:    DefaultCapacity,
-		NamespaceIDSize:    DefaultNamespaceIDLen,
-		IgnoreMaxNamespace: true,
-		NodeVisitor:        noOp,
+		InitialCapacity: DefaultCapacity,
+		NamespaceIDSize: DefaultNamespaceIDLen,
+		NodeVisitor:     noOp,
 	}
 
 	for _, setter := range setters {
 		setter(opts)
 	}
-	treeHasher := NewNmtHasher(h, opts.NamespaceIDSize, opts.IgnoreMaxNamespace)
+	treeHasher := NewNmtHasher(h, opts.NamespaceIDSize)
 	return &NamespacedMerkleTree{
 		treeHasher:      treeHasher,
 		visit:           opts.NodeVisitor,
@@ -158,28 +138,22 @@ func (n *NamespacedMerkleTree) Prove(index int) (Proof, error) {
 // the tree, ProveRange returns an error together with an empty Proof with empty
 // nodes and start and end fields set to 0.
 //
-// The isMaxNamespaceIDIgnored field of the Proof reflects the ignoreMaxNs field
-// of n.treeHasher. When set to true, this indicates that the proof was
-// generated using a modified version of the namespace hash with a custom
-// namespace ID range calculation. For more information on this, please refer to
-// the HashNode method in the Hasher.
 // If the supplied (start, end) range is invalid i.e., if start < 0 or end > len(n.leafHashes) or start >= end,
 // then ProveRange returns an ErrInvalidRange error. Any errors rather than ErrInvalidRange are irrecoverable and indicate an illegal state of the tree (n).
 func (n *NamespacedMerkleTree) ProveRange(start, end int) (Proof, error) {
-	isMaxNsIgnored := n.treeHasher.IsMaxNamespaceIDIgnored()
 	if err := n.computeLeafHashesIfNecessary(); err != nil {
 		return Proof{}, err // this never happens
 	}
 	// TODO: store nodes and re-use the hashes instead recomputing parts of the
 	// tree here
 	if start < 0 || start >= end || end > len(n.leafHashes) {
-		return NewEmptyRangeProof(isMaxNsIgnored), ErrInvalidRange
+		return NewEmptyRangeProof(), ErrInvalidRange
 	}
 	proof, err := n.buildRangeProof(start, end)
 	if err != nil {
 		return Proof{}, err
 	}
-	return NewInclusionProof(start, end, proof, isMaxNsIgnored), nil
+	return NewInclusionProof(start, end, proof), nil
 }
 
 // ProveNamespace returns a range proof for the given NamespaceID.
@@ -207,18 +181,12 @@ func (n *NamespacedMerkleTree) ProveRange(start, end int) (Proof, error) {
 // with a range proof for [start, end). In that case the leafHash field of the
 // returned Proof will be nil.
 //
-// The isMaxNamespaceIDIgnored field of the Proof reflects the ignoreMaxNs field
-// of n.treeHasher. When set to true, this indicates that the proof was
-// generated using a modified version of the namespace hash with a custom
-// namespace ID range calculation. For more information on this, please refer to
-// the HashNode method in the Hasher.
 // Any error returned by this method is irrecoverable and indicates an illegal state of the tree (n).
 func (n *NamespacedMerkleTree) ProveNamespace(nID namespace.ID) (Proof, error) {
-	isMaxNsIgnored := n.treeHasher.IsMaxNamespaceIDIgnored()
 	// case 1) In the cases (n.nID < minNID) or (n.maxNID < nID), return empty
 	// range and no proof
 	if nID.Less(n.minNID) || n.maxNID.Less(nID) {
-		return NewEmptyRangeProof(isMaxNsIgnored), nil
+		return NewEmptyRangeProof(), nil
 	}
 
 	// find the range of indices of leaves with the given nID
@@ -245,10 +213,10 @@ func (n *NamespacedMerkleTree) ProveNamespace(nID namespace.ID) (Proof, error) {
 	}
 
 	if found {
-		return NewInclusionProof(proofStart, proofEnd, proof, isMaxNsIgnored), nil
+		return NewInclusionProof(proofStart, proofEnd, proof), nil
 	}
 
-	return NewAbsenceProof(proofStart, proofEnd, proof, n.leafHashes[proofStart], isMaxNsIgnored), nil
+	return NewAbsenceProof(proofStart, proofEnd, proof, n.leafHashes[proofStart]), nil
 }
 
 // buildRangeProof returns the nodes (as byte slices) in the range proof of the

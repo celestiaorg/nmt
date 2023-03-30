@@ -15,10 +15,6 @@ It receives a base hash function alongside some optional configurations, namely:
 
 1. Namespace ID byte-size: If not specified then a default is applied by the library.
 2. The initial capacity of the tree i.e., the number of leaves: if not specified, a default is applied.
-3. The `IgnoreMaxNamespace` flag.
-   By default, the `IgnoreMaxNamespace` flag is set to true, which is a Celestia-specific feature designed to enhance performance when querying namespaces in the NMT.
-   This is particularly useful when the NMT is built using data items, of which half are associated with reserved namespace IDs (i.e., the highest possible value within the ID size), that do not need to be queried using their namespace IDs.
-   For more information on the flag's interpretation, see section [Ignore Max Namespace](#ignore-max-namespace).
 
 A sample configuration of NMT is provided below:
 
@@ -26,8 +22,7 @@ A sample configuration of NMT is provided below:
 // Init a tree with sha256 as the base hash function
 // namespace size of 1 byte
 // initial capacity of 4 leaves
-// and with the IgnoreMaxNamespace set to true
-tree := New(sha256.New(), NamespaceIDSize(1), InitialCapacity(4), IgnoreMaxNamespace(true))
+tree := New(sha256.New(), NamespaceIDSize(1), InitialCapacity(4))
 ```
 
 One can examine the namespace ID size of the `tree` using
@@ -41,16 +36,6 @@ E.g.,
 ```go
 idSize := tree.NamespaceSize() // outputs 1
 ```
-
-### Ignore Max Namespace
-
-If the NMT is configured with `IgnoreMaxNamespace` set to true (the flag is explained [here](#nmt-initialization-and-configuration)), then the calculation of the namespace ID range of non-leaf nodes in the [namespace hash function](./spec/nmt.md#namespaced-hash) will change slightly.
-That is, when determining the upper limit of the namespace ID range for a tree node, the maximum possible namespace `maxPossibleNamespace` should not be taken into account.
-(In the preceding code example with the ID size of `1` byte, the value of `maxPossibleNamespace` is $2^8-1 = 0xFF$.)
-
-Concretely, for a node `n` with children `l` and `r`, the namespace ID is the largest namespace value from `l` and `r` smaller than  `maxPossibleNamespace`, if such a namespace ID exists.
-Otherwise, if all candidate values are equal to `maxPossibleNamespace`, the namespace ID of `n` is set to `maxPossibleNamespace`.
-Precisely, if a set `C` $= \bigl \lbrace$ `ns` $\in \lbrace$`l.minNs`, `l.maxNs`, `r.minNs`, `r.maxNs` $\rbrace:$ `ns` $<$ `maxPossibleNamespace` $\bigr \rbrace$ is not empty, `n.maxNs = max(C)`. If `C` is empty, `n.maxNs = maxPossibleNamespace`.
 
 ## Add Leaves
 
@@ -163,7 +148,6 @@ type Proof struct {
 	end int
 	nodes [][]byte
 	leafHash []byte
-	isMaxNamespaceIDIgnored bool
 }
 ```
 
@@ -178,8 +162,6 @@ Nodes have identical size and all follow the [namespaced hash format](./spec/nmt
 In the example given earlier, each node is `34` bytes in length and takes the following form:  `minNs<1 byte>||maxNs<1 byte>||h<32 byte>`.
 
 `leafHash`: This field is non-empty only for absence proofs and contains a leaf hash required for such a proof (see [namespace absence proofs](./spec/nmt.md#namespace-absence-proof) section).
-
-`isMaxNamespaceIDIgnored`: If this field is true, then namespace range of the tree nodes are set as explained in the [Ignore Max Namespace](#ignore-max-namespace) section.
 
 ## Verify Namespace Proof
 

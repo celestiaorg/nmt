@@ -26,34 +26,18 @@ type Hasher struct {
 	baseHasher   hash.Hash
 	NamespaceLen namespace.IDSize
 
-	// The "ignoreMaxNs" flag influences the calculation of the namespace ID
-	// range for intermediate nodes in the tree i.e., HashNode method. This flag
-	// signals that, when determining the upper limit of the namespace ID range
-	// for a tree node, the maximum possible namespace ID (equivalent to
-	// "NamespaceLen" bytes of 0xFF, or 2^NamespaceLen-1) should be omitted if
-	// feasible. For a more in-depth understanding of this field, refer to the
-	// "HashNode".
-	ignoreMaxNs      bool
-	precomputedMaxNs namespace.ID
-
 	tp   byte   // keeps type of NMT node to be hashed
 	data []byte // written data of the NMT node
-}
-
-func (n *Hasher) IsMaxNamespaceIDIgnored() bool {
-	return n.ignoreMaxNs
 }
 
 func (n *Hasher) NamespaceSize() namespace.IDSize {
 	return n.NamespaceLen
 }
 
-func NewNmtHasher(baseHasher hash.Hash, nidLen namespace.IDSize, ignoreMaxNamespace bool) *Hasher {
+func NewNmtHasher(baseHasher hash.Hash, nidLen namespace.IDSize) *Hasher {
 	return &Hasher{
-		baseHasher:       baseHasher,
-		NamespaceLen:     nidLen,
-		ignoreMaxNs:      ignoreMaxNamespace,
-		precomputedMaxNs: bytes.Repeat([]byte{0xFF}, int(nidLen)),
+		baseHasher:   baseHasher,
+		NamespaceLen: nidLen,
 	}
 }
 
@@ -235,14 +219,7 @@ func (n *Hasher) ValidateNodes(left, right []byte) error {
 // By default, the normal namespace hash calculation is
 // followed, which is `res = min(left.minNID, right.minNID) || max(left.maxNID,
 // right.maxNID) || H(NodePrefix, left, right)`. `res` refers to the return
-// value of the HashNode. However, if the `ignoreMaxNs` property of the Hasher
-// is set to true, the calculation of the namespace ID range of the node
-// slightly changes. In this case, when setting the upper range, the maximum
-// possible namespace ID (i.e., 2^NamespaceIDSize-1) should be ignored if
-// possible. This is achieved by taking the maximum value among only those namespace
-// IDs available in the range of its left and right children that are not
-// equal to the maximum possible namespace ID value. If all the namespace IDs are equal
-// to the maximum possible value, then the maximum possible value is used.
+// value of the HashNode.
 func (n *Hasher) HashNode(left, right []byte) ([]byte, error) {
 	if err := n.ValidateNodeFormat(left); err != nil {
 		return nil, err
@@ -265,14 +242,7 @@ func (n *Hasher) HashNode(left, right []byte) ([]byte, error) {
 	rightMinNs, rightMaxNs := right[:n.NamespaceLen], right[n.NamespaceLen:flagLen]
 
 	minNs := min(leftMinNs, rightMinNs)
-	var maxNs []byte
-	if n.ignoreMaxNs && n.precomputedMaxNs.Equal(leftMinNs) {
-		maxNs = n.precomputedMaxNs
-	} else if n.ignoreMaxNs && n.precomputedMaxNs.Equal(rightMinNs) {
-		maxNs = leftMaxNs
-	} else {
-		maxNs = max(leftMaxNs, rightMaxNs)
-	}
+	maxNs := max(leftMaxNs, rightMaxNs)
 
 	res := make([]byte, 0)
 	res = append(res, minNs...)

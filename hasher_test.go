@@ -20,8 +20,7 @@ const (
 )
 
 // defaultHasher uses sha256 as a base-hasher, 8 bytes for the namespace IDs and
-// ignores the maximum possible namespace.
-var defaultHasher = NewNmtHasher(sha256.New(), DefaultNamespaceIDLen, true)
+var defaultHasher = NewNmtHasher(sha256.New(), DefaultNamespaceIDLen)
 
 func Test_namespacedTreeHasher_HashLeaf(t *testing.T) {
 	zeroNID := []byte{0}
@@ -53,7 +52,7 @@ func Test_namespacedTreeHasher_HashLeaf(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			n := NewNmtHasher(sha256.New(), tt.nsLen, false)
+			n := NewNmtHasher(sha256.New(), tt.nsLen)
 			got, err := n.HashLeaf(tt.leaf)
 			require.NoError(t, err)
 			if !reflect.DeepEqual(got, tt.want) {
@@ -104,7 +103,7 @@ func Test_namespacedTreeHasher_HashNode(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			n := NewNmtHasher(sha256.New(), tt.nidLen, false)
+			n := NewNmtHasher(sha256.New(), tt.nidLen)
 			got, err := n.HashNode(tt.children.l, tt.children.r)
 			require.NoError(t, err)
 			if !reflect.DeepEqual(got, tt.want) {
@@ -229,7 +228,7 @@ func TestHashNode_ChildrenNamespaceRange(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			n := NewNmtHasher(sha256.New(), tt.nidLen, false)
+			n := NewNmtHasher(sha256.New(), tt.nidLen)
 			_, err := n.HashNode(tt.children.l, tt.children.r)
 			assert.Equal(t, tt.wantErr, err != nil)
 			if tt.wantErr {
@@ -269,7 +268,7 @@ func TestValidateSiblingsNamespaceOrder(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			n := NewNmtHasher(sha256.New(), tt.nidLen, false)
+			n := NewNmtHasher(sha256.New(), tt.nidLen)
 			err := n.validateSiblingsNamespaceOrder(tt.children.l, tt.children.r)
 			assert.Equal(t, tt.wantErr, err != nil)
 		})
@@ -308,7 +307,7 @@ func TestValidateNodeFormat(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			n := NewNmtHasher(sha256.New(), tt.nIDLen, false)
+			n := NewNmtHasher(sha256.New(), tt.nIDLen)
 			err := n.ValidateNodeFormat(append(append(tt.minNID, tt.maxNID...), tt.hash...))
 			assert.Equal(t, tt.wantErr, err != nil)
 			if tt.wantErr {
@@ -340,7 +339,7 @@ func TestValidateLeaf(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			n := NewNmtHasher(sha256.New(), tt.nIDLen, false)
+			n := NewNmtHasher(sha256.New(), tt.nIDLen)
 			assert.Equal(t, tt.wantErr, n.ValidateLeaf(tt.data) != nil)
 		})
 	}
@@ -369,7 +368,7 @@ func TestValidateLeafWithHash(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			n := NewNmtHasher(sha256.New(), tt.nIDLen, false)
+			n := NewNmtHasher(sha256.New(), tt.nIDLen)
 			validationRes := n.ValidateLeaf(tt.data)
 			assert.Equal(t, tt.wantErr, validationRes != nil)
 			_, err := n.HashLeaf(tt.data)
@@ -403,7 +402,7 @@ func TestHashLeafWithIsNamespacedData(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			n := NewNmtHasher(sha256.New(), tt.nIDLen, false)
+			n := NewNmtHasher(sha256.New(), tt.nIDLen)
 			_, err := n.HashLeaf(tt.leaf)
 			assert.Equal(t, tt.wantErr, err != nil)
 			if tt.wantErr {
@@ -460,7 +459,7 @@ func TestHashNode_ErrorsCheck(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			n := NewNmtHasher(sha256.New(), tt.nidLen, false)
+			n := NewNmtHasher(sha256.New(), tt.nidLen)
 			_, err := n.HashNode(tt.children.l, tt.children.r)
 			assert.Equal(t, tt.wantErr, err != nil)
 			if tt.wantErr {
@@ -485,14 +484,14 @@ func TestWrite_Err(t *testing.T) {
 	}{
 		{
 			"invalid leaf",
-			NewNmtHasher(sha256.New(), 2, false),
+			NewNmtHasher(sha256.New(), 2),
 			[]byte{0},
 			true,
 			ErrInvalidLeafLen,
 		},
 		{
 			"invalid node: left.max > right.min",
-			NewNmtHasher(sha256.New(), 2, false),
+			NewNmtHasher(sha256.New(), 2),
 			append(append(append([]byte{0, 0, 2, 2}, randData...), []byte{1, 1, 3, 3}...), randData...),
 			true,
 			ErrUnorderedSiblings,
@@ -524,14 +523,14 @@ func TestSum_Err(t *testing.T) {
 	}{
 		{
 			"invalid leaf: not namespaced",
-			NewNmtHasher(sha256.New(), 2, false),
+			NewNmtHasher(sha256.New(), 2),
 			[]byte{0},
 			LeafPrefix,
 			true,
 		},
 		{
 			"invalid node: left.max > right.min",
-			NewNmtHasher(sha256.New(), 2, false),
+			NewNmtHasher(sha256.New(), 2),
 			append(append(append([]byte{0, 0, 2, 2}, randData...), []byte{1, 1, 3, 3}...), randData...),
 			NodePrefix,
 			true,
@@ -610,7 +609,7 @@ func TestValidateNodes(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			n := NewNmtHasher(sha256.New(), tt.nIDLen, false)
+			n := NewNmtHasher(sha256.New(), tt.nIDLen)
 			err := n.ValidateNodes(tt.left, tt.right)
 			assert.Equal(t, tt.wantErr, err != nil)
 			if tt.wantErr {

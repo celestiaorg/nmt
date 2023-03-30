@@ -35,16 +35,6 @@ type Proof struct {
 	// namespace ID larger than nid and 2) the namespace ID of the leaf to the
 	// left of it is smaller than the nid.
 	leafHash []byte
-	// isMaxNamespaceIDIgnored is set to true if the tree from which this Proof
-	// was generated from is initialized with Options.IgnoreMaxNamespace ==
-	// true. The IgnoreMaxNamespace flag influences the calculation of the
-	// namespace ID range for intermediate nodes in the tree. This flag signals
-	// that, when determining the upper limit of the namespace ID range for a
-	// tree node, the maximum possible namespace ID (equivalent to
-	// "NamespaceIDSize" bytes of 0xFF, or 2^NamespaceIDSize-1) should be
-	// omitted if feasible. For a more in-depth understanding of this field,
-	// refer to the "HashNode" method in the "Hasher.
-	isMaxNamespaceIDIgnored bool
 }
 
 // Start index of this proof.
@@ -82,28 +72,22 @@ func (proof Proof) IsNonEmptyRange() bool {
 	return proof.start >= 0 && proof.start < proof.end
 }
 
-// IsMaxNamespaceIDIgnored returns true if the proof has been created under the ignore max namespace logic.
-// see ./docs/nmt-lib.md for more details.
-func (proof Proof) IsMaxNamespaceIDIgnored() bool {
-	return proof.isMaxNamespaceIDIgnored
-}
-
 // NewEmptyRangeProof constructs a proof that proves that a namespace.ID does
 // not fall within the range of an NMT.
-func NewEmptyRangeProof(ignoreMaxNamespace bool) Proof {
-	return Proof{0, 0, nil, nil, ignoreMaxNamespace}
+func NewEmptyRangeProof() Proof {
+	return Proof{0, 0, nil, nil}
 }
 
 // NewInclusionProof constructs a proof that proves that a namespace.ID is
 // included in an NMT.
-func NewInclusionProof(proofStart, proofEnd int, proofNodes [][]byte, ignoreMaxNamespace bool) Proof {
-	return Proof{proofStart, proofEnd, proofNodes, nil, ignoreMaxNamespace}
+func NewInclusionProof(proofStart, proofEnd int, proofNodes [][]byte) Proof {
+	return Proof{proofStart, proofEnd, proofNodes, nil}
 }
 
 // NewAbsenceProof constructs a proof that proves that a namespace.ID falls
 // within the range of an NMT but no leaf with that namespace.ID is included.
-func NewAbsenceProof(proofStart, proofEnd int, proofNodes [][]byte, leafHash []byte, ignoreMaxNamespace bool) Proof {
-	return Proof{proofStart, proofEnd, proofNodes, leafHash, ignoreMaxNamespace}
+func NewAbsenceProof(proofStart, proofEnd int, proofNodes [][]byte, leafHash []byte) Proof {
+	return Proof{proofStart, proofEnd, proofNodes, leafHash}
 }
 
 // VerifyNamespace verifies a whole namespace, i.e. 1) it verifies inclusion of
@@ -127,7 +111,7 @@ func NewAbsenceProof(proofStart, proofEnd int, proofNodes [][]byte, leafHash []b
 //
 // `root` is the root of the NMT against which the `proof` is verified.
 func (proof Proof) VerifyNamespace(h hash.Hash, nID namespace.ID, data [][]byte, root []byte) bool {
-	nth := NewNmtHasher(h, nID.Size(), proof.isMaxNamespaceIDIgnored)
+	nth := NewNmtHasher(h, nID.Size())
 	min := namespace.ID(MinNamespace(root, nID.Size()))
 	max := namespace.ID(MaxNamespace(root, nID.Size()))
 	if nID.Size() != min.Size() || nID.Size() != max.Size() {
@@ -303,7 +287,7 @@ func (proof Proof) verifyLeafHashes(nth *Hasher, verifyCompleteness bool, nID na
 // which takes prefixed data. All leaves implicitly have the same namespace ID:
 // `nid`.
 func (proof Proof) VerifyInclusion(h hash.Hash, nid namespace.ID, leavesWithoutNamespace [][]byte, root []byte) bool {
-	nth := NewNmtHasher(h, nid.Size(), proof.isMaxNamespaceIDIgnored)
+	nth := NewNmtHasher(h, nid.Size())
 	hashes := make([][]byte, len(leavesWithoutNamespace))
 	for i, d := range leavesWithoutNamespace {
 		// prepend the namespace to the leaf data

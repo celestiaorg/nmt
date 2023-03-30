@@ -35,7 +35,7 @@ func TestProof_VerifyNamespace_False(t *testing.T) {
 	// inclusion proof of the leaf index 0
 	incProof0, err := n.buildRangeProof(0, 1)
 	require.NoError(t, err)
-	incompleteFirstNs := NewInclusionProof(0, 1, incProof0, false)
+	incompleteFirstNs := NewInclusionProof(0, 1, incProof0)
 	type args struct {
 		nID  namespace.ID
 		data [][]byte
@@ -50,7 +50,7 @@ func TestProof_VerifyNamespace_False(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, n.computeLeafHashesIfNecessary())
 	leafHash := n.leafHashes[leafIndex] // the only data item with namespace ID = 2 in the constructed tree is at index 3
-	invalidAbsenceProof := NewAbsenceProof(leafIndex, leafIndex+1, inclusionProofOfLeafIndex, leafHash, false)
+	invalidAbsenceProof := NewAbsenceProof(leafIndex, leafIndex+1, inclusionProofOfLeafIndex, leafHash)
 
 	// inclusion proof of the leaf index 10
 	incProof10, err := n.buildRangeProof(10, 11)
@@ -92,7 +92,7 @@ func TestProof_VerifyNamespace_False(t *testing.T) {
 			false,
 		},
 		{
-			"remove one leaf & update proof range, errors", NewInclusionProof(validProof.Start(), validProof.End()-1, validProof.Nodes(), false),
+			"remove one leaf & update proof range, errors", NewInclusionProof(validProof.Start(), validProof.End()-1, validProof.Nodes()),
 			args{[]byte{0, 0, 0}, pushedZeroNs[:len(pushedZeroNs)-1], root},
 			false,
 		},
@@ -102,7 +102,7 @@ func TestProof_VerifyNamespace_False(t *testing.T) {
 			false,
 		},
 		{
-			"incomplete namespace proof (left)", NewInclusionProof(10, 11, incProof10, false),
+			"incomplete namespace proof (left)", NewInclusionProof(10, 11, incProof10),
 			args{[]byte{0, 0, 8}, pushedLastNs[1:], root},
 			false,
 		},
