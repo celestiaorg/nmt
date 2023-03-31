@@ -933,7 +933,6 @@ func Test_ProveRange_Err(t *testing.T) {
 		wantErr              bool
 		errType              error
 	}{
-		// {"corrupt leaf", treeWithCorruptLeaf, 4, 5, true, ErrInvalidLeafLen},
 		{"corrupt leaf hash", treeWithCorruptLeafHash, 4, 5, true, ErrInvalidNodeLen},
 		{"unordered leaf hashes: the out of order leaf", treeWithUnorderedLeafHashes, 4, 5, true, ErrUnorderedSiblings},
 		{"unordered leaf hashes: first leaf", treeWithUnorderedLeafHashes, 1, 2, true, ErrUnorderedSiblings}, // for a tree with an unordered set of leaves, the ProveRange method  should produce an error for any input range,
@@ -955,11 +954,6 @@ func Test_ProveRange_Err(t *testing.T) {
 // The Test_ProveNamespace_Err function tests that ProveNamespace returns an error when the underlying tree is in an invalid state, such as when the leaves are not ordered by namespace ID or when a leaf hash is corrupt.
 func Test_ProveNamespace_Err(t *testing.T) {
 	// create an NMT with 8 sequentially namespaced leaves, numbered from 1 to 8.
-	// treeWithCorruptLeaf := exampleTreeWithEightLeaves()
-	// // corrupt a leaf
-	// treeWithCorruptLeaf.leaves[4] = treeWithCorruptLeaf.leaves[4][:treeWithCorruptLeaf.NamespaceSize()-1]
-
-	// create an NMT with 8 sequentially namespaced leaves, numbered from 1 to 8.
 	treeWithCorruptLeafHash := exampleTreeWithEightLeaves()
 	// corrupt a leaf hash
 	treeWithCorruptLeafHash.leafHashes[4] = treeWithCorruptLeafHash.leafHashes[4][:treeWithCorruptLeafHash.NamespaceSize()]
@@ -977,7 +971,6 @@ func Test_ProveNamespace_Err(t *testing.T) {
 		wantErr bool
 		errType error
 	}{
-		// {"corrupt leaf", treeWithCorruptLeaf, namespace.ID{5, 5}, true, ErrInvalidLeafLen},
 		{"corrupt leaf hash", treeWithCorruptLeafHash, namespace.ID{5, 5}, true, ErrInvalidNodeLen},
 		{"unordered leaf hashes: the queried namespace falls in the corrupted range", treeWithUnorderedLeafHashes, namespace.ID{5, 5}, true, ErrUnorderedSiblings},
 		{"unordered leaf hashes: query for the first namespace", treeWithUnorderedLeafHashes, namespace.ID{1, 1}, true, ErrUnorderedSiblings}, // for a tree with an unordered set of leaves,
@@ -1033,10 +1026,9 @@ func Test_Root_Error(t *testing.T) {
 // Test_computeRoot_Error tests that the computeRoot method returns an error when the underlying tree is in an invalid state, such as when the leaves are not ordered by namespace ID or when a leaf is corrupt.
 func Test_computeRoot_Error(t *testing.T) {
 	// create an NMT with 8 sequentially namespaced leaves, numbered from 1 to 8.
-	treeWithCorruptLeaf := exampleTreeWithEightLeaves()
-	// corrupt a leaf
-	treeWithCorruptLeaf.leaves[4] = treeWithCorruptLeaf.leaves[4][:treeWithCorruptLeaf.NamespaceSize()-1]
-	treeWithCorruptLeaf.leafHashes[4] = treeWithCorruptLeaf.leafHashes[4][:treeWithCorruptLeaf.NamespaceSize()-1]
+	treeWithCorruptLeafHash := exampleTreeWithEightLeaves()
+	// corrupt a leaf hash
+	treeWithCorruptLeafHash.leafHashes[4] = treeWithCorruptLeafHash.leafHashes[4][:treeWithCorruptLeafHash.NamespaceSize()-1]
 
 	// create an NMT with 8 sequentially namespaced leaves, numbered from 1 to 8.
 	treeWithUnorderedLeaves := exampleTreeWithEightLeaves()
@@ -1051,9 +1043,9 @@ func Test_computeRoot_Error(t *testing.T) {
 		wantErr    bool
 		errType    error
 	}{
-		{"corrupt leaf: the entire tree", treeWithCorruptLeaf, 0, 7, true, ErrInvalidNodeLen},
-		{"corrupt leaf: from the corrupt node until the end of the tree", treeWithCorruptLeaf, 4, 7, true, ErrInvalidNodeLen},
-		{"corrupt leaf: the corrupt node and the node to its left", treeWithCorruptLeaf, 3, 5, true, ErrInvalidNodeLen},
+		{"corrupt leaf hash: the entire tree", treeWithCorruptLeafHash, 0, 7, true, ErrInvalidNodeLen},
+		{"corrupt leaf: from the corrupt node until the end of the tree", treeWithCorruptLeafHash, 4, 7, true, ErrInvalidNodeLen},
+		{"corrupt leaf: the corrupt node and the node to its left", treeWithCorruptLeafHash, 3, 5, true, ErrInvalidNodeLen},
 		{"unordered leaves: the entire tree", treeWithUnorderedLeaves, 0, 7, true, ErrUnorderedSiblings},
 		{"unordered leaves: the unordered portion", treeWithUnorderedLeaves, 4, 6, true, ErrUnorderedSiblings},
 		{"unordered leaves: a portion of the tree containing the unordered leaves", treeWithUnorderedLeaves, 3, 7, true, ErrUnorderedSiblings},
