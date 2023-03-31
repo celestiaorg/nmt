@@ -619,3 +619,29 @@ func TestValidateNodes(t *testing.T) {
 		})
 	}
 }
+
+func Test_MustHashLeaf_panic(t *testing.T) {
+	hasher := NewNmtHasher(sha256.New(), 2, false)
+	tests := []struct {
+		name      string
+		leaf      []byte
+		wantPanic bool
+	}{
+		{"valid leaf length", []byte{0, 0}, false},
+		{"invalid leaf length", []byte{0}, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.wantPanic {
+				assert.Panics(t, func() {
+					hasher.MustHashLeaf(tt.leaf)
+				})
+			} else {
+				assert.NotPanics(t, func() {
+					hasher.MustHashLeaf(tt.leaf)
+				})
+			}
+		})
+	}
+
+}
