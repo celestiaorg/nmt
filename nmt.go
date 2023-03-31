@@ -412,14 +412,10 @@ func (n *NamespacedMerkleTree) Push(namespacedData namespace.PrefixedData) error
 		return err
 	}
 
-	// update relevant "caches":
 	// compute the leaf hash
-	res, err := n.treeHasher.HashLeaf(namespacedData)
-	if err != nil {
-		return err
-	}
-	// the change to the leafHashes and leaves should be atomic, either both change or none
-	// that is why hashing is done before updating the leaves and leafHashes to ensure no error occurs
+	res := n.treeHasher.MustHashLeaf(namespacedData)
+
+	// update relevant "caches":
 	n.leaves = append(n.leaves, namespacedData)
 	n.leafHashes = append(n.leafHashes, res)
 	n.updateNamespaceRanges()
