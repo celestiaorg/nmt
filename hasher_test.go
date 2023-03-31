@@ -620,7 +620,8 @@ func TestValidateNodes(t *testing.T) {
 	}
 }
 
-func Test_MustHashLeaf_panic(t *testing.T) {
+// Test_MustHashLeaf_panic checks that the MustHashLeaf method panics only on invalid inputs.
+func Test_MustHashLeaf_Panic(t *testing.T) {
 	hasher := NewNmtHasher(sha256.New(), 2, false)
 	tests := []struct {
 		name      string
