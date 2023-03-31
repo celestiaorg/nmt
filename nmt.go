@@ -167,9 +167,6 @@ func (n *NamespacedMerkleTree) Prove(index int) (Proof, error) {
 // then ProveRange returns an ErrInvalidRange error. Any errors rather than ErrInvalidRange are irrecoverable and indicate an illegal state of the tree (n).
 func (n *NamespacedMerkleTree) ProveRange(start, end int) (Proof, error) {
 	isMaxNsIgnored := n.treeHasher.IsMaxNamespaceIDIgnored()
-	// if err := n.computeLeafHashesIfNecessary(); err != nil {
-	// 	return Proof{}, err // this never happens
-	// }
 	// TODO: store nodes and re-use the hashes instead recomputing parts of the
 	// tree here
 	if start < 0 || start >= end || end > len(n.leafHashes) {
@@ -234,9 +231,6 @@ func (n *NamespacedMerkleTree) ProveNamespace(nID namespace.ID) (Proof, error) {
 	// case 3) At this point we either found leaves with the namespace nID in
 	// the tree or calculated the range it would be in (to generate a proof of
 	// absence and to return the corresponding leaf hashes).
-	// if err := n.computeLeafHashesIfNecessary(); err != nil {
-	// 	return Proof{}, err
-	// }
 
 	proof, err := n.buildRangeProof(proofStart, proofEnd)
 	if err != nil {
