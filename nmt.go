@@ -413,7 +413,7 @@ func (n *NamespacedMerkleTree) Push(namespacedData namespace.PrefixedData) error
 	}
 
 	// update relevant "caches":
-	// compute leaf hash
+	// compute the leaf hash
 	res, err := n.treeHasher.HashLeaf(namespacedData)
 	if err != nil {
 		return err
