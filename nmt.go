@@ -474,14 +474,6 @@ func (n *NamespacedMerkleTree) computeRoot(start, end int) ([]byte, error) {
 		n.visit(rootHash)
 		return rootHash, nil
 	case 1:
-		// leafHash, err := n.treeHasher.HashLeaf(n.leaves[start])
-		// if err != nil { // this should never happen since leaves are added through the Push method, during which leaves formats are validated to make sure they are hashable.
-		// 	return nil, fmt.Errorf("failed to hash leaf: %w", err)
-		// }
-		// if len(n.leafHashes) < len(n.leaves) {
-		// 	n.leafHashes = append(n.leafHashes, leafHash)
-		// }
-
 		leafHash := make([]byte, len(n.leafHashes[start]))
 		copy(leafHash, n.leafHashes[start])
 		n.visit(leafHash, n.leaves[start])
