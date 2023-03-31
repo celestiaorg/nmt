@@ -992,10 +992,9 @@ func Test_ProveNamespace_Err(t *testing.T) {
 // Test_Root_Error tests that the Root method returns an error when the underlying tree is in an invalid state, such as when the leaves are not ordered by namespace ID or when a leaf is corrupt.
 func Test_Root_Error(t *testing.T) {
 	// create an NMT with 8 sequentially namespaced leaves, numbered from 1 to 8.
-	treeWithCorruptLeaf := exampleTreeWithEightLeaves()
-	// corrupt a leaf
-	treeWithCorruptLeaf.leaves[4] = treeWithCorruptLeaf.leaves[4][:treeWithCorruptLeaf.NamespaceSize()-1]
-	treeWithCorruptLeaf.leafHashes[4] = treeWithCorruptLeaf.leafHashes[4][:treeWithCorruptLeaf.NamespaceSize()-1]
+	treeWithCorruptLeafHash := exampleTreeWithEightLeaves()
+	// corrupt a leaf hash
+	treeWithCorruptLeafHash.leafHashes[4] = treeWithCorruptLeafHash.leafHashes[4][:treeWithCorruptLeafHash.NamespaceSize()-1]
 
 	// create an NMT with 8 sequentially namespaced leaves, numbered from 1 to 8.
 	treeWithUnorderedLeaves := exampleTreeWithEightLeaves()
@@ -1009,7 +1008,7 @@ func Test_Root_Error(t *testing.T) {
 		wantErr bool
 		errType error
 	}{
-		{"corrupt leaf hash", treeWithCorruptLeaf, true, ErrInvalidNodeLen},
+		{"corrupt leaf hash", treeWithCorruptLeafHash, true, ErrInvalidNodeLen},
 		{"unordered leaf hashes", treeWithUnorderedLeaves, true, ErrUnorderedSiblings},
 	}
 	for _, tt := range tests {
