@@ -579,24 +579,6 @@ func (n *NamespacedMerkleTree) updateMinMaxID(id namespace.ID) {
 	}
 }
 
-// computes the leaf hashes if not already done in a previous call of
-// NamespacedMerkleTree.Root()
-// Any errors return by this method is irrecoverable and indicate an illegal state of the tree (n).
-func (n *NamespacedMerkleTree) computeLeafHashesIfNecessary() error {
-	// check whether all the hash of all the existing leaves are available
-	if len(n.leafHashes) < len(n.leaves) {
-		n.leafHashes = make([][]byte, len(n.leaves))
-		for i, leaf := range n.leaves {
-			res, err := n.treeHasher.HashLeaf(leaf)
-			if err != nil { // should never happen since the validity of leaves is checked in the Push method
-				return err
-			}
-			n.leafHashes[i] = res
-		}
-	}
-	return nil
-}
-
 type leafRange struct {
 	// start and end denote the indices of a leaf in the tree. start ranges from
 	// 0 up to the total number of leaves minus 1 end ranges from 1 up to the
