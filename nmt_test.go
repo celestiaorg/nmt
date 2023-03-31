@@ -1002,11 +1002,13 @@ func Test_Root_Error(t *testing.T) {
 	treeWithCorruptLeaf := exampleTreeWithEightLeaves()
 	// corrupt a leaf
 	treeWithCorruptLeaf.leaves[4] = treeWithCorruptLeaf.leaves[4][:treeWithCorruptLeaf.NamespaceSize()-1]
+	treeWithCorruptLeaf.leafHashes[4] = treeWithCorruptLeaf.leafHashes[4][:treeWithCorruptLeaf.NamespaceSize()-1]
 
 	// create an NMT with 8 sequentially namespaced leaves, numbered from 1 to 8.
 	treeWithUnorderedLeaves := exampleTreeWithEightLeaves()
 	// swap the positions of the 4th and 5th leaves
 	swap(treeWithUnorderedLeaves.leaves, 4, 5)
+	swap(treeWithUnorderedLeaves.leafHashes, 4, 5)
 
 	tests := []struct {
 		name    string
@@ -1014,7 +1016,7 @@ func Test_Root_Error(t *testing.T) {
 		wantErr bool
 		errType error
 	}{
-		{"corrupt leaf hash", treeWithCorruptLeaf, true, ErrInvalidLeafLen},
+		{"corrupt leaf hash", treeWithCorruptLeaf, true, ErrInvalidNodeLen},
 		{"unordered leaf hashes", treeWithUnorderedLeaves, true, ErrUnorderedSiblings},
 	}
 	for _, tt := range tests {
@@ -1034,11 +1036,13 @@ func Test_computeRoot_Error(t *testing.T) {
 	treeWithCorruptLeaf := exampleTreeWithEightLeaves()
 	// corrupt a leaf
 	treeWithCorruptLeaf.leaves[4] = treeWithCorruptLeaf.leaves[4][:treeWithCorruptLeaf.NamespaceSize()-1]
+	treeWithCorruptLeaf.leafHashes[4] = treeWithCorruptLeaf.leafHashes[4][:treeWithCorruptLeaf.NamespaceSize()-1]
 
 	// create an NMT with 8 sequentially namespaced leaves, numbered from 1 to 8.
 	treeWithUnorderedLeaves := exampleTreeWithEightLeaves()
 	// swap the positions of the 4th and 5th leaves
 	swap(treeWithUnorderedLeaves.leaves, 4, 5)
+	swap(treeWithUnorderedLeaves.leafHashes, 4, 5)
 
 	tests := []struct {
 		name       string
@@ -1047,10 +1051,9 @@ func Test_computeRoot_Error(t *testing.T) {
 		wantErr    bool
 		errType    error
 	}{
-		{"corrupt leaf: the entire tree", treeWithCorruptLeaf, 0, 7, true, ErrInvalidLeafLen},
-		{"corrupt leaf: the corrupt node", treeWithCorruptLeaf, 4, 5, true, ErrInvalidLeafLen},
-		{"corrupt leaf: from the corrupt node until the end of the tree", treeWithCorruptLeaf, 4, 7, true, ErrInvalidLeafLen},
-		{"corrupt leaf: the corrupt node and the node to its left", treeWithCorruptLeaf, 3, 5, true, ErrInvalidLeafLen},
+		{"corrupt leaf: the entire tree", treeWithCorruptLeaf, 0, 7, true, ErrInvalidNodeLen},
+		{"corrupt leaf: from the corrupt node until the end of the tree", treeWithCorruptLeaf, 4, 7, true, ErrInvalidNodeLen},
+		{"corrupt leaf: the corrupt node and the node to its left", treeWithCorruptLeaf, 3, 5, true, ErrInvalidNodeLen},
 		{"unordered leaves: the entire tree", treeWithUnorderedLeaves, 0, 7, true, ErrUnorderedSiblings},
 		{"unordered leaves: the unordered portion", treeWithUnorderedLeaves, 4, 6, true, ErrUnorderedSiblings},
 		{"unordered leaves: a portion of the tree containing the unordered leaves", treeWithUnorderedLeaves, 3, 7, true, ErrUnorderedSiblings},
@@ -1072,11 +1075,13 @@ func Test_MinMaxNamespace_Err(t *testing.T) {
 	treeWithCorruptLeaf := exampleTreeWithEightLeaves()
 	// corrupt a leaf
 	treeWithCorruptLeaf.leaves[4] = treeWithCorruptLeaf.leaves[4][:treeWithCorruptLeaf.NamespaceSize()-1]
+	treeWithCorruptLeaf.leafHashes[4] = treeWithCorruptLeaf.leafHashes[4][:treeWithCorruptLeaf.NamespaceSize()-1]
 
 	// create an NMT with 8 sequentially namespaced leaves, numbered from 1 to 8.
 	treeWithUnorderedLeaves := exampleTreeWithEightLeaves()
 	// swap the positions of the 4th and 5th leaves
 	swap(treeWithUnorderedLeaves.leaves, 4, 5)
+	swap(treeWithUnorderedLeaves.leafHashes, 4, 5)
 
 	tests := []struct {
 		name    string
@@ -1084,7 +1089,7 @@ func Test_MinMaxNamespace_Err(t *testing.T) {
 		wantErr bool
 		errType error
 	}{
-		{"corrupt leaf", treeWithCorruptLeaf, true, ErrInvalidLeafLen},
+		{"corrupt leaf hash", treeWithCorruptLeaf, true, ErrInvalidNodeLen},
 		{"unordered leaves", treeWithUnorderedLeaves, true, ErrUnorderedSiblings},
 	}
 	for _, tt := range tests {
