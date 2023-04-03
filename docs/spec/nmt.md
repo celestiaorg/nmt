@@ -84,7 +84,7 @@ namespace inclusion proof which consists of:
 1) The starting index `start` and the ending index `end` of the leaves that match `nID`.
 2) Nodes of the tree that are necessary for the regular Merkle range proof of `[start, end)` to `T`.
    In specific, the nodes include 1) the [namespaced hash](#namespaced-hash) of the left siblings for the Merkle
-   inclusion proof of the `start` leaf and 2) the [namespaced hash](#namespaced-hash) of the right siblings of the Merkle inclusion proof of  the `end` leaf.
+   inclusion proof of the `start` leaf and 2) the [namespaced hash](#namespaced-hash) of the right siblings of the Merkle inclusion proof of the `end-1` leaf.
    Nodes are sorted according to the in-order traversal of the tree.
 
 For example, the NMT proof of `nID = 0` in Figure 1 would be `[start = 0, end = 2)` and the Merkle inclusion proof embodies one single tree node i.e., `01 03 52c7c03`.
