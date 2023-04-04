@@ -20,6 +20,19 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// prefixedData8 like namespace.PrefixedData is just a slice of bytes. It
+// assumes that the slice it represents is at least 8 bytes. This assumption is
+// not enforced by the type system though.
+type prefixedData8 []byte
+
+func (d prefixedData8) NamespaceID() namespace.ID {
+	return namespace.ID(d[:8])
+}
+
+func (d prefixedData8) Data() []byte {
+	return d[8:]
+}
+
 type namespaceDataPair struct {
 	ID   namespace.ID
 	Data []byte
@@ -339,140 +352,140 @@ func TestIgnoreMaxNamespace(t *testing.T) {
 	tests := []struct {
 		name               string
 		ignoreMaxNamespace bool
-		pushData           []namespace.PrefixedData8
+		pushData           []prefixedData8
 		wantRootMaxNID     namespace.ID
 	}{
 		{
 			"single leaf with MaxNID (ignored)",
 			true,
-			[]namespace.PrefixedData8{namespace.PrefixedData8(append(maxNID, []byte("leaf_1")...))},
+			[]prefixedData8{prefixedData8(append(maxNID, []byte("leaf_1")...))},
 			maxNID,
 		},
 		{
 			"single leaf with MaxNID (not ignored)",
 			false,
-			[]namespace.PrefixedData8{namespace.PrefixedData8(append(maxNID, []byte("leaf_1")...))},
+			[]prefixedData8{prefixedData8(append(maxNID, []byte("leaf_1")...))},
 			maxNID,
 		},
 		{
 			"two leaves, one with MaxNID (ignored)",
 			true,
-			[]namespace.PrefixedData8{
-				namespace.PrefixedData8(append(secondNID, []byte("leaf_1")...)),
-				namespace.PrefixedData8(append(maxNID, []byte("leaf_2")...)),
+			[]prefixedData8{
+				prefixedData8(append(secondNID, []byte("leaf_1")...)),
+				prefixedData8(append(maxNID, []byte("leaf_2")...)),
 			},
 			secondNID,
 		},
 		{
 			"two leaves, one with MaxNID (not ignored)",
 			false,
-			[]namespace.PrefixedData8{
-				namespace.PrefixedData8(append(secondNID, []byte("leaf_1")...)),
-				namespace.PrefixedData8(append(maxNID, []byte("leaf_2")...)),
+			[]prefixedData8{
+				prefixedData8(append(secondNID, []byte("leaf_1")...)),
+				prefixedData8(append(maxNID, []byte("leaf_2")...)),
 			},
 			maxNID,
 		},
 		{
 			"two leaves with MaxNID (ignored)",
 			true,
-			[]namespace.PrefixedData8{
-				namespace.PrefixedData8(append(maxNID, []byte("leaf_1")...)),
-				namespace.PrefixedData8(append(maxNID, []byte("leaf_2")...)),
+			[]prefixedData8{
+				prefixedData8(append(maxNID, []byte("leaf_1")...)),
+				prefixedData8(append(maxNID, []byte("leaf_2")...)),
 			},
 			maxNID,
 		},
 		{
 			"two leaves with MaxNID (not ignored)",
 			false,
-			[]namespace.PrefixedData8{
-				namespace.PrefixedData8(append(maxNID, []byte("leaf_1")...)),
-				namespace.PrefixedData8(append(maxNID, []byte("leaf_2")...)),
+			[]prefixedData8{
+				prefixedData8(append(maxNID, []byte("leaf_1")...)),
+				prefixedData8(append(maxNID, []byte("leaf_2")...)),
 			},
 			maxNID,
 		},
 		{
 			"two leaves, none with MaxNID (ignored)",
 			true,
-			[]namespace.PrefixedData8{
-				namespace.PrefixedData8(append(minNID, []byte("leaf_1")...)),
-				namespace.PrefixedData8(append(secondNID, []byte("leaf_2")...)),
+			[]prefixedData8{
+				prefixedData8(append(minNID, []byte("leaf_1")...)),
+				prefixedData8(append(secondNID, []byte("leaf_2")...)),
 			},
 			secondNID,
 		},
 		{
 			"two leaves, none with MaxNID (not ignored)",
 			false,
-			[]namespace.PrefixedData8{
-				namespace.PrefixedData8(append(minNID, []byte("leaf_1")...)),
-				namespace.PrefixedData8(append(secondNID, []byte("leaf_2")...)),
+			[]prefixedData8{
+				prefixedData8(append(minNID, []byte("leaf_1")...)),
+				prefixedData8(append(secondNID, []byte("leaf_2")...)),
 			},
 			secondNID,
 		},
 		{
 			"three leaves, one with MaxNID (ignored)",
 			true,
-			[]namespace.PrefixedData8{
-				namespace.PrefixedData8(append(minNID, []byte("leaf_1")...)),
-				namespace.PrefixedData8(append(secondNID, []byte("leaf_2")...)),
-				namespace.PrefixedData8(append(maxNID, []byte("leaf_2")...)),
+			[]prefixedData8{
+				prefixedData8(append(minNID, []byte("leaf_1")...)),
+				prefixedData8(append(secondNID, []byte("leaf_2")...)),
+				prefixedData8(append(maxNID, []byte("leaf_2")...)),
 			},
 			secondNID,
 		},
 		{
 			"three leaves, one with MaxNID (not ignored)",
 			false,
-			[]namespace.PrefixedData8{
-				namespace.PrefixedData8(append(minNID, []byte("leaf_1")...)),
-				namespace.PrefixedData8(append(secondNID, []byte("leaf_2")...)),
-				namespace.PrefixedData8(append(maxNID, []byte("leaf_2")...)),
+			[]prefixedData8{
+				prefixedData8(append(minNID, []byte("leaf_1")...)),
+				prefixedData8(append(secondNID, []byte("leaf_2")...)),
+				prefixedData8(append(maxNID, []byte("leaf_2")...)),
 			},
 			maxNID,
 		},
 
 		{
 			"4 leaves, none maxNID (ignored)", true,
-			[]namespace.PrefixedData8{
-				namespace.PrefixedData8(append(minNID, []byte("leaf_1")...)),
-				namespace.PrefixedData8(append(minNID, []byte("leaf_2")...)),
-				namespace.PrefixedData8(append(secondNID, []byte("leaf_3")...)),
-				namespace.PrefixedData8(append(thirdNID, []byte("leaf_4")...)),
+			[]prefixedData8{
+				prefixedData8(append(minNID, []byte("leaf_1")...)),
+				prefixedData8(append(minNID, []byte("leaf_2")...)),
+				prefixedData8(append(secondNID, []byte("leaf_3")...)),
+				prefixedData8(append(thirdNID, []byte("leaf_4")...)),
 			},
 			thirdNID,
 		},
 		{
 			"4 leaves, half maxNID (ignored)",
 			true,
-			[]namespace.PrefixedData8{
-				namespace.PrefixedData8(append(minNID, []byte("leaf_1")...)),
-				namespace.PrefixedData8(append(secondNID, []byte("leaf_2")...)),
-				namespace.PrefixedData8(append(maxNID, []byte("leaf_3")...)),
-				namespace.PrefixedData8(append(maxNID, []byte("leaf_4")...)),
+			[]prefixedData8{
+				prefixedData8(append(minNID, []byte("leaf_1")...)),
+				prefixedData8(append(secondNID, []byte("leaf_2")...)),
+				prefixedData8(append(maxNID, []byte("leaf_3")...)),
+				prefixedData8(append(maxNID, []byte("leaf_4")...)),
 			},
 			secondNID,
 		},
 		{
 			"4 leaves, half maxNID (not ignored)",
 			false,
-			[]namespace.PrefixedData8{
-				namespace.PrefixedData8(append(minNID, []byte("leaf_1")...)),
-				namespace.PrefixedData8(append(secondNID, []byte("leaf_2")...)),
-				namespace.PrefixedData8(append(maxNID, []byte("leaf_3")...)),
-				namespace.PrefixedData8(append(maxNID, []byte("leaf_4")...)),
+			[]prefixedData8{
+				prefixedData8(append(minNID, []byte("leaf_1")...)),
+				prefixedData8(append(secondNID, []byte("leaf_2")...)),
+				prefixedData8(append(maxNID, []byte("leaf_3")...)),
+				prefixedData8(append(maxNID, []byte("leaf_4")...)),
 			},
 			maxNID,
 		},
 		{
 			"8 leaves, 4 maxNID (ignored)",
 			true,
-			[]namespace.PrefixedData8{
-				namespace.PrefixedData8(append(minNID, []byte("leaf_1")...)),
-				namespace.PrefixedData8(append(secondNID, []byte("leaf_2")...)),
-				namespace.PrefixedData8(append(thirdNID, []byte("leaf_3")...)),
-				namespace.PrefixedData8(append(thirdNID, []byte("leaf_4")...)),
-				namespace.PrefixedData8(append(maxNID, []byte("leaf_5")...)),
-				namespace.PrefixedData8(append(maxNID, []byte("leaf_6")...)),
-				namespace.PrefixedData8(append(maxNID, []byte("leaf_7")...)),
-				namespace.PrefixedData8(append(maxNID, []byte("leaf_8")...)),
+			[]prefixedData8{
+				prefixedData8(append(minNID, []byte("leaf_1")...)),
+				prefixedData8(append(secondNID, []byte("leaf_2")...)),
+				prefixedData8(append(thirdNID, []byte("leaf_3")...)),
+				prefixedData8(append(thirdNID, []byte("leaf_4")...)),
+				prefixedData8(append(maxNID, []byte("leaf_5")...)),
+				prefixedData8(append(maxNID, []byte("leaf_6")...)),
+				prefixedData8(append(maxNID, []byte("leaf_7")...)),
+				prefixedData8(append(maxNID, []byte("leaf_8")...)),
 			},
 			thirdNID,
 		},
