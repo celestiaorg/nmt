@@ -143,6 +143,40 @@ Note that hash of the leaf does not have to be verified against the underlying m
 
 If the queried `nID` falls outside the namespace range of the tree root, or the namespace tree is empty, then an empty NMT proof is valid by definition.
 
+### Index-based Merkle Range Proof
+
+NMTs also support regular index-based Merkle Proof that allows for both Merkle inclusion proof for a single leaf index and Merkle range proof for a range of leaf indices `[start, end)`,
+where `end` is greater than `start`.
+The Merkle inclusion proof for a single leaf is actually a special case of the Merkle range proof where the range represents a single leaf index, or in other words, when `end` is equal to `start+1`.
+As such, we only focus on the Merkle range proof in this section.
+The `start` and `end` are zero-based indices of the leaves in the tree, where `start` is inclusive and `end` is exclusive.
+The `start` ranges from `0` to `n-1`, where `n` is the number of leaves in the tree, while end ranges from `1` to `n`.
+
+#### Index-based Merkle Range Proof Generation (for leaves with identical namespace IDs)
+
+A range query for a range of `[start, end)` is answered by a `proof` consisting of two pieces of data: `nodes` and `start`/`end`.
+The proof generation and verification logic explained here is based on the assumption that all the leaves within the queried range have the same namespace ID.
+The assumption is to conform to the current implementation of the [NMT library](https://github.com/celestiaorg/nmt), however, it is not a limitation imposed by the NMT data structure.
+
+- The `nodes` data is a set of tree nodes that constitutes the Merkle range proof of `[start, end)` to the tree with root T.
+This includes the left siblings of the nodes along the branch connecting the `start` leaf to the NMT root and the right siblings of the nodes along the branch connecting the `end-1` leaf to the root.
+The nodes are sorted based on the in-order traversal of the tree.
+- The `start` and `end` data represent the starting and ending index of the retrieved leaves, respectively, where `end` is non-inclusive.
+This is the same as the queried range.
+
+- In the event that the queried range is outside the range of the NMT leaves indices, an empty `proof` is returned.
+This empty `proof` consists of an empty set of `nodes` and an empty range, where `start` is `0` and `end` is also `0`.
+
+#### Index-based Merkle Range Proof Verification (for leaves with identical namespace IDs)
+
+Let `leaves` refer to the namespaced messages of the leaves in the queried range `[start, end)`, while `T` represents the root of the tree against which the `proof` is being verified.
+The `proof` can be verified by taking the following steps:
+
+- Verify that all the leaves are namespaced messages with the same namespace ID.
+- Compute the tree root `T'` using the leaves and the `proof.nodes`.
+If the computed root `T'` is equal to the expected root `T` of the tree, then the `proof` is valid.
+To compute the tree root `T'`, the [namespaced hash function](#namespaced-hash) should be utilized.
+
 ## Resources
 
 1. Al-Bassam, Mustafa. "Lazyledger: A distributed data availability ledger with client-side smart contracts." _arXiv preprint arXiv:1905.09274_

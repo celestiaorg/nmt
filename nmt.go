@@ -154,7 +154,7 @@ func (n *NamespacedMerkleTree) Prove(index int) (Proof, error) {
 // siblings for the proof of the leaf at index start, and the namespaced hash of
 // the right siblings for the proof of the leaf at index end.
 //
-// If the specified range [satrt, end) exceeds the current range of leaves in
+// If the specified range [start, end) exceeds the current range of leaves in
 // the tree, ProveRange returns an error together with an empty Proof with empty
 // nodes and start and end fields set to 0.
 //
