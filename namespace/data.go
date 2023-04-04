@@ -6,16 +6,3 @@ package namespace
 // structure we want: [namespaceID, rawData ...], especially as this type does
 // not expect any particular size for the namespace.
 type PrefixedData []byte
-
-// PrefixedData8 like PrefixedData is just a slice of bytes. It assumes that the
-// slice it represents is at least 8 bytes. This assumption is not enforced by
-// the type system though.
-type PrefixedData8 []byte
-
-func (d PrefixedData8) NamespaceID() ID {
-	return ID(d[:8])
-}
-
-func (d PrefixedData8) Data() []byte {
-	return d[8:]
-}
