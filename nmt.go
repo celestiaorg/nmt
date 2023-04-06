@@ -167,9 +167,6 @@ func (n *NamespacedMerkleTree) Prove(index int) (Proof, error) {
 // then ProveRange returns an ErrInvalidRange error. Any errors rather than ErrInvalidRange are irrecoverable and indicate an illegal state of the tree (n).
 func (n *NamespacedMerkleTree) ProveRange(start, end int) (Proof, error) {
 	isMaxNsIgnored := n.treeHasher.IsMaxNamespaceIDIgnored()
-	if err := n.computeLeafHashesIfNecessary(); err != nil {
-		return Proof{}, err // this never happens
-	}
 	// TODO: store nodes and re-use the hashes instead recomputing parts of the
 	// tree here
 	if start < 0 || start >= end || end > len(n.leafHashes) {
@@ -234,9 +231,6 @@ func (n *NamespacedMerkleTree) ProveNamespace(nID namespace.ID) (Proof, error) {
 	// case 3) At this point we either found leaves with the namespace nID in
 	// the tree or calculated the range it would be in (to generate a proof of
 	// absence and to return the corresponding leaf hashes).
-	if err := n.computeLeafHashesIfNecessary(); err != nil {
-		return Proof{}, err
-	}
 
 	proof, err := n.buildRangeProof(proofStart, proofEnd)
 	if err != nil {
@@ -418,8 +412,15 @@ func (n *NamespacedMerkleTree) Push(namespacedData namespace.PrefixedData) error
 		return err
 	}
 
+	// compute the leaf hash
+	res, err := n.treeHasher.HashLeaf(namespacedData)
+	if err != nil {
+		return err
+	}
+
 	// update relevant "caches":
 	n.leaves = append(n.leaves, namespacedData)
+	n.leafHashes = append(n.leafHashes, res)
 	n.updateNamespaceRanges()
 	n.updateMinMaxID(nID)
 	n.rawRoot = nil
@@ -472,13 +473,8 @@ func (n *NamespacedMerkleTree) computeRoot(start, end int) ([]byte, error) {
 		n.visit(rootHash)
 		return rootHash, nil
 	case 1:
-		leafHash, err := n.treeHasher.HashLeaf(n.leaves[start])
-		if err != nil { // this should never happen since leaves are added through the Push method, during which leaves formats are validated to make sure they are hashable.
-			return nil, fmt.Errorf("failed to hash leaf: %w", err)
-		}
-		if len(n.leafHashes) < len(n.leaves) {
-			n.leafHashes = append(n.leafHashes, leafHash)
-		}
+		leafHash := make([]byte, len(n.leafHashes[start]))
+		copy(leafHash, n.leafHashes[start])
 		n.visit(leafHash, n.leaves[start])
 		return leafHash, nil
 	default:
@@ -575,24 +571,6 @@ func (n *NamespacedMerkleTree) updateMinMaxID(id namespace.ID) {
 	if n.maxNID.Less(id) {
 		n.maxNID = id
 	}
-}
-
-// computes the leaf hashes if not already done in a previous call of
-// NamespacedMerkleTree.Root()
-// Any errors return by this method is irrecoverable and indicate an illegal state of the tree (n).
-func (n *NamespacedMerkleTree) computeLeafHashesIfNecessary() error {
-	// check whether all the hash of all the existing leaves are available
-	if len(n.leafHashes) < len(n.leaves) {
-		n.leafHashes = make([][]byte, len(n.leaves))
-		for i, leaf := range n.leaves {
-			res, err := n.treeHasher.HashLeaf(leaf)
-			if err != nil { // should never happen since the validity of leaves is checked in the Push method
-				return err
-			}
-			n.leafHashes[i] = res
-		}
-	}
-	return nil
 }
 
 type leafRange struct {

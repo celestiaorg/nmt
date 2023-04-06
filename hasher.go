@@ -183,6 +183,16 @@ func (n *Hasher) HashLeaf(ndata []byte) ([]byte, error) {
 	return nameSpacedHash, nil
 }
 
+// MustHashLeaf is a wrapper around HashLeaf that panics if an error is
+// encountered. The ndata must be a valid leaf node.
+func (n *Hasher) MustHashLeaf(ndata []byte) []byte {
+	res, err := n.HashLeaf(ndata)
+	if err != nil {
+		panic(err)
+	}
+	return res
+}
+
 // ValidateNodeFormat checks whether the supplied node conforms to the
 // namespaced hash format and returns an error if it does not. Specifically, it returns ErrInvalidNodeLen if the length of the node is less than the 2*namespace length which indicates it does not match the namespaced hash format.
 func (n *Hasher) ValidateNodeFormat(node []byte) (err error) {
