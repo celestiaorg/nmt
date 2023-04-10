@@ -1,6 +1,7 @@
 package nmt
 
 import (
+	"bytes"
 	"crypto"
 	"crypto/sha256"
 	"errors"
@@ -277,6 +278,9 @@ func TestValidateSiblingsNamespaceOrder(t *testing.T) {
 }
 
 func TestValidateNodeFormat(t *testing.T) {
+	hashValue := createByteSlice(sha256.Size, 0x01)
+	minNID := createByteSlice(2, 0x00)
+	maxNID := createByteSlice(2, 0x01)
 	tests := []struct {
 		name    string
 		nIDLen  namespace.IDSize
@@ -289,18 +293,26 @@ func TestValidateNodeFormat(t *testing.T) {
 		{ // valid node
 			"valid node",
 			2,
-			[]byte{0, 0},
-			[]byte{1, 1},
-			[]byte{1, 2, 3, 4},
+			minNID,
+			maxNID,
+			hashValue,
 			false,
 			nil,
 		},
 		{ // mismatched namespace size
-			"invalid node: length",
+			"invalid node: length < 2 * namespace.IDSize",
 			2,
-			[]byte{0},
-			[]byte{1},
-			[]byte{0},
+			minNID,
+			[]byte{},
+			[]byte{},
+			true,
+			ErrInvalidNodeLen,
+		}, { // mismatched namespace size
+			"invalid node: length < 2 * namespace.IDSize + hashSize",
+			2,
+			minNID,
+			maxNID,
+			[]byte{},
 			true,
 			ErrInvalidNodeLen,
 		},
@@ -556,6 +568,10 @@ func TestSum_Err(t *testing.T) {
 			})
 		}
 	}
+}
+
+func createByteSlice(n int, b byte) []byte {
+	return bytes.Repeat([]byte{b}, n)
 }
 
 // TestValidateNodes checks that the ValidateNodes method only emits error on invalid inputs. It also checks whether the returned error types are correct.

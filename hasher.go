@@ -196,10 +196,10 @@ func (n *Hasher) MustHashLeaf(ndata []byte) []byte {
 // ValidateNodeFormat checks whether the supplied node conforms to the
 // namespaced hash format and returns an error if it does not. Specifically, it returns ErrInvalidNodeLen if the length of the node is less than the 2*namespace length which indicates it does not match the namespaced hash format.
 func (n *Hasher) ValidateNodeFormat(node []byte) (err error) {
-	totalNamespaceLen := 2 * n.NamespaceLen
+	expectedNodeLen := n.Size() // each NMT node has two namespace IDs for the min and max
 	nodeLen := len(node)
-	if nodeLen < int(totalNamespaceLen) {
-		return fmt.Errorf("%w: got: %v, want >= %v", ErrInvalidNodeLen, nodeLen, totalNamespaceLen)
+	if nodeLen < int(expectedNodeLen) {
+		return fmt.Errorf("%w: got: %v, want >= %v", ErrInvalidNodeLen, nodeLen, expectedNodeLen)
 	}
 	return nil
 }
