@@ -102,7 +102,6 @@ This implementation was heavily inspired by the initial implementation in the ce
 [@musalbas]: https://github.com/musalbas
 
 [prototype]: https://github.com/celestiaorg/lazyledger-prototype
-[NebulousLabs']: https://gitlab.com/NebulousLabs/merkletree
 
 ## Contributing
 
