@@ -290,7 +290,7 @@ func TestValidateNodeFormat(t *testing.T) {
 		wantErr bool
 		errType error
 	}{
-		{ // valid node
+		{
 			"valid node",
 			2,
 			minNID,
@@ -299,7 +299,7 @@ func TestValidateNodeFormat(t *testing.T) {
 			false,
 			nil,
 		},
-		{ // mismatched namespace size
+		{
 			"invalid node: length < 2 * namespace.IDSize",
 			2,
 			minNID,
@@ -307,7 +307,7 @@ func TestValidateNodeFormat(t *testing.T) {
 			[]byte{},
 			true,
 			ErrInvalidNodeLen,
-		}, { // mismatched namespace size
+		}, {
 			"invalid node: length < 2 * namespace.IDSize + hashSize",
 			2,
 			minNID,
