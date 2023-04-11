@@ -304,6 +304,20 @@ func (proof Proof) verifyLeafHashes(nth *Hasher, verifyCompleteness bool, nID na
 // `nid`.
 func (proof Proof) VerifyInclusion(h hash.Hash, nid namespace.ID, leavesWithoutNamespace [][]byte, root []byte) bool {
 	nth := NewNmtHasher(h, nid.Size(), proof.isMaxNamespaceIDIgnored)
+
+	// perform some early sanity checks:
+	// check that the root is valid
+	if err := nth.ValidateNodeFormat(root); err != nil {
+		return false
+	}
+	// check that all the proof nodes are valid
+	for _, node := range proof.nodes {
+		if err := nth.ValidateNodeFormat(node); err != nil {
+			return false
+		}
+	}
+
+	// add namespace to all the leaves
 	hashes := make([][]byte, len(leavesWithoutNamespace))
 	for i, d := range leavesWithoutNamespace {
 		// prepend the namespace to the leaf data
