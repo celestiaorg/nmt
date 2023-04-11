@@ -65,8 +65,7 @@ func Test_namespacedTreeHasher_HashLeaf(t *testing.T) {
 }
 
 func Test_namespacedTreeHasher_HashNode(t *testing.T) {
-	// sum(crypto.SHA256, []byte{NodePrefix}, []byte{0, 0, 0, 0}, []byte{1, 1, 1, 1})
-
+	// create a dummy hash to use as the digest of the left and right child
 	randHash := createByteSlice(crypto.SHA256.Size(), 0x01)
 	type children struct {
 		l []byte
@@ -223,6 +222,7 @@ func TestNamespaceHasherSum(t *testing.T) {
 }
 
 func TestHashNode_ChildrenNamespaceRange(t *testing.T) {
+	// create a dummy hash to use as the digest of the left and right child
 	randHash := createByteSlice(sha256.Size, 0x01)
 	type children struct {
 		l []byte // namespace hash of the left child with the format of MinNs||MaxNs||h
@@ -462,6 +462,7 @@ func TestHashLeafWithIsNamespacedData(t *testing.T) {
 
 // TestHashNode_ErrorsCheck checks that the HashNode emits error only on invalid inputs. It also checks whether the returned error types are correct.
 func TestHashNode_ErrorsCheck(t *testing.T) {
+	// create a dummy hash to use as the digest of the left and right child
 	randHash := createByteSlice(sha256.Size, 0x01)
 	type children struct {
 		l []byte // namespace hash of the left child with the format of MinNs||MaxNs||h
@@ -622,6 +623,7 @@ func TestSum_Err(t *testing.T) {
 
 // TestValidateNodes checks that the ValidateNodes method only emits error on invalid inputs. It also checks whether the returned error types are correct.
 func TestValidateNodes(t *testing.T) {
+	// create a dummy hash to use as the digest of the left and right child
 	randHash := createByteSlice(sha256.Size, 0x01)
 	tests := []struct {
 		name    string
