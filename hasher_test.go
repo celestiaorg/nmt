@@ -258,7 +258,8 @@ func TestHashNode_ChildrenNamespaceRange(t *testing.T) {
 			"left.maxNs<right.minNs", 2,
 			children{
 				concat([]byte{0, 0, 1, 1}, randHash),
-				concat([]byte{2, 2, 3, 3}, randHash)},
+				concat([]byte{2, 2, 3, 3}, randHash),
+			},
 			false,
 			nil,
 		},
@@ -342,7 +343,8 @@ func TestValidateNodeFormat(t *testing.T) {
 			[]byte{},
 			true,
 			ErrInvalidNodeLen,
-		}, {
+		},
+		{
 			"invalid node: length < 2 * namespace.IDSize + hashSize",
 			2,
 			minNID,
@@ -496,7 +498,8 @@ func TestHashNode_ErrorsCheck(t *testing.T) {
 		},
 		{
 			"left.maxNs>right.minNs", 2,
-			children{concat([]byte{0, 0, 1, 1}, randHash),
+			children{
+				concat([]byte{0, 0, 1, 1}, randHash),
 				concat([]byte{0, 0, 1, 1}, randHash),
 			},
 			true,
