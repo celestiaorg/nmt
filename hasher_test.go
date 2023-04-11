@@ -65,7 +65,9 @@ func Test_namespacedTreeHasher_HashLeaf(t *testing.T) {
 }
 
 func Test_namespacedTreeHasher_HashNode(t *testing.T) {
-	sum(crypto.SHA256, []byte{NodePrefix}, []byte{0, 0, 0, 0}, []byte{1, 1, 1, 1})
+	// sum(crypto.SHA256, []byte{NodePrefix}, []byte{0, 0, 0, 0}, []byte{1, 1, 1, 1})
+
+	randHash := createByteSlice(crypto.SHA256.Size(), 0x01)
 	type children struct {
 		l []byte
 		r []byte
@@ -79,28 +81,37 @@ func Test_namespacedTreeHasher_HashNode(t *testing.T) {
 	}{
 		{
 			"leftmin<rightmin && leftmax<rightmax", 2,
-			children{[]byte{0, 0, 0, 0}, []byte{1, 1, 1, 1}},
-			append(
-				[]byte{0, 0, 1, 1},
-				sum(crypto.SHA256, []byte{NodePrefix}, []byte{0, 0, 0, 0}, []byte{1, 1, 1, 1})...,
-			),
+			children{
+				concat([]byte{0, 0, 0, 0}, randHash),
+				concat([]byte{1, 1, 1, 1}, randHash),
+			},
+			concat([]byte{0, 0, 1, 1}, // minNID||maxNID
+				sum(crypto.SHA256, []byte{NodePrefix}, // Hash(NodePrefix||left||right)
+					concat([]byte{0, 0, 0, 0}, randHash),
+					concat([]byte{1, 1, 1, 1}, randHash))),
 		},
 		{
 			"leftmin==rightmin && leftmax<rightmax", 2,
-			children{[]byte{0, 0, 0, 0}, []byte{0, 0, 1, 1}},
-			append(
-				[]byte{0, 0, 1, 1},
-				sum(crypto.SHA256, []byte{NodePrefix}, []byte{0, 0, 0, 0}, []byte{0, 0, 1, 1})...,
-			),
+			children{
+				concat([]byte{0, 0, 0, 0}, randHash),
+				concat([]byte{0, 0, 1, 1}, randHash),
+			},
+			concat([]byte{0, 0, 1, 1}, // minNID||maxNID
+				sum(crypto.SHA256, []byte{NodePrefix}, // Hash(NodePrefix||left||right)
+					concat([]byte{0, 0, 0, 0}, randHash),
+					concat([]byte{0, 0, 1, 1}, randHash))),
 		},
 		// XXX: can this happen in practice? or is this an invalid state?
 		{
 			"leftmin>rightmin && leftmax<rightmax", 2,
-			children{[]byte{1, 1, 0, 0}, []byte{0, 0, 0, 1}},
-			append(
-				[]byte{0, 0, 0, 1},
-				sum(crypto.SHA256, []byte{NodePrefix}, []byte{1, 1, 0, 0}, []byte{0, 0, 0, 1})...,
-			),
+			children{
+				concat([]byte{1, 1, 0, 0}, randHash),
+				concat([]byte{0, 0, 0, 1}, randHash),
+			},
+			concat([]byte{0, 0, 0, 1}, // minNID||maxNID
+				sum(crypto.SHA256, []byte{NodePrefix}, // Hash(NodePrefix||left||right)
+					concat([]byte{1, 1, 0, 0}, randHash),
+					concat([]byte{0, 0, 0, 1}, randHash))),
 		},
 	}
 	for _, tt := range tests {
@@ -123,6 +134,15 @@ func sum(hash crypto.Hash, data ...[]byte) []byte {
 	}
 
 	return h.Sum(nil)
+}
+
+func concat(data ...[]byte) []byte {
+	var result []byte
+	for _, d := range data {
+		result = append(result, d...)
+	}
+
+	return result
 }
 
 func TestNamespaceHasherWrite(t *testing.T) {
@@ -197,6 +217,7 @@ func TestNamespaceHasherSum(t *testing.T) {
 }
 
 func TestHashNode_ChildrenNamespaceRange(t *testing.T) {
+	randHash := createByteSlice(sha256.Size, 0x01)
 	type children struct {
 		l []byte // namespace hash of the left child with the format of MinNs||MaxNs||h
 		r []byte // namespace hash of the right child with the format of MinNs||MaxNs||h
@@ -211,19 +232,27 @@ func TestHashNode_ChildrenNamespaceRange(t *testing.T) {
 	}{
 		{
 			"left.maxNs>right.minNs", 2,
-			children{[]byte{0, 0, 1, 1}, []byte{0, 0, 1, 1}},
+			children{
+				concat([]byte{0, 0, 1, 1}, randHash),
+				concat([]byte{0, 0, 1, 1}, randHash),
+			},
 			true, // this test case should emit an error since in an ordered NMT, left.maxNs cannot be greater than right.minNs
 			ErrUnorderedSiblings,
 		},
 		{
 			"left.maxNs=right.minNs", 2,
-			children{[]byte{0, 0, 1, 1}, []byte{1, 1, 2, 2}},
+			children{
+				concat([]byte{0, 0, 1, 1}, randHash),
+				concat([]byte{1, 1, 2, 2}, randHash),
+			},
 			false,
 			nil,
 		},
 		{
 			"left.maxNs<right.minNs", 2,
-			children{[]byte{0, 0, 1, 1}, []byte{2, 2, 3, 3}},
+			children{
+				concat([]byte{0, 0, 1, 1}, randHash),
+				concat([]byte{2, 2, 3, 3}, randHash)},
 			false,
 			nil,
 		},
@@ -427,6 +456,7 @@ func TestHashLeafWithIsNamespacedData(t *testing.T) {
 
 // TestHashNode_ErrorsCheck checks that the HashNode emits error only on invalid inputs. It also checks whether the returned error types are correct.
 func TestHashNode_ErrorsCheck(t *testing.T) {
+	randHash := createByteSlice(sha256.Size, 0x01)
 	type children struct {
 		l []byte // namespace hash of the left child with the format of MinNs||MaxNs||h
 		r []byte // namespace hash of the right child with the format of MinNs||MaxNs||h
@@ -441,31 +471,45 @@ func TestHashNode_ErrorsCheck(t *testing.T) {
 	}{
 		{
 			"left.maxNs<right.minNs", 2,
-			children{[]byte{0, 0, 1, 1}, []byte{2, 2, 3, 3}},
+			children{
+				concat([]byte{0, 0, 1, 1}, randHash),
+				concat([]byte{2, 2, 3, 3}, randHash),
+			},
 			false,
 			nil,
 		},
 		{
 			"left.maxNs=right.minNs", 2,
-			children{[]byte{0, 0, 1, 1}, []byte{1, 1, 2, 2}},
+			children{
+				concat([]byte{0, 0, 1, 1}, randHash),
+				concat([]byte{1, 1, 2, 2}, randHash),
+			},
 			false,
 			nil,
 		},
 		{
 			"left.maxNs>right.minNs", 2,
-			children{[]byte{0, 0, 1, 1}, []byte{0, 0, 1, 1}},
+			children{concat([]byte{0, 0, 1, 1}, randHash),
+				concat([]byte{0, 0, 1, 1}, randHash),
+			},
 			true,
 			ErrUnorderedSiblings,
 		},
 		{
-			"len(left)<NamespaceLen", 2,
-			children{[]byte{0, 0, 1}, []byte{2, 2, 3, 3}},
+			"len(left)<hasher.Size", 2,
+			children{
+				[]byte{0, 0, 1},
+				concat([]byte{2, 2, 3, 3}, randHash),
+			},
 			true,
 			ErrInvalidNodeLen,
 		},
 		{
-			"len(right)<NamespaceLen", 2,
-			children{[]byte{0, 0, 1, 1}, []byte{2, 2, 3}},
+			"len(right)<hasher.Size", 2,
+			children{
+				concat([]byte{0, 0, 1, 1}, randHash),
+				[]byte{2, 2, 3},
+			},
 			true,
 			ErrInvalidNodeLen,
 		},
@@ -576,6 +620,7 @@ func createByteSlice(n int, b byte) []byte {
 
 // TestValidateNodes checks that the ValidateNodes method only emits error on invalid inputs. It also checks whether the returned error types are correct.
 func TestValidateNodes(t *testing.T) {
+	randHash := createByteSlice(sha256.Size, 0x01)
 	tests := []struct {
 		name    string
 		nIDLen  namespace.IDSize
@@ -587,24 +632,24 @@ func TestValidateNodes(t *testing.T) {
 		{
 			"left.maxNs<right.minNs",
 			2,
-			[]byte{0, 0, 1, 1},
-			[]byte{2, 2, 3, 3},
+			concat([]byte{0, 0, 1, 1}, randHash),
+			concat([]byte{2, 2, 3, 3}, randHash),
 			false,
 			nil,
 		},
 		{
 			"left.maxNs=right.minNs",
 			2,
-			[]byte{0, 0, 1, 1},
-			[]byte{1, 1, 2, 2},
+			concat([]byte{0, 0, 1, 1}, randHash),
+			concat([]byte{1, 1, 2, 2}, randHash),
 			false,
 			nil,
 		},
 		{
 			"left.maxNs>right.minNs",
 			2,
-			[]byte{0, 0, 1, 1},
-			[]byte{0, 0, 1, 1},
+			concat([]byte{0, 0, 1, 1}, randHash),
+			concat([]byte{0, 0, 1, 1}, randHash),
 			true,
 			ErrUnorderedSiblings,
 		},
@@ -612,13 +657,13 @@ func TestValidateNodes(t *testing.T) {
 			"len(left)<NamespaceLen",
 			2,
 			[]byte{0, 0, 1},
-			[]byte{2, 2, 3, 3},
+			concat([]byte{2, 2, 3, 3}, randHash),
 			true,
 			ErrInvalidNodeLen,
 		},
 		{
 			"len(right)<NamespaceLen", 2,
-			[]byte{0, 0, 1, 1},
+			concat([]byte{0, 0, 1, 1}, randHash),
 			[]byte{2, 2, 3},
 			true,
 			ErrInvalidNodeLen,
