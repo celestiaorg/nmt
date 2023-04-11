@@ -136,6 +136,7 @@ func sum(hash crypto.Hash, data ...[]byte) []byte {
 	return h.Sum(nil)
 }
 
+// concat concatenates the given byte slices.
 func concat(data ...[]byte) []byte {
 	var result []byte
 	for _, d := range data {
@@ -143,6 +144,11 @@ func concat(data ...[]byte) []byte {
 	}
 
 	return result
+}
+
+// createByteSlice returns a byte slice of length n with all bytes set to b.
+func createByteSlice(n int, b byte) []byte {
+	return bytes.Repeat([]byte{b}, n)
 }
 
 func TestNamespaceHasherWrite(t *testing.T) {
@@ -612,10 +618,6 @@ func TestSum_Err(t *testing.T) {
 			})
 		}
 	}
-}
-
-func createByteSlice(n int, b byte) []byte {
-	return bytes.Repeat([]byte{b}, n)
 }
 
 // TestValidateNodes checks that the ValidateNodes method only emits error on invalid inputs. It also checks whether the returned error types are correct.
