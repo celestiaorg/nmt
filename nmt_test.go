@@ -853,7 +853,6 @@ func exampleNMT(nidSize int, leavesNIDs ...byte) *NamespacedMerkleTree {
 		}
 	}
 	return tree
-
 }
 
 func swap(slice [][]byte, i int, j int) {
