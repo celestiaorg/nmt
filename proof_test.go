@@ -3,9 +3,9 @@ package nmt
 import (
 	"bytes"
 	"crypto/sha256"
-	"testing"
-
 	"github.com/stretchr/testify/assert"
+	"hash"
+	"testing"
 
 	"github.com/stretchr/testify/require"
 
@@ -256,9 +256,10 @@ func TestVerifyLeafHashes_Err(t *testing.T) {
 }
 
 func TestVerifyInclusion_False(t *testing.T) {
+	hasher := sha256.New()
+
 	// create a sample tree
 	nmt := exampleNMT(2, 1, 2, 3, 4, 5, 6, 7, 8)
-	hasher := nmt.treeHasher
 	root, err := nmt.Root()
 	require.NoError(t, err)
 
@@ -268,18 +269,31 @@ func TestVerifyInclusion_False(t *testing.T) {
 	require.NoError(t, err)
 	// proof4 is the inclusion proof for the leaf at index 3
 	leaf4WithoutNamespace := nmt.leaves[3][nmt.NamespaceSize():] // the VerifyInclusion function expects the leaf without the namespace ID, that's why we cut the namespace ID from the leaf.
-
 	// corrupt the last node in the proof4.nodes, it resides on the right side of the proof4.end index.
 	// this test scenario makes the VerifyInclusion fail when constructing the tree root from the
 	// computed subtree root and the proof.nodes on the right side of the proof.end index.
 	proof4.nodes[2] = proof4.nodes[2][:nmt.NamespaceSize()-1]
 
-	// create nmt
+	nID0 := namespace.ID{0} // a namespace ID with size 1 which is different from the one the nmt is constructed with
+	proof0, err := nmt.ProveRange(0, 1)
+	require.NoError(t, err)
+	leaf0WithoutNamespace := nmt.leaves[0][nmt.NamespaceSize():]
+
+	// create a tree with namespace size 1, with leaves identical to nmt, however with a different namespace ID size
+	nmt1 := exampleNMT(1, 1, 2, 3, 4, 5, 6, 7, 8)
+	root1, err := nmt1.Root()
+	require.NoError(t, err)
+	// create a proof w.r.t. nmt (instead of nmt1)
+	nID1 := namespace.ID{1, 1}
+	proof1, err := nmt.ProveNamespace(nID1)
+	require.NoError(t, err)
+	leaf1WithoutNamespace := nmt.leaves[0][nmt.NamespaceSize():]
+
 	type args struct {
-		Hasher     *Hasher
-		nID        namespace.ID
-		leafHashes [][]byte
-		root       []byte
+		hasher                 hash.Hash
+		nID                    namespace.ID
+		leavesWithoutNamespace [][]byte
+		root                   []byte
 	}
 	tests := []struct {
 		name   string
@@ -287,11 +301,13 @@ func TestVerifyInclusion_False(t *testing.T) {
 		args   args
 		result bool
 	}{
-		{" wrong proof.nodes: the last node has an incorrect format", proof4, args{hasher, nID4, [][]byte{leaf4WithoutNamespace}, root}, false},
+		{"wrong proof.nodes: the last node has an incorrect format", proof4, args{hasher, nID4, [][]byte{leaf4WithoutNamespace}, root}, false},
+		{"inconsistent namespace ID size between proof and the nid argument of VerifyInclusion", proof0, args{hasher, nID0, [][]byte{leaf0WithoutNamespace}, root}, false},
+		{"inconsistent namespace ID size between root and the nid argument of VerifyInclusion", proof1, args{hasher, nID1, [][]byte{leaf1WithoutNamespace}, root1}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := tt.proof.VerifyInclusion(tt.args.Hasher, tt.args.nID, tt.args.leafHashes, tt.args.root)
+			got := tt.proof.VerifyInclusion(tt.args.hasher, tt.args.nID, tt.args.leavesWithoutNamespace, tt.args.root)
 			assert.Equal(t, tt.result, got)
 		})
 	}
