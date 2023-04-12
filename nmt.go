@@ -1,4 +1,5 @@
 // Package nmt contains an NMT implementation.
+// The specifications can be found in https://github.com/celestiaorg/nmt/blob/master/docs/spec/nmt.md.
 package nmt
 
 import (
