@@ -209,7 +209,7 @@ func safeAppend(id, data []byte) []byte {
 
 func TestVerifyLeafHashes_Err(t *testing.T) {
 	// create a sample tree
-	nmt := exampleTreeWithEightLeaves()
+	nmt := exampleNMT(2, 1, 2, 3, 4, 5, 6, 7, 8)
 	hasher := nmt.treeHasher
 	root, err := nmt.Root()
 	require.NoError(t, err)
@@ -257,7 +257,7 @@ func TestVerifyLeafHashes_Err(t *testing.T) {
 
 func TestVerifyInclusion_False(t *testing.T) {
 	// create a sample tree
-	nmt := exampleTreeWithEightLeaves()
+	nmt := exampleNMT(2, 1, 2, 3, 4, 5, 6, 7, 8)
 	hasher := nmt.treeHasher
 	root, err := nmt.Root()
 	require.NoError(t, err)
@@ -274,6 +274,7 @@ func TestVerifyInclusion_False(t *testing.T) {
 	// computed subtree root and the proof.nodes on the right side of the proof.end index.
 	proof4.nodes[2] = proof4.nodes[2][:nmt.NamespaceSize()-1]
 
+	// create nmt
 	type args struct {
 		Hasher     *Hasher
 		nID        namespace.ID
