@@ -198,7 +198,7 @@ func (n *Hasher) MustHashLeaf(ndata []byte) []byte {
 func (n *Hasher) ValidateNodeFormat(node []byte) (err error) {
 	expectedNodeLen := n.Size()
 	nodeLen := len(node)
-	if nodeLen < int(expectedNodeLen) {
+	if nodeLen != expectedNodeLen {
 		return fmt.Errorf("%w: got: %v, want >= %v", ErrInvalidNodeLen, nodeLen, expectedNodeLen)
 	}
 	return nil
