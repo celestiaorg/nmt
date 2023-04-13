@@ -263,7 +263,7 @@ func TestVerifyInclusion_False(t *testing.T) {
 	nmt1 := exampleNMT(1, 1, 2, 3, 4, 5, 6, 7, 8)
 	root1, err := nmt1.Root()
 	require.NoError(t, err)
-	nid4_1 := namespace.ID{4, 4}
+	nid4_1 := namespace.ID{4}
 	proof4_1, err := nmt1.ProveRange(3, 4) // leaf at index 3 has namespace ID 4
 	require.NoError(t, err)
 	leaf4_1 := nmt1.leaves[3][nmt1.NamespaceSize():]
@@ -277,6 +277,9 @@ func TestVerifyInclusion_False(t *testing.T) {
 	require.NoError(t, err)
 	leaf4_2 := nmt2.leaves[3][nmt2.NamespaceSize():]
 
+	require.Equal(t, leaf4_2, leaf4_1)
+	leaf := leaf4_1
+
 	type args struct {
 		hasher                 hash.Hash
 		nID                    namespace.ID
@@ -289,12 +292,12 @@ func TestVerifyInclusion_False(t *testing.T) {
 		args   args
 		result bool
 	}{
-		{"inconsistent namespace ID size between proof and the nid argument of VerifyInclusion", proof4_2, args{hasher, nid4_1, [][]byte{leaf4_1}, root1}, false},
-		{"inconsistent namespace ID size between proof and the nid argument of VerifyInclusion", proof4_1, args{hasher, nid4_2, [][]byte{leaf4_2}, root2}, false},
-		{"inconsistent namespace ID size between root and the nid argument of VerifyInclusion", proof4_2, args{hasher, nid4_2, [][]byte{leaf4_2}, root1}, false},
-		{"inconsistent namespace ID size between root and the nid argument of VerifyInclusion", proof4_1, args{hasher, nid4_1, [][]byte{leaf4_1}, root2}, false},
-		{"inconsistent namespace ID size between proof and root and the nid argument of VerifyInclusion", proof4_2, args{hasher, nid4_1, [][]byte{leaf4_1}, root2}, false},
-		{"inconsistent namespace ID size between proof and root and the nid argument of VerifyInclusion", proof4_1, args{hasher, nid4_2, [][]byte{leaf4_2}, root1}, false},
+		{"nID size of proof < nID size of VerifyInclusion's nmt hasher", proof4_1, args{hasher, nid4_2, [][]byte{leaf}, root2}, false},
+		{"nID size of proof > nID size of VerifyInclusion's nmt hasher", proof4_2, args{hasher, nid4_1, [][]byte{leaf}, root1}, false},
+		{"nID size of root < nID size of VerifyInclusion's nmt hasher", proof4_2, args{hasher, nid4_2, [][]byte{leaf}, root1}, false},
+		{"nID size of root > nID size of VerifyInclusion's nmt hasher", proof4_1, args{hasher, nid4_1, [][]byte{leaf}, root2}, false},
+		{"nID size of proof and root < nID size of VerifyInclusion's nmt hasher", proof4_1, args{hasher, nid4_2, [][]byte{leaf}, root1}, false},
+		{"nID size of proof and root > nID size of VerifyInclusion's nmt hasher", proof4_2, args{hasher, nid4_1, [][]byte{leaf}, root2}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
