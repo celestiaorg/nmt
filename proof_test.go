@@ -259,36 +259,23 @@ func TestVerifyLeafHashes_Err(t *testing.T) {
 func TestVerifyInclusion_False(t *testing.T) {
 	hasher := sha256.New()
 
-	// create a sample tree
-	nmt := exampleNMT(2, 1, 2, 3, 4, 5, 6, 7, 8)
-	root, err := nmt.Root()
-	require.NoError(t, err)
-
-	// create nmt proof for namespace ID 4
-	nID4 := namespace.ID{4, 4}
-	proof4, err := nmt.ProveNamespace(nID4)
-	require.NoError(t, err)
-	// proof4 is the inclusion proof for the leaf at index 3
-	leaf4WithoutNamespace := nmt.leaves[3][nmt.NamespaceSize():] // the VerifyInclusion function expects the leaf without the namespace ID, that's why we cut the namespace ID from the leaf.
-	// corrupt the last node in the proof4.nodes, it resides on the right side of the proof4.end index.
-	// this test scenario makes the VerifyInclusion fail when constructing the tree root from the
-	// computed subtree root and the proof.nodes on the right side of the proof.end index.
-	proof4.nodes[2] = proof4.nodes[2][:nmt.NamespaceSize()-1]
-
-	nID0 := namespace.ID{0} // a namespace ID with size 1 which is different from the one the nmt is constructed with
-	proof0, err := nmt.ProveRange(0, 1)
-	require.NoError(t, err)
-	leaf0WithoutNamespace := nmt.leaves[0][nmt.NamespaceSize():]
-
-	// create a tree with namespace size 1, with leaves identical to nmt, however with a different namespace ID size
+	// create a sample tree with namespace ID size of 1
 	nmt1 := exampleNMT(1, 1, 2, 3, 4, 5, 6, 7, 8)
 	root1, err := nmt1.Root()
 	require.NoError(t, err)
-	// create a proof w.r.t. nmt (instead of nmt1)
-	nID1 := namespace.ID{1, 1}
-	proof1, err := nmt.ProveNamespace(nID1)
+	nid4_1 := namespace.ID{4, 4}
+	proof4_1, err := nmt1.ProveRange(3, 4) // leaf at index 3 has namespace ID 4
 	require.NoError(t, err)
-	leaf1WithoutNamespace := nmt.leaves[0][nmt.NamespaceSize():]
+	leaf4_1 := nmt1.leaves[3][nmt1.NamespaceSize():]
+
+	// create a sample tree with namespace ID size of 2
+	nmt2 := exampleNMT(2, 1, 2, 3, 4, 5, 6, 7, 8)
+	root2, err := nmt2.Root()
+	require.NoError(t, err)
+	nid4_2 := namespace.ID{4, 4}
+	proof4_2, err := nmt2.ProveRange(3, 4) // leaf at index 3 has namespace ID 4
+	require.NoError(t, err)
+	leaf4_2 := nmt2.leaves[3][nmt2.NamespaceSize():]
 
 	type args struct {
 		hasher                 hash.Hash
@@ -302,9 +289,12 @@ func TestVerifyInclusion_False(t *testing.T) {
 		args   args
 		result bool
 	}{
-		{"wrong proof.nodes: the last node has an incorrect format", proof4, args{hasher, nID4, [][]byte{leaf4WithoutNamespace}, root}, false},
-		{"inconsistent namespace ID size between proof and the nid argument of VerifyInclusion", proof0, args{hasher, nID0, [][]byte{leaf0WithoutNamespace}, root}, false},
-		{"inconsistent namespace ID size between root and the nid argument of VerifyInclusion", proof1, args{hasher, nID1, [][]byte{leaf1WithoutNamespace}, root1}, false},
+		{"inconsistent namespace ID size between proof and the nid argument of VerifyInclusion", proof4_2, args{hasher, nid4_1, [][]byte{leaf4_1}, root1}, false},
+		{"inconsistent namespace ID size between proof and the nid argument of VerifyInclusion", proof4_1, args{hasher, nid4_2, [][]byte{leaf4_2}, root2}, false},
+		{"inconsistent namespace ID size between root and the nid argument of VerifyInclusion", proof4_2, args{hasher, nid4_2, [][]byte{leaf4_2}, root1}, false},
+		{"inconsistent namespace ID size between root and the nid argument of VerifyInclusion", proof4_1, args{hasher, nid4_1, [][]byte{leaf4_1}, root2}, false},
+		{"inconsistent namespace ID size between proof and root and the nid argument of VerifyInclusion", proof4_2, args{hasher, nid4_1, [][]byte{leaf4_1}, root2}, false},
+		{"inconsistent namespace ID size between proof and root and the nid argument of VerifyInclusion", proof4_1, args{hasher, nid4_2, [][]byte{leaf4_2}, root1}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
