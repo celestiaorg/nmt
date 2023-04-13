@@ -353,6 +353,15 @@ func TestValidateNodeFormat(t *testing.T) {
 			true,
 			ErrInvalidNodeLen,
 		},
+		{
+			"invalid node: length > 2 * namespace.IDSize + hashSize",
+			2,
+			minNID,
+			maxNID,
+			concat(hashValue, []byte{1}),
+			true,
+			ErrInvalidNodeLen,
+		},
 	}
 
 	for _, tt := range tests {
