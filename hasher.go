@@ -194,12 +194,12 @@ func (n *Hasher) MustHashLeaf(ndata []byte) []byte {
 }
 
 // ValidateNodeFormat checks whether the supplied node conforms to the
-// namespaced hash format and  returns ErrInvalidNodeLen if not.
+// namespaced hash format and returns ErrInvalidNodeLen if not.
 func (n *Hasher) ValidateNodeFormat(node []byte) (err error) {
 	expectedNodeLen := n.Size()
 	nodeLen := len(node)
 	if nodeLen != expectedNodeLen {
-		return fmt.Errorf("%w: got: %v, want >= %v", ErrInvalidNodeLen, nodeLen, expectedNodeLen)
+		return fmt.Errorf("%w: got: %v, want %v", ErrInvalidNodeLen, nodeLen, expectedNodeLen)
 	}
 	return nil
 }
