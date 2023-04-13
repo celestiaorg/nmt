@@ -3,9 +3,10 @@ package nmt
 import (
 	"bytes"
 	"crypto/sha256"
-	"github.com/stretchr/testify/assert"
 	"hash"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 
 	"github.com/stretchr/testify/require"
 
