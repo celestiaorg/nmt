@@ -306,12 +306,12 @@ func (proof Proof) verifyLeafHashes(nth *Hasher, verifyCompleteness bool, nID na
 func (proof Proof) VerifyInclusion(h hash.Hash, nid namespace.ID, leavesWithoutNamespace [][]byte, root []byte) bool {
 	nth := NewNmtHasher(h, nid.Size(), proof.isMaxNamespaceIDIgnored)
 
-	// perform some early sanity checks:
-	// check that the root is valid
+	// perform some consistency checks:
+	// check that the root is valid w.r.t the NMT hasher
 	if err := nth.ValidateNodeFormat(root); err != nil {
 		return false
 	}
-	// check that all the proof nodes are valid
+	// check that all the proof.nodes are valid w.r.t the NMT hasher
 	for _, node := range proof.nodes {
 		if err := nth.ValidateNodeFormat(node); err != nil {
 			return false
