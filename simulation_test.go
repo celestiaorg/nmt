@@ -12,8 +12,8 @@ import (
 
 const nidSize = 2
 
-func getLeavesFromState(state gjson.Result, nidSize int) [][]byte {
-	itf_leaves := state.Get("leaves_v").Array()
+func getLeavesFromState(state gjson.Result, nidSize int, key string) [][]byte {
+	itf_leaves := state.Get(key).Array()
 	var leaves [][]byte
 
 	for _, itf_leaf := range itf_leaves {
@@ -97,7 +97,7 @@ func TestFromITF(t *testing.T) {
 		// only the states marked "final"
 		if state.Get("state_v").String() == "final" {
 			modelNamespace := int(state.Get("namespace_v").Int())
-			modelLeaves := getLeavesFromState(state, nidSize)
+			modelLeaves := getLeavesFromState(state, nidSize, "leaves_v")
 			modelProof := state.Get("proof_v")
 			corrupted := state.Get("corrupted").Bool()
 			t.Logf("Obtained state data:\n\tState namespace: %v\n\tleaves: %v\n\tcorrupted: %v\n",
@@ -165,5 +165,57 @@ func TestFromITF(t *testing.T) {
 			continue
 		}
 
+	}
+}
+
+func TestFromScenario(t *testing.T) {
+	itfFileName := "formal_spec/ITF_files/scenario.json"
+	data, err := ioutil.ReadFile(itfFileName)
+	if err != nil {
+		t.Errorf("Error opening file: %v", err)
+	}
+	tests := gjson.GetBytes(data, "testCases").Array()
+
+	for _, tt := range tests {
+		states := tt.Get("states").Array()
+		lastState := states[len(states)-1]
+		namespaceId := int(lastState.Get("namespace_v").Int())
+
+		itf_leaves := lastState.Get("leaves_namespace_idx_v").Array()
+
+		tree := nmt.New(sha256.New(), nmt.NamespaceIDSize(nidSize))
+		for _, itf_leaf := range itf_leaves {
+			leaf_id := int(itf_leaf.Int())
+			pushData := namespace.PrefixedData(append(
+				intToBytes(leaf_id, nidSize),
+				[]byte("dummy_data")...))
+			err := tree.Push(pushData)
+			if err != nil {
+				t.Fatalf("invalid test case: %v, error on Push(): %v", tt.Get("name").String(), err)
+			}
+		}
+		proveNID := intToBytes(namespaceId, nidSize)
+		gotProof, err := tree.ProveNamespace(proveNID)
+		if err != nil {
+			t.Fatalf("ProveNamespace() unexpected error: %v", err)
+		}
+
+		gotFound := gotProof.IsNonEmptyRange() && len(gotProof.LeafHash()) == 0
+		wantFound := lastState.Get("namespaceIdFound_v").Bool()
+
+		if gotFound != wantFound {
+			t.Errorf("Proof.ProveNamespace() gotFound = %v, wantFound = %v ", gotFound, wantFound)
+		}
+
+		// Verification round-trip should always pass:
+		gotGetLeaves := tree.Get(proveNID)
+		r, err := tree.Root()
+		if err != nil {
+			t.Fatalf("Root() unexpected error: %v", err)
+		}
+		gotChecksOut := gotProof.VerifyNamespace(sha256.New(), proveNID, gotGetLeaves, r)
+		if !gotChecksOut {
+			t.Errorf("Proof.VerifyNamespace() gotChecksOut: %v, want: true", gotChecksOut)
+		}
 	}
 }

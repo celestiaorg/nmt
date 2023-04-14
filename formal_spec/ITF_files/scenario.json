@@ -1,0 +1,98 @@
+{
+    "#meta": {
+        "source": "tests.qnt",
+        "status": "violation",
+        "generatedBy": "Quint",
+        "timestamp": 1681461155649
+    },
+    "vars": [
+        "leaves_namespace_idx_v",
+        "namespace_v",
+        "namespaceIdFound_v"
+    ],
+    "testCases": [
+        {
+            "name": "5 leaves and not found but within range",
+            "states": [
+            {
+                "leaves_namespace_idx_v": [
+                    39
+                ],
+                "namespace_v": 56,
+                "namespaceIdFound_v": false
+            },
+            {
+                "leaves_namespace_idx_v": [
+                    39,
+                    71
+                ],
+                "namespace_v": 56,
+                "namespaceIdFound_v": false
+            },
+            {
+                "leaves_namespace_idx_v": [
+                    39,
+                    71,
+                    92
+                ],
+                "namespace_v": 56,
+                "namespaceIdFound_v": false
+            },
+            {
+                "leaves_namespace_idx_v": [
+                    39,
+                    71,
+                    92,
+                    92
+                ],
+                "namespace_v": 56,
+                "namespaceIdFound_v": false
+            },
+            {
+                "leaves_namespace_idx_v": [
+                    39,
+                    71,
+                    92,
+                    92,
+                    100
+                ],
+                "namespace_v": 56,
+                "namespaceIdFound_v": false
+            }
+            ]
+        },
+        {
+            "name": "two leaves and found",
+            "states": [
+                {
+                    "leaves_namespace_idx_v": [
+                        42
+                    ],
+                    "namespace_v": 56,
+                    "namespaceIdFound_v": false
+                },
+                {
+                    "leaves_namespace_idx_v": [
+                        42,
+                        56
+                    ],
+                    "namespace_v": 56,
+                    "namespaceIdFound_v": true
+                }
+            ]
+        },
+        {
+            "name": "not found",
+            "states": [
+                {
+                    "leaves_namespace_idx_v": [
+                        39
+                    ],
+                    "namespace_v": 94,
+                    "namespaceIdFound_v": false
+                }
+            ]
+        }
+    ]
+    
+}
