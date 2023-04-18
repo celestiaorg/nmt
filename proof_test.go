@@ -308,8 +308,10 @@ func TestVerifyInclusion_False(t *testing.T) {
 }
 
 func TestVerifyNamespace_False(t *testing.T) {
+	nIDs := []byte{1, 2, 3, 4, 5, 6, 7, 8, 11}
+
 	// create a sample tree with namespace ID size of 1
-	nmt1 := exampleNMT(1, 1, 2, 3, 4, 5, 6, 7, 8, 11)
+	nmt1 := exampleNMT(1, nIDs...)
 	root1, err := nmt1.Root()
 	require.NoError(t, err)
 	nid4_1 := namespace.ID{4}
@@ -317,7 +319,7 @@ func TestVerifyNamespace_False(t *testing.T) {
 	require.NoError(t, err)
 
 	// create a sample tree with namespace ID size of 2
-	nmt2 := exampleNMT(2, 1, 2, 3, 4, 5, 6, 7, 8, 11)
+	nmt2 := exampleNMT(2, nIDs...)
 	root2, err := nmt2.Root()
 	require.NoError(t, err)
 	nid4_2 := namespace.ID{4, 4}
