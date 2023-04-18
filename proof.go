@@ -142,7 +142,7 @@ func (proof Proof) VerifyNamespace(h hash.Hash, nID namespace.ID, leaves [][]byt
 		}
 	}
 
-	// if the proof is an absence proof, the leafHash must be valid
+	// if the proof is an absence proof, the leafHash must be valid w.r.t the NMT hasher
 	if proof.IsOfAbsence() {
 		if err := nth.ValidateNodeFormat(proof.leafHash); err != nil {
 			return false
