@@ -243,9 +243,9 @@ func TestVerifyLeafHashes_Err(t *testing.T) {
 		root               []byte
 		wantErr            bool
 	}{
-		{" wrong leafHash: not namespaced", proof5, hasher, true, nID5, [][]byte{leafHash5}, root, true},
-		{" wrong leafHash: incorrect namespace", proof5, hasher, true, nID5, [][]byte{{10, 10, 10, 10}}, root, true},
-		{" wrong proof.nodes: the last node has an incorrect format", proof4, hasher, false, nID4, [][]byte{leafHash4}, root, true},
+		{"wrong leafHash: not namespaced", proof5, hasher, true, nID5, [][]byte{leafHash5}, root, true},
+		{"wrong leafHash: incorrect namespace", proof5, hasher, true, nID5, [][]byte{{10, 10, 10, 10}}, root, true},
+		{"wrong proof.nodes: the last node has an incorrect format", proof4, hasher, false, nID4, [][]byte{leafHash4}, root, true},
 		//  the verifyCompleteness parameter in the verifyProof function should be set to false in order to bypass nodes correctness check during the completeness verification (otherwise it panics).
 	}
 	for _, tt := range tests {
@@ -302,6 +302,125 @@ func TestVerifyInclusion_False(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := tt.proof.VerifyInclusion(tt.args.hasher, tt.args.nID, tt.args.leavesWithoutNamespace, tt.args.root)
+			assert.Equal(t, tt.result, got)
+		})
+	}
+}
+
+func TestVerifyNamespace_False(t *testing.T) {
+	nIDs := []byte{1, 2, 3, 4, 5, 6, 7, 8, 11}
+
+	// create a sample tree with namespace ID size of 1
+	nmt1 := exampleNMT(1, nIDs...)
+	root1, err := nmt1.Root()
+	require.NoError(t, err)
+	nid4_1 := namespace.ID{4}
+	proof4_1, err := nmt1.ProveNamespace(nid4_1) // leaf at index 3 has namespace ID 4
+	require.NoError(t, err)
+
+	// create a sample tree with namespace ID size of 2
+	nmt2 := exampleNMT(2, nIDs...)
+	root2, err := nmt2.Root()
+	require.NoError(t, err)
+	nid4_2 := namespace.ID{4, 4}
+	proof4_2, err := nmt2.ProveNamespace(nid4_2) // leaf at index 3 has namespace ID 4
+	require.NoError(t, err)
+
+	leaf := nmt1.leaves[3]
+
+	// create an absence proof with namespace ID size of 1
+	nid9_1 := namespace.ID{9}
+	absenceProof9_1, err := nmt1.ProveNamespace(nid9_1)
+	require.NoError(t, err)
+	require.True(t, absenceProof9_1.IsOfAbsence())
+
+	// create an absence proof with namespace ID size of 2
+	nid9_2 := namespace.ID{9, 9}
+	absenceProof9_2, err := nmt2.ProveNamespace(nid9_2)
+	require.NoError(t, err)
+	require.True(t, absenceProof9_2.IsOfAbsence())
+
+	// swap leafHashes of the absence proofs
+	buffer := absenceProof9_2.leafHash
+	absenceProof9_2.leafHash = absenceProof9_1.leafHash
+	absenceProof9_1.leafHash = buffer
+
+	hasher := sha256.New()
+
+	type args struct {
+		hasher hash.Hash
+		nID    namespace.ID
+		leaves [][]byte
+		root   []byte
+	}
+	tests := []struct {
+		name   string
+		proof  Proof
+		args   args
+		result bool
+	}{
+		{"nID size of proof < nID size of VerifyNamespace's nmt hasher", proof4_1, args{hasher, nid4_2, [][]byte{leaf}, root2}, false},
+		{"nID size of proof > nID size of VerifyNamespace's nmt hasher", proof4_2, args{hasher, nid4_1, [][]byte{leaf}, root1}, false},
+		{"nID size of root < nID size of VerifyNamespace's nmt hasher", proof4_2, args{hasher, nid4_2, [][]byte{leaf}, root1}, false},
+		{"nID size of root > nID size of VerifyNamespace's nmt hasher", proof4_1, args{hasher, nid4_1, [][]byte{leaf}, root2}, false},
+		{"nID size of proof.leafHash < nID size of VerifyNamespace's nmt hasher", absenceProof9_2, args{hasher, nid9_2, [][]byte{}, root2}, false},
+		{"nID size of proof.leafHash > nID size of VerifyNamespace's nmt hasher", absenceProof9_1, args{hasher, nid9_1, [][]byte{}, root1}, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := tt.proof.VerifyNamespace(tt.args.hasher, tt.args.nID, tt.args.leaves, tt.args.root)
+			assert.Equal(t, tt.result, got)
+		})
+	}
+}
+
+func TestVerifyLeafHashes_False(t *testing.T) {
+	nIDs := []byte{1, 2, 3, 4, 5, 6, 7, 8}
+
+	// create a sample tree with namespace ID size of 1
+	nmt1 := exampleNMT(1, nIDs...)
+	root1, err := nmt1.Root()
+	require.NoError(t, err)
+	nid4_1 := namespace.ID{4}
+	proof4_1, err := nmt1.ProveNamespace(nid4_1) // leaf at index 3 has namespace ID 4
+	require.NoError(t, err)
+
+	// create a sample tree with namespace ID size of 2
+	nmt2 := exampleNMT(2, nIDs...)
+	root2, err := nmt2.Root()
+	require.NoError(t, err)
+	nid4_2 := namespace.ID{4, 4}
+	proof4_2, err := nmt2.ProveNamespace(nid4_2) // leaf at index 3 has namespace ID 4
+	require.NoError(t, err)
+
+	leafHash1 := nmt1.leafHashes[3]
+	leafHash2 := nmt2.leafHashes[3]
+
+	type args struct {
+		nIDSize namespace.IDSize
+		nID     namespace.ID
+		leaves  [][]byte
+		root    []byte
+	}
+	tests := []struct {
+		name   string
+		proof  Proof
+		args   args
+		result bool
+	}{
+		{"nID size of proof < nID size of verifyLeafHashes' nmt hasher", proof4_1, args{2, nid4_2, [][]byte{leafHash2}, root2}, false},
+		{"nID size of proof > nID size of verifyLeafHashes' nmt hasher", proof4_2, args{1, nid4_1, [][]byte{leafHash1}, root1}, false},
+		{"nID size of root < nID size of verifyLeafHashes' nmt hasher", proof4_2, args{2, nid4_2, [][]byte{leafHash2}, root1}, false},
+		{"nID size of root > nID size of verifyLeafHashes' nmt hasher", proof4_1, args{1, nid4_1, [][]byte{leafHash1}, root2}, false},
+		{"size of queried nID > nID size of verifyLeafHashes' nmt hasher", proof4_1, args{1, nid4_2, [][]byte{leafHash1}, root1}, false},
+		{"size of queried nID < nID size of verifyLeafHashes' nmt hasher", proof4_2, args{2, nid4_1, [][]byte{leafHash2}, root2}, false},
+		{"nID size of leafHash < nID size of verifyLeafHashes' nmt hasher", proof4_2, args{2, nid4_2, [][]byte{leafHash1}, root2}, false},
+		{"nID size of leafHash > nID size of verifyLeafHashes' nmt hasher", proof4_1, args{1, nid4_1, [][]byte{leafHash2}, root1}, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			hasher := NewNmtHasher(sha256.New(), tt.args.nIDSize, true)
+			got, _ := tt.proof.verifyLeafHashes(hasher, true, tt.args.nID, tt.args.leaves, tt.args.root)
 			assert.Equal(t, tt.result, got)
 		})
 	}

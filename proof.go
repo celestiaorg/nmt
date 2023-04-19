@@ -126,28 +126,43 @@ func NewAbsenceProof(proofStart, proofEnd int, proofNodes [][]byte, leafHash []b
 //	`end-1` of the tree.
 //
 // `root` is the root of the NMT against which the `proof` is verified.
-func (proof Proof) VerifyNamespace(h hash.Hash, nID namespace.ID, data [][]byte, root []byte) bool {
-	nth := NewNmtHasher(h, nID.Size(), proof.isMaxNamespaceIDIgnored)
-	min := namespace.ID(MinNamespace(root, nID.Size()))
-	max := namespace.ID(MaxNamespace(root, nID.Size()))
-	if nID.Size() != min.Size() || nID.Size() != max.Size() {
-		// conflicting namespace sizes
+func (proof Proof) VerifyNamespace(h hash.Hash, nID namespace.ID, leaves [][]byte, root []byte) bool {
+	nIDLen := nID.Size()
+	nth := NewNmtHasher(h, nIDLen, proof.isMaxNamespaceIDIgnored)
+
+	// perform some consistency checks:
+	// check that the root is valid w.r.t the NMT hasher
+	if err := nth.ValidateNodeFormat(root); err != nil {
 		return false
+	}
+	// check that all the proof.nodes are valid w.r.t the NMT hasher
+	for _, node := range proof.nodes {
+		if err := nth.ValidateNodeFormat(node); err != nil {
+			return false
+		}
+	}
+
+	// if the proof is an absence proof, the leafHash must be valid w.r.t the NMT hasher
+	if proof.IsOfAbsence() {
+		if err := nth.ValidateNodeFormat(proof.leafHash); err != nil {
+			return false
+		}
 	}
 
 	isEmptyRange := proof.start == proof.end
-	if len(data) == 0 && isEmptyRange && len(proof.nodes) == 0 {
+	if len(leaves) == 0 && isEmptyRange && len(proof.nodes) == 0 {
 		// empty proofs are always rejected unless nID is outside the range of
 		// namespaces covered by the root we special case the empty root, since
 		// it purports to cover the zero namespace but does not actually include
 		// any such nodes
+		min := namespace.ID(MinNamespace(root, nIDLen))
+		max := namespace.ID(MaxNamespace(root, nIDLen))
 		if nID.Less(min) || max.Less(nID) || bytes.Equal(root, nth.EmptyRoot()) {
 			return true
 		}
 		return false
 	}
-	gotLeafHashes := make([][]byte, 0, len(data))
-	nIDLen := nID.Size()
+	gotLeafHashes := make([][]byte, 0, len(leaves))
 	if proof.IsOfAbsence() {
 		gotLeafHashes = append(gotLeafHashes, proof.leafHash)
 		// conduct some sanity checks:
@@ -160,7 +175,7 @@ func (proof Proof) VerifyNamespace(h hash.Hash, nID namespace.ID, data [][]byte,
 	} else {
 		// collect leaf hashes from provided data and do some sanity checks:
 		hashLeafFunc := nth.HashLeaf
-		for _, gotLeaf := range data {
+		for _, gotLeaf := range leaves {
 			if nth.ValidateLeaf(gotLeaf) != nil {
 				return false
 			}
@@ -179,7 +194,8 @@ func (proof Proof) VerifyNamespace(h hash.Hash, nID namespace.ID, data [][]byte,
 	}
 	// check whether the number of leaves match the proof range i.e., end-start.
 	// If not, make an early return.
-	if !proof.IsOfAbsence() && len(gotLeafHashes) != (proof.End()-proof.Start()) {
+	expectedLeafCount := proof.End() - proof.Start()
+	if !proof.IsOfAbsence() && len(gotLeafHashes) != expectedLeafCount {
 		return false
 	}
 	// with verifyCompleteness set to true:
@@ -200,6 +216,27 @@ func (proof Proof) VerifyNamespace(h hash.Hash, nID namespace.ID, data [][]byte,
 // tree represented by the root parameter that matches the namespace ID nID
 // but is not present in the leafHashes list.
 func (proof Proof) verifyLeafHashes(nth *Hasher, verifyCompleteness bool, nID namespace.ID, leafHashes [][]byte, root []byte) (bool, error) {
+	// perform some consistency checks:
+	if nID.Size() != nth.NamespaceSize() {
+		return false, fmt.Errorf("namespace ID size (%d) does not match the namespace size of the NMT hasher (%d)", nID.Size(), nth.NamespaceSize())
+	}
+	// check that the root is valid w.r.t the NMT hasher
+	if err := nth.ValidateNodeFormat(root); err != nil {
+		return false, fmt.Errorf("root does not match the NMT hasher's hash format: %w", err)
+	}
+	// check that all the proof.nodes are valid w.r.t the NMT hasher
+	for _, node := range proof.nodes {
+		if err := nth.ValidateNodeFormat(node); err != nil {
+			return false, fmt.Errorf("proof nodes do not match the NMT hasher's hash format: %w", err)
+		}
+	}
+	// check that all the proof.nodes are valid w.r.t the NMT hasher
+	for _, leaf := range leafHashes {
+		if err := nth.ValidateNodeFormat(leaf); err != nil {
+			return false, fmt.Errorf("leaf hash does not match the NMT hasher's hash format: %w", err)
+		}
+	}
+
 	var leafIndex uint64
 	// leftSubtrees is to be populated by the subtree roots upto [0, r.Start)
 	leftSubtrees := make([][]byte, 0, len(proof.nodes))
