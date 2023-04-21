@@ -30,7 +30,7 @@ func TestVerifyNamespace_EmptyProof(t *testing.T) {
 
 	// build a proof for an NID that is within the namespace range of the tree
 	nID1 := []byte{1}
-	invalidEmptyProof, err := tree.ProveNamespace([]byte{1})
+	invalidEmptyProof, err := tree.ProveNamespace(nID1)
 	require.NoError(t, err)
 	data1 := [][]byte{tree.leaves[0]}
 	// modify the proof to be empty
