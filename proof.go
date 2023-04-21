@@ -106,6 +106,11 @@ func NewAbsenceProof(proofStart, proofEnd int, proofNodes [][]byte, leafHash []b
 	return Proof{proofStart, proofEnd, proofNodes, leafHash, ignoreMaxNamespace}
 }
 
+// isEmptyProof checks whether the proof corresponds to an empty proof.
+func (proof Proof) isEmptyProof() bool {
+	return proof.start == proof.end
+}
+
 // VerifyNamespace verifies a whole namespace, i.e. 1) it verifies inclusion of
 // the provided `data` in the tree (or the proof.leafHash in case of absence
 // proof) 2) it verifies that the namespace is complete i.e., the data items
@@ -149,8 +154,7 @@ func (proof Proof) VerifyNamespace(h hash.Hash, nID namespace.ID, leaves [][]byt
 		}
 	}
 
-	isEmptyRange := proof.start == proof.end
-	if len(leaves) == 0 && isEmptyRange && len(proof.nodes) == 0 {
+	if proof.isEmptyProof() {
 		// empty proofs are always rejected unless nID is outside the range of
 		// namespaces covered by the root we special case the empty root, since
 		// it purports to cover the zero namespace but does not actually include

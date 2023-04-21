@@ -13,6 +13,55 @@ import (
 	"github.com/celestiaorg/nmt/namespace"
 )
 
+// TestVerifyNamespace_EmptyProof tests the correct behaviour of VerifyNamespace for valid and invalid empty proofs.
+func TestVerifyNamespace_EmptyProof(t *testing.T) {
+
+	// create a tree with 4 leaves
+	nIDSize := 1
+	tree := exampleNMT(nIDSize, 1, 2, 3, 4)
+	root, err := tree.Root()
+	require.NoError(t, err)
+
+	// build a proof for an NID that is outside tree range of the tree
+	nID0 := []byte{0}
+	validEmptyProof, err := tree.ProveNamespace(nID0)
+	require.NoError(t, err)
+	data0 := [][]byte{}
+
+	// build a proof for an NID that is within the namespace range of the tree
+	nID1 := []byte{1}
+	invalidEmptyProof, err := tree.ProveNamespace([]byte{1})
+	require.NoError(t, err)
+	data1 := [][]byte{tree.leaves[0]}
+	// modify the proof to be empty
+	invalidEmptyProof.start = invalidEmptyProof.end
+
+	hasher := sha256.New()
+	type args struct {
+		proof  Proof
+		hasher hash.Hash
+		nID    namespace.ID
+		leaves [][]byte
+		root   []byte
+	}
+
+	tests := []struct {
+		name string
+		args args
+		want bool
+	}{
+		{"valid empty proof", args{validEmptyProof, hasher, nID0, data0, root}, true},
+		{"invalid empty proof", args{invalidEmptyProof, hasher, nID1, data1, root}, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.args.proof.VerifyNamespace(tt.args.hasher, tt.args.nID, tt.args.leaves, tt.args.root); got != tt.want {
+				t.Errorf("VerifyNamespace() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestProof_VerifyNamespace_False(t *testing.T) {
 	const testNidLen = 3
 
