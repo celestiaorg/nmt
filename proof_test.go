@@ -15,7 +15,6 @@ import (
 
 // TestVerifyNamespace_EmptyProof tests the correct behaviour of VerifyNamespace for valid and invalid empty proofs.
 func TestVerifyNamespace_EmptyProof(t *testing.T) {
-
 	// create a tree with 4 leaves
 	nIDSize := 1
 	tree := exampleNMT(nIDSize, 1, 2, 3, 4)

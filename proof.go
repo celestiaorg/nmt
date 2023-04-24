@@ -4,9 +4,10 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/celestiaorg/nmt/namespace"
 	"hash"
 	"math/bits"
+
+	"github.com/celestiaorg/nmt/namespace"
 )
 
 // ErrFailedCompletenessCheck indicates that the verification of a namespace proof failed due to the lack of completeness property.
@@ -169,10 +170,9 @@ func (proof Proof) VerifyNamespace(h hash.Hash, nID namespace.ID, leaves [][]byt
 				return true
 			}
 			return false
-		} else {
-			// the proof range is empty, and invalid
-			return false
 		}
+		// the proof range is empty, and invalid
+		return false
 	}
 
 	gotLeafHashes := make([][]byte, 0, len(leaves))
