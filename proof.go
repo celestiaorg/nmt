@@ -156,13 +156,13 @@ func (proof Proof) VerifyNamespace(h hash.Hash, nID namespace.ID, leaves [][]byt
 	isEmptyRange := proof.start == proof.end
 	if isEmptyRange {
 		if proof.IsOfEmptyProof() && len(leaves) == 0 {
-			min := namespace.ID(MinNamespace(root, nIDLen))
-			max := namespace.ID(MaxNamespace(root, nIDLen))
-			// empty proofs are always rejected unless nID is outside the range of
-			// namespaces covered by the root we special case the empty root, since
+			rootMin := namespace.ID(MinNamespace(root, nIDLen))
+			rootMax := namespace.ID(MaxNamespace(root, nIDLen))
+			// empty proofs are always rejected unless 1) nID is outside the range of
+			// namespaces covered by the root 2) the root represents an empty tree, since
 			// it purports to cover the zero namespace but does not actually include
 			// any such nodes
-			if nID.Less(min) || max.Less(nID) {
+			if nID.Less(rootMin) || rootMax.Less(nID) {
 				return true
 			}
 			if bytes.Equal(root, nth.EmptyRoot()) {
