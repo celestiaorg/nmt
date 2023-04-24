@@ -105,7 +105,7 @@ func NewAbsenceProof(proofStart, proofEnd int, proofNodes [][]byte, leafHash []b
 	return Proof{proofStart, proofEnd, proofNodes, leafHash, ignoreMaxNamespace}
 }
 
-// IsOfEmptyProof checks whether the proof corresponds to an out of range proof.
+// IsOfEmptyProof checks whether the proof corresponds to an empty proof as defined in NMT specifications https://github.com/celestiaorg/nmt/blob/master/docs/spec/nmt.md.
 func (proof Proof) IsOfEmptyProof() bool {
 	return proof.start == proof.end && len(proof.nodes) == 0
 }
