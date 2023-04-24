@@ -4,10 +4,9 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/celestiaorg/nmt/namespace"
 	"hash"
 	"math/bits"
-
-	"github.com/celestiaorg/nmt/namespace"
 )
 
 // ErrFailedCompletenessCheck indicates that the verification of a namespace proof failed due to the lack of completeness property.
@@ -106,9 +105,9 @@ func NewAbsenceProof(proofStart, proofEnd int, proofNodes [][]byte, leafHash []b
 	return Proof{proofStart, proofEnd, proofNodes, leafHash, ignoreMaxNamespace}
 }
 
-// isEmptyProof checks whether the proof corresponds to an empty proof.
-func (proof Proof) isEmptyProof() bool {
-	return proof.start == proof.end
+// IsOfEmptyProof checks whether the proof corresponds to an out of range proof.
+func (proof Proof) IsOfEmptyProof() bool {
+	return proof.start == proof.end && len(proof.nodes) == 0
 }
 
 // VerifyNamespace verifies a whole namespace, i.e. 1) it verifies inclusion of
@@ -154,18 +153,28 @@ func (proof Proof) VerifyNamespace(h hash.Hash, nID namespace.ID, leaves [][]byt
 		}
 	}
 
-	if proof.isEmptyProof() {
-		// empty proofs are always rejected unless nID is outside the range of
-		// namespaces covered by the root we special case the empty root, since
-		// it purports to cover the zero namespace but does not actually include
-		// any such nodes
-		min := namespace.ID(MinNamespace(root, nIDLen))
-		max := namespace.ID(MaxNamespace(root, nIDLen))
-		if nID.Less(min) || max.Less(nID) || bytes.Equal(root, nth.EmptyRoot()) {
-			return true
+	isEmptyRange := proof.start == proof.end
+	if isEmptyRange {
+		if proof.IsOfEmptyProof() && len(leaves) == 0 {
+			min := namespace.ID(MinNamespace(root, nIDLen))
+			max := namespace.ID(MaxNamespace(root, nIDLen))
+			// empty proofs are always rejected unless nID is outside the range of
+			// namespaces covered by the root we special case the empty root, since
+			// it purports to cover the zero namespace but does not actually include
+			// any such nodes
+			if nID.Less(min) || max.Less(nID) {
+				return true
+			}
+			if bytes.Equal(root, nth.EmptyRoot()) {
+				return true
+			}
+			return false
+		} else {
+			// the proof range is empty, and invalid
+			return false
 		}
-		return false
 	}
+
 	gotLeafHashes := make([][]byte, 0, len(leaves))
 	if proof.IsOfAbsence() {
 		gotLeafHashes = append(gotLeafHashes, proof.leafHash)

@@ -23,18 +23,34 @@ func TestVerifyNamespace_EmptyProof(t *testing.T) {
 	require.NoError(t, err)
 
 	// build a proof for an NID that is outside tree range of the tree
+	// start = end = 0, nodes = empty
 	nID0 := []byte{0}
-	validEmptyProof, err := tree.ProveNamespace(nID0)
+	validEmptyProofZeroRange, err := tree.ProveNamespace(nID0)
 	require.NoError(t, err)
-	data0 := [][]byte{}
+
+	// build a proof for an NID that is outside tree range of the tree
+	// start = end = 1, nodes = nil
+	validEmptyProofNonZeroRange, err := tree.ProveNamespace(nID0)
+	require.NoError(t, err)
+	// modify the proof range to be non-zero, it should still be valid
+	validEmptyProofNonZeroRange.start = 1
+	validEmptyProofNonZeroRange.end = 1
 
 	// build a proof for an NID that is within the namespace range of the tree
+	// start = end = 0, nodes = non-empty
 	nID1 := []byte{1}
-	invalidEmptyProof, err := tree.ProveNamespace(nID1)
+	zeroRangeOnlyProof, err := tree.ProveNamespace(nID1)
 	require.NoError(t, err)
-	data1 := [][]byte{tree.leaves[0]}
-	// modify the proof to be empty
-	invalidEmptyProof.start = invalidEmptyProof.end
+	// modify the proof to contain a zero range
+	zeroRangeOnlyProof.start = 0
+	zeroRangeOnlyProof.end = 0
+
+	// build a proof for an NID that is within the namespace range of the tree
+	// start = 0, end = 1, nodes = empty
+	emptyNodesOnlyProof, err := tree.ProveNamespace(nID1)
+	require.NoError(t, err)
+	// modify the proof nodes to be empty
+	emptyNodesOnlyProof.nodes = [][]byte{}
 
 	hasher := sha256.New()
 	type args struct {
@@ -46,15 +62,21 @@ func TestVerifyNamespace_EmptyProof(t *testing.T) {
 	}
 
 	tests := []struct {
-		name string
-		args args
-		want bool
+		name              string
+		args              args
+		want              bool
+		isValidEmptyProof bool
 	}{
-		{"valid empty proof", args{validEmptyProof, hasher, nID0, data0, root}, true},
-		{"invalid empty proof", args{invalidEmptyProof, hasher, nID1, data1, root}, false},
+		{"valid empty proof  with (start == end) == 0 and empty leaves", args{validEmptyProofZeroRange, hasher, nID0, [][]byte{}, root}, true, true},
+		{"valid empty proof with (start == end) != 0 and empty leaves", args{validEmptyProofNonZeroRange, hasher, nID0, [][]byte{}, root}, true, true},
+		{"valid empty proof  with (start == end) == 0 and non-empty leaves", args{validEmptyProofZeroRange, hasher, nID0, [][]byte{{1}}, root}, false, true},
+		{"valid empty proof with (start == end) != 0 and non-empty leaves", args{validEmptyProofNonZeroRange, hasher, nID0, [][]byte{{1}}, root}, false, true},
+		{"invalid empty proof: start == end == 0, nodes == non-empty", args{zeroRangeOnlyProof, hasher, nID1, [][]byte{}, root}, false, false},
+		{"invalid empty proof:  start == 0, end == 1, nodes == empty", args{emptyNodesOnlyProof, hasher, nID1, [][]byte{}, root}, false, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			require.True(t, tt.args.proof.IsOfEmptyProof() == tt.isValidEmptyProof)
 			if got := tt.args.proof.VerifyNamespace(tt.args.hasher, tt.args.nID, tt.args.leaves, tt.args.root); got != tt.want {
 				t.Errorf("VerifyNamespace() = %v, want %v", got, tt.want)
 			}
