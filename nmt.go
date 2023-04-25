@@ -254,7 +254,7 @@ func (n *NamespacedMerkleTree) buildRangeProof(proofStart, proofEnd int) ([][]by
 	var recurse func(start, end int, includeNode bool) ([]byte, error)
 
 	// validate the range
-	if proofStart < 0 || proofStart > proofEnd || proofEnd > len(n.leafHashes) {
+	if proofStart < 0 || proofStart >= proofEnd || proofEnd > len(n.leafHashes) {
 		return nil, ErrInvalidRange
 	}
 

@@ -893,6 +893,7 @@ func Test_buildRangeProof_Err(t *testing.T) {
 		{"unordered leaf hashes: the last leaf", treeWithUnorderedLeafHashes, 7, 8, true, ErrUnorderedSiblings}, // for a tree with an unordered set of leaves, the buildRangeProof function  should produce an error for any input range,
 		// not just the corrupted range.
 		{"invalid proof range: start > end", validTree, 5, 4, true, ErrInvalidRange},
+		{"invalid proof range: start = end", validTree, 5, 5, true, ErrInvalidRange},
 		{"invalid proof range: start < 0", validTree, -1, 4, true, ErrInvalidRange},
 		{"invalid proof range: end > number of leaves", validTree, 0, len(validTree.leaves) + 1, true, ErrInvalidRange},
 	}
