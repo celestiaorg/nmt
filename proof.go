@@ -106,6 +106,11 @@ func NewAbsenceProof(proofStart, proofEnd int, proofNodes [][]byte, leafHash []b
 	return Proof{proofStart, proofEnd, proofNodes, leafHash, ignoreMaxNamespace}
 }
 
+// IsEmptyProof checks whether the proof corresponds to an empty proof as defined in NMT specifications https://github.com/celestiaorg/nmt/blob/master/docs/spec/nmt.md.
+func (proof Proof) IsEmptyProof() bool {
+	return proof.start == proof.end && len(proof.nodes) == 0
+}
+
 // VerifyNamespace verifies a whole namespace, i.e. 1) it verifies inclusion of
 // the provided `data` in the tree (or the proof.leafHash in case of absence
 // proof) 2) it verifies that the namespace is complete i.e., the data items
@@ -150,18 +155,26 @@ func (proof Proof) VerifyNamespace(h hash.Hash, nID namespace.ID, leaves [][]byt
 	}
 
 	isEmptyRange := proof.start == proof.end
-	if len(leaves) == 0 && isEmptyRange && len(proof.nodes) == 0 {
-		// empty proofs are always rejected unless nID is outside the range of
-		// namespaces covered by the root we special case the empty root, since
-		// it purports to cover the zero namespace but does not actually include
-		// any such nodes
-		min := namespace.ID(MinNamespace(root, nIDLen))
-		max := namespace.ID(MaxNamespace(root, nIDLen))
-		if nID.Less(min) || max.Less(nID) || bytes.Equal(root, nth.EmptyRoot()) {
-			return true
+	if isEmptyRange {
+		if proof.IsEmptyProof() && len(leaves) == 0 {
+			rootMin := namespace.ID(MinNamespace(root, nIDLen))
+			rootMax := namespace.ID(MaxNamespace(root, nIDLen))
+			// empty proofs are always rejected unless 1) nID is outside the range of
+			// namespaces covered by the root 2) the root represents an empty tree, since
+			// it purports to cover the zero namespace but does not actually include
+			// any such nodes
+			if nID.Less(rootMin) || rootMax.Less(nID) {
+				return true
+			}
+			if bytes.Equal(root, nth.EmptyRoot()) {
+				return true
+			}
+			return false
 		}
+		// the proof range is empty, and invalid
 		return false
 	}
+
 	gotLeafHashes := make([][]byte, 0, len(leaves))
 	if proof.IsOfAbsence() {
 		gotLeafHashes = append(gotLeafHashes, proof.leafHash)
