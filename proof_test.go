@@ -21,13 +21,13 @@ func TestVerifyNamespace_EmptyProof(t *testing.T) {
 	root, err := tree.Root()
 	require.NoError(t, err)
 
-	// build a proof for an NID that is outside tree range of the tree
+	// build a proof for an NID that is outside the namespace range of the tree
 	// start = end = 0, nodes = empty
 	nID0 := []byte{0}
 	validEmptyProofZeroRange, err := tree.ProveNamespace(nID0)
 	require.NoError(t, err)
 
-	// build a proof for an NID that is outside tree range of the tree
+	// build a proof for an NID that is outside the namespace range of the tree
 	// start = end = 1, nodes = nil
 	validEmptyProofNonZeroRange, err := tree.ProveNamespace(nID0)
 	require.NoError(t, err)
