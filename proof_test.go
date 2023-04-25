@@ -75,7 +75,7 @@ func TestVerifyNamespace_EmptyProof(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			require.True(t, tt.args.proof.IsOfEmptyProof() == tt.isValidEmptyProof)
+			require.True(t, tt.args.proof.IsEmptyProof() == tt.isValidEmptyProof)
 			if got := tt.args.proof.VerifyNamespace(tt.args.hasher, tt.args.nID, tt.args.leaves, tt.args.root); got != tt.want {
 				t.Errorf("VerifyNamespace() = %v, want %v", got, tt.want)
 			}

@@ -106,8 +106,8 @@ func NewAbsenceProof(proofStart, proofEnd int, proofNodes [][]byte, leafHash []b
 	return Proof{proofStart, proofEnd, proofNodes, leafHash, ignoreMaxNamespace}
 }
 
-// IsOfEmptyProof checks whether the proof corresponds to an empty proof as defined in NMT specifications https://github.com/celestiaorg/nmt/blob/master/docs/spec/nmt.md.
-func (proof Proof) IsOfEmptyProof() bool {
+// IsEmptyProof checks whether the proof corresponds to an empty proof as defined in NMT specifications https://github.com/celestiaorg/nmt/blob/master/docs/spec/nmt.md.
+func (proof Proof) IsEmptyProof() bool {
 	return proof.start == proof.end && len(proof.nodes) == 0
 }
 
@@ -156,7 +156,7 @@ func (proof Proof) VerifyNamespace(h hash.Hash, nID namespace.ID, leaves [][]byt
 
 	isEmptyRange := proof.start == proof.end
 	if isEmptyRange {
-		if proof.IsOfEmptyProof() && len(leaves) == 0 {
+		if proof.IsEmptyProof() && len(leaves) == 0 {
 			rootMin := namespace.ID(MinNamespace(root, nIDLen))
 			rootMax := namespace.ID(MaxNamespace(root, nIDLen))
 			// empty proofs are always rejected unless 1) nID is outside the range of
