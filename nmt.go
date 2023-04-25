@@ -253,6 +253,11 @@ func (n *NamespacedMerkleTree) buildRangeProof(proofStart, proofEnd int) ([][]by
 	proof := [][]byte{} // it is the list of nodes hashes (as byte slices) with no index
 	var recurse func(start, end int, includeNode bool) ([]byte, error)
 
+	// validate the range
+	if proofStart < 0 || proofStart > proofEnd || proofEnd > len(n.leafHashes) {
+		return nil, ErrInvalidRange
+	}
+
 	// start, end are indices of leaves in the tree hence they should be within
 	// the size of the tree i.e., less than or equal to the len(n.leaves)
 	// includeNode indicates whether the hash of the current subtree (covering
