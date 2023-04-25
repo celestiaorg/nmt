@@ -863,16 +863,21 @@ func swap(slice [][]byte, i int, j int) {
 
 // Test_buildRangeProof_Err tests that buildRangeProof returns an error when the underlying tree has an invalid state e.g., leaves are not ordered by namespace ID or a leaf hash is corrupted.
 func Test_buildRangeProof_Err(t *testing.T) {
+	nIDList := []byte{1, 2, 3, 4, 5, 6, 7, 8}
+	nIDSize := 2
+
 	// create a nmt, 8 leaves namespaced sequentially from 1-8
-	treeWithCorruptLeafHash := exampleNMT(2, 1, 2, 3, 4, 5, 6, 7, 8)
+	treeWithCorruptLeafHash := exampleNMT(nIDSize, nIDList...)
 	// corrupt a leaf hash
 	treeWithCorruptLeafHash.leafHashes[4] = treeWithCorruptLeafHash.leafHashes[4][:treeWithCorruptLeafHash.NamespaceSize()]
 
 	// create an NMT with 8 sequentially namespaced leaves, numbered from 1 to 8.
-	treeWithUnorderedLeafHashes := exampleNMT(2, 1, 2, 3, 4, 5, 6, 7, 8)
+	treeWithUnorderedLeafHashes := exampleNMT(nIDSize, nIDList...)
 	// swap the positions of the 4th and 5th leaves
 	swap(treeWithUnorderedLeafHashes.leaves, 4, 5)
 	swap(treeWithUnorderedLeafHashes.leafHashes, 4, 5)
+
+	validTree := exampleNMT(nIDSize, nIDList...)
 
 	tests := []struct {
 		name                 string
@@ -887,6 +892,9 @@ func Test_buildRangeProof_Err(t *testing.T) {
 		// not just the corrupted range.
 		{"unordered leaf hashes: the last leaf", treeWithUnorderedLeafHashes, 7, 8, true, ErrUnorderedSiblings}, // for a tree with an unordered set of leaves, the buildRangeProof function  should produce an error for any input range,
 		// not just the corrupted range.
+		{"invalid proof range: start > end", validTree, 5, 4, true, ErrInvalidRange},
+		{"invalid proof range: start < 0", validTree, -1, 4, true, ErrInvalidRange},
+		{"invalid proof range: end > number of leaves", validTree, 0, len(validTree.leaves) + 1, true, ErrInvalidRange},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
