@@ -170,7 +170,7 @@ func (n *NamespacedMerkleTree) ProveRange(start, end int) (Proof, error) {
 	isMaxNsIgnored := n.treeHasher.IsMaxNamespaceIDIgnored()
 	// TODO: store nodes and re-use the hashes instead recomputing parts of the
 	// tree here
-	if start < 0 || start >= end || end > len(n.leafHashes) {
+	if err := n.validateRange(start, end); err != nil {
 		return NewEmptyRangeProof(isMaxNsIgnored), ErrInvalidRange
 	}
 	proof, err := n.buildRangeProof(start, end)
@@ -245,6 +245,14 @@ func (n *NamespacedMerkleTree) ProveNamespace(nID namespace.ID) (Proof, error) {
 	return NewAbsenceProof(proofStart, proofEnd, proof, n.leafHashes[proofStart], isMaxNsIgnored), nil
 }
 
+// validateRange validates the range [start, end) against the size of the tree.
+func (n *NamespacedMerkleTree) validateRange(start, end int) error {
+	if start < 0 || start >= end || end > len(n.leaves) {
+		return ErrInvalidRange
+	}
+	return nil
+}
+
 // buildRangeProof returns the nodes (as byte slices) in the range proof of the
 // supplied range i.e., [proofStart, proofEnd) where proofEnd is non-inclusive.
 // The nodes are ordered according to in order traversal of the namespaced tree.
@@ -254,7 +262,7 @@ func (n *NamespacedMerkleTree) buildRangeProof(proofStart, proofEnd int) ([][]by
 	var recurse func(start, end int, includeNode bool) ([]byte, error)
 
 	// validate the range
-	if proofStart < 0 || proofStart >= proofEnd || proofEnd > len(n.leafHashes) {
+	if err := n.validateRange(proofStart, proofEnd); err != nil {
 		return nil, ErrInvalidRange
 	}
 
