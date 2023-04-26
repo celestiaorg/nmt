@@ -407,6 +407,52 @@ func TestVerifyInclusion_False(t *testing.T) {
 	}
 }
 
+// TestVerifyInclusion_EmptyProofs tests the correct behaviour of VerifyInclusion in response to valid and invalid empty proofs.
+func TestVerifyInclusion_EmptyProofs(t *testing.T) {
+	hasher := sha256.New()
+
+	// create a tree
+	nIDSize := 1
+	tree := exampleNMT(nIDSize, 1, 2, 3, 4, 5, 6, 7, 8)
+	root, err := tree.Root()
+	require.NoError(t, err)
+
+	sampleLeafWithoutNID := tree.leaves[3][tree.NamespaceSize():] // does not matter which leaf we choose, just a leaf that belongs to the tree
+	sampleNID := namespace.ID{4}                                  // the NID of the leaf we chose
+	sampleNode := tree.leafHashes[7]                              // does not matter which node we choose, just a node that belongs to the tree
+
+	// create an empty proof
+	emptyProof := Proof{}
+	// verify that the proof is a valid empty proof
+	// this check is to ensure that we stay consistent with the definition of empty proofs
+	require.True(t, emptyProof.IsEmptyProof())
+
+	type args struct {
+		hasher                 hash.Hash
+		nID                    namespace.ID
+		leavesWithoutNamespace [][]byte
+		root                   []byte
+	}
+	tests := []struct {
+		name   string
+		proof  Proof
+		args   args
+		result bool
+	}{
+		{"valid empty proof: leaves=empty", emptyProof, args{hasher, sampleNID, [][]byte{}, root}, true},
+		{"valid empty proof: leaves=non-empty", emptyProof, args{hasher, sampleNID, [][]byte{sampleLeafWithoutNID}, root}, false},
+		{"invalid empty proof: leaves = empty", Proof{nodes: [][]byte{sampleNode}}, args{hasher, sampleNID, [][]byte{}, root}, false},
+		{"invalid empty proof: leaves != empty", Proof{nodes: [][]byte{sampleNode}}, args{hasher, sampleNID, [][]byte{sampleLeafWithoutNID}, root}, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := tt.proof.VerifyInclusion(tt.args.hasher, tt.args.nID, tt.args.leavesWithoutNamespace, tt.args.root)
+			assert.Equal(t, tt.result, got)
+		})
+	}
+
+}
+
 func TestVerifyNamespace_False(t *testing.T) {
 	nIDs := []byte{1, 2, 3, 4, 5, 6, 7, 8, 11}
 
