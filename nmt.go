@@ -246,6 +246,7 @@ func (n *NamespacedMerkleTree) ProveNamespace(nID namespace.ID) (Proof, error) {
 }
 
 // validateRange validates the range [start, end) against the size of the tree.
+// start is inclusive and end is non-inclusive.
 func (n *NamespacedMerkleTree) validateRange(start, end int) error {
 	if start < 0 || start >= end || end > len(n.leaves) {
 		return ErrInvalidRange
@@ -263,7 +264,7 @@ func (n *NamespacedMerkleTree) buildRangeProof(proofStart, proofEnd int) ([][]by
 
 	// validate the range
 	if err := n.validateRange(proofStart, proofEnd); err != nil {
-		return nil, ErrInvalidRange
+		return nil, err
 	}
 
 	// start, end are indices of leaves in the tree hence they should be within
