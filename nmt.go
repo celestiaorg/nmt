@@ -171,7 +171,7 @@ func (n *NamespacedMerkleTree) ProveRange(start, end int) (Proof, error) {
 	// TODO: store nodes and re-use the hashes instead recomputing parts of the
 	// tree here
 	if err := n.validateRange(start, end); err != nil {
-		return NewEmptyRangeProof(isMaxNsIgnored), ErrInvalidRange
+		return NewEmptyRangeProof(isMaxNsIgnored), err
 	}
 	proof, err := n.buildRangeProof(start, end)
 	if err != nil {
