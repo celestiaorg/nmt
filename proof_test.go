@@ -450,7 +450,6 @@ func TestVerifyInclusion_EmptyProofs(t *testing.T) {
 			assert.Equal(t, tt.result, got)
 		})
 	}
-
 }
 
 func TestVerifyNamespace_False(t *testing.T) {
