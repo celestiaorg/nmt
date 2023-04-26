@@ -418,7 +418,7 @@ func TestVerifyInclusion_EmptyProofs(t *testing.T) {
 	require.NoError(t, err)
 
 	sampleLeafWithoutNID := tree.leaves[3][tree.NamespaceSize():] // does not matter which leaf we choose, just a leaf that belongs to the tree
-	sampleNID := namespace.ID{4}                                  // the NID of the leaf we chose
+	sampleNID := tree.leaves[3][:tree.NamespaceSize()]            // the NID of the leaf we chose
 	sampleNode := tree.leafHashes[7]                              // does not matter which node we choose, just a node that belongs to the tree
 
 	// create an empty proof
