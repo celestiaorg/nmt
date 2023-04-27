@@ -439,10 +439,10 @@ func TestVerifyInclusion_EmptyProofs(t *testing.T) {
 		args   args
 		result bool
 	}{
-		{"valid empty proof: leaves=empty", emptyProof, args{hasher, sampleNID, [][]byte{}, root}, true},
-		{"valid empty proof: leaves=non-empty", emptyProof, args{hasher, sampleNID, [][]byte{sampleLeafWithoutNID}, root}, false},
-		{"invalid empty proof: leaves = empty", Proof{nodes: [][]byte{sampleNode}}, args{hasher, sampleNID, [][]byte{}, root}, false},
-		{"invalid empty proof: leaves != empty", Proof{nodes: [][]byte{sampleNode}}, args{hasher, sampleNID, [][]byte{sampleLeafWithoutNID}, root}, false},
+		{"valid empty proof and leaves == empty", emptyProof, args{hasher, sampleNID, [][]byte{}, root}, true},
+		{"valid empty proof and leaves == non-empty", emptyProof, args{hasher, sampleNID, [][]byte{sampleLeafWithoutNID}, root}, false},
+		{"invalid empty proof and leaves == empty", Proof{nodes: [][]byte{sampleNode}}, args{hasher, sampleNID, [][]byte{}, root}, false},
+		{"invalid empty proof and leaves != empty", Proof{nodes: [][]byte{sampleNode}}, args{hasher, sampleNID, [][]byte{sampleLeafWithoutNID}, root}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
