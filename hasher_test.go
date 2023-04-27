@@ -277,6 +277,9 @@ func TestHashNode_ChildrenNamespaceRange(t *testing.T) {
 }
 
 func TestValidateSiblingsNamespaceOrder(t *testing.T) {
+	// create a dummy hash to use as the digest of the left and right child
+	randHash := createByteSlice(sha256.Size, 0x01)
+
 	type children struct {
 		l []byte // namespace hash of the left child with the format of MinNs||MaxNs||h
 		r []byte // namespace hash of the right child with the format of MinNs||MaxNs||h
@@ -288,19 +291,20 @@ func TestValidateSiblingsNamespaceOrder(t *testing.T) {
 		children children
 		wantErr  bool
 	}{
+
 		{
 			"left.maxNs>right.minNs", 2,
-			children{[]byte{0, 0, 1, 1}, []byte{0, 0, 1, 1}},
+			children{concat([]byte{0, 0, 1, 1}, randHash), concat([]byte{0, 0, 1, 1}, randHash)},
 			true,
 		},
 		{
 			"left.maxNs=right.minNs", 2,
-			children{[]byte{0, 0, 1, 1}, []byte{1, 1, 2, 2}},
+			children{concat([]byte{0, 0, 1, 1}, randHash), concat([]byte{1, 1, 2, 2}, randHash)},
 			false,
 		},
 		{
 			"left.maxNs<right.minNs", 2,
-			children{[]byte{0, 0, 1, 1}, []byte{2, 2, 3, 3}},
+			children{concat([]byte{0, 0, 1, 1}, randHash), concat([]byte{2, 2, 3, 3}, randHash)},
 			false,
 		},
 	}
