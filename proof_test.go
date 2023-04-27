@@ -427,6 +427,9 @@ func TestVerifyInclusion_EmptyProofs(t *testing.T) {
 	// this check is to ensure that we stay consistent with the definition of empty proofs
 	require.True(t, emptyProof.IsEmptyProof())
 
+	// create a non-empty proof
+	nonEmptyProof := Proof{nodes: [][]byte{sampleNode}}
+	
 	type args struct {
 		hasher                 hash.Hash
 		nID                    namespace.ID
@@ -441,8 +444,8 @@ func TestVerifyInclusion_EmptyProofs(t *testing.T) {
 	}{
 		{"valid empty proof and leaves == empty", emptyProof, args{hasher, sampleNID, [][]byte{}, root}, true},
 		{"valid empty proof and leaves == non-empty", emptyProof, args{hasher, sampleNID, [][]byte{sampleLeafWithoutNID}, root}, false},
-		{"invalid empty proof and leaves == empty", Proof{nodes: [][]byte{sampleNode}}, args{hasher, sampleNID, [][]byte{}, root}, false},
-		{"invalid empty proof and leaves != empty", Proof{nodes: [][]byte{sampleNode}}, args{hasher, sampleNID, [][]byte{sampleLeafWithoutNID}, root}, false},
+		{"invalid empty proof and leaves == empty", nonEmptyProof, args{hasher, sampleNID, [][]byte{}, root}, false},
+		{"invalid empty proof and leaves != empty", nonEmptyProof, args{hasher, sampleNID, [][]byte{sampleLeafWithoutNID}, root}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
