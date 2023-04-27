@@ -429,7 +429,7 @@ func TestVerifyInclusion_EmptyProofs(t *testing.T) {
 
 	// create a non-empty proof
 	nonEmptyProof := Proof{nodes: [][]byte{sampleNode}}
-	
+
 	type args struct {
 		hasher                 hash.Hash
 		nID                    namespace.ID
