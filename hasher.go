@@ -212,9 +212,9 @@ func (n *Hasher) ValidateNodeFormat(node []byte) (err error) {
 // namespaced hash values. Otherwise, it panics.
 func (n *Hasher) validateSiblingsNamespaceOrder(left, right []byte) (err error) {
 	// each NMT node has two namespace IDs for the min and max
-	totalNamespaceLen := 2 * n.NamespaceLen
-	leftMaxNs := namespace.ID(left[n.NamespaceLen:totalNamespaceLen])
-	rightMinNs := namespace.ID(right[:n.NamespaceLen])
+	// totalNamespaceLen := 2 * n.NamespaceLen
+	leftMaxNs := namespace.ID(MaxNamespace(left, n.NamespaceSize()))
+	rightMinNs := namespace.ID(MinNamespace(right, n.NamespaceSize()))
 
 	// check the namespace range of the left and right children
 	if rightMinNs.Less(leftMaxNs) {
