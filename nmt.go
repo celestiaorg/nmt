@@ -482,6 +482,9 @@ func (n *NamespacedMerkleTree) MaxNamespace() (namespace.ID, error) {
 // encompasses the leaves within the range of [start, end).
 // Any errors returned by this method are irrecoverable and indicate an illegal state of the tree (n).
 func (n *NamespacedMerkleTree) computeRoot(start, end int) ([]byte, error) {
+	if err := n.validateRange(start, end); err != nil {
+		return nil, fmt.Errorf("failed to compute root [%d, %d): %w", start, end, err)
+	}
 	switch end - start {
 	case 0:
 		rootHash := n.treeHasher.EmptyRoot()
