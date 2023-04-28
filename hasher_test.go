@@ -291,7 +291,6 @@ func TestValidateSiblingsNamespaceOrder(t *testing.T) {
 		children children
 		wantErr  bool
 	}{
-
 		{
 			"left.maxNs>right.minNs", 2,
 			children{concat([]byte{0, 0, 1, 1}, randHash), concat([]byte{0, 0, 1, 1}, randHash)},
