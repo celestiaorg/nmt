@@ -207,14 +207,16 @@ func (n *Hasher) ValidateNodeFormat(node []byte) (err error) {
 // validateSiblingsNamespaceOrder checks whether left and right as two sibling
 // nodes in an NMT have correct namespace IDs relative to each other, more
 // specifically, the maximum namespace ID of the left sibling should not exceed
-// the minimum namespace ID of the right sibling. It returns ErrUnorderedSiblings error if the check fails. Note that the function assumes
-// that the left and right nodes are in correct format, i.e., they are
-// namespaced hash values. Otherwise, it panics.
+// the minimum namespace ID of the right sibling. It returns ErrUnorderedSiblings error if the check fails.
 func (n *Hasher) validateSiblingsNamespaceOrder(left, right []byte) (err error) {
-	// each NMT node has two namespace IDs for the min and max
-	totalNamespaceLen := 2 * n.NamespaceLen
-	leftMaxNs := namespace.ID(left[n.NamespaceLen:totalNamespaceLen])
-	rightMinNs := namespace.ID(right[:n.NamespaceLen])
+	if err := n.ValidateNodeFormat(left); err != nil {
+		return fmt.Errorf("%w: left node does not match the namesapce hash format", err)
+	}
+	if err := n.ValidateNodeFormat(right); err != nil {
+		return fmt.Errorf("%w: right node does not match the namesapce hash format", err)
+	}
+	leftMaxNs := namespace.ID(MaxNamespace(left, n.NamespaceSize()))
+	rightMinNs := namespace.ID(MinNamespace(right, n.NamespaceSize()))
 
 	// check the namespace range of the left and right children
 	if rightMinNs.Less(leftMaxNs) {
