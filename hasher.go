@@ -256,12 +256,9 @@ func (n *Hasher) ValidateNodes(left, right []byte) error {
 // right.maxNID) || H(NodePrefix, left, right)`. `res` refers to the return
 // value of the HashNode. However, if the `ignoreMaxNs` property of the Hasher
 // is set to true, the calculation of the namespace ID range of the node
-// slightly changes. In this case, when setting the upper range, the maximum
-// possible namespace ID (i.e., 2^NamespaceIDSize-1) should be ignored if
-// possible. This is achieved by taking the maximum value among only those namespace
-// IDs available in the range of its left and right children that are not
-// equal to the maximum possible namespace ID value. If all the namespace IDs are equal
-// to the maximum possible value, then the maximum possible value is used.
+// slightly changes. Let MAXNID be the maximum possible namespace ID value i.e., 2^NamespaceIDSize-1.
+// If the namespace range of the right child is start=end=MAXNID, indicating that it represents the root of a subtree whose leaves all have the namespace ID of `MAXNID`, then exclude the right child from the namespace range calculation. Instead,
+// assign the namespace range of the left child as the parent's namespace range.
 func (n *Hasher) HashNode(left, right []byte) ([]byte, error) {
 	if err := n.ValidateNodeFormat(left); err != nil {
 		return nil, err
