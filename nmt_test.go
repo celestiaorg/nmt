@@ -1019,16 +1019,22 @@ func Test_Root_Error(t *testing.T) {
 
 // Test_computeRoot_Error tests that the computeRoot method returns an error when the underlying tree is in an invalid state, such as when the leaves are not ordered by namespace ID or when a leaf is corrupt.
 func Test_computeRoot_Error(t *testing.T) {
+	nIDSize := 2
+	nIDList := []byte{1, 2, 3, 4, 5, 6, 7, 8}
+
 	// create an NMT with 8 sequentially namespaced leaves, numbered from 1 to 8.
-	treeWithCorruptLeafHash := exampleNMT(2, 1, 2, 3, 4, 5, 6, 7, 8)
+	treeWithCorruptLeafHash := exampleNMT(nIDSize, nIDList...)
 	// corrupt a leaf hash
 	treeWithCorruptLeafHash.leafHashes[4] = treeWithCorruptLeafHash.leafHashes[4][:treeWithCorruptLeafHash.NamespaceSize()-1]
 
 	// create an NMT with 8 sequentially namespaced leaves, numbered from 1 to 8.
-	treeWithUnorderedLeaves := exampleNMT(2, 1, 2, 3, 4, 5, 6, 7, 8)
+	treeWithUnorderedLeaves := exampleNMT(nIDSize, nIDList...)
 	// swap the positions of the 4th and 5th leaves
 	swap(treeWithUnorderedLeaves.leaves, 4, 5)
 	swap(treeWithUnorderedLeaves.leafHashes, 4, 5)
+
+	// create an NMT with 8 sequentially namespaced leaves, numbered from 1 to 8.
+	validTree := exampleNMT(nIDSize, nIDList...)
 
 	tests := []struct {
 		name       string
@@ -1037,12 +1043,13 @@ func Test_computeRoot_Error(t *testing.T) {
 		wantErr    bool
 		errType    error
 	}{
-		{"corrupt leaf hash: the entire tree", treeWithCorruptLeafHash, 0, 7, true, ErrInvalidNodeLen},
-		{"corrupt leaf: from the corrupt node until the end of the tree", treeWithCorruptLeafHash, 4, 7, true, ErrInvalidNodeLen},
-		{"corrupt leaf: the corrupt node and the node to its left", treeWithCorruptLeafHash, 3, 5, true, ErrInvalidNodeLen},
-		{"unordered leaves: the entire tree", treeWithUnorderedLeaves, 0, 7, true, ErrUnorderedSiblings},
-		{"unordered leaves: the unordered portion", treeWithUnorderedLeaves, 4, 6, true, ErrUnorderedSiblings},
-		{"unordered leaves: a portion of the tree containing the unordered leaves", treeWithUnorderedLeaves, 3, 7, true, ErrUnorderedSiblings},
+		{"invalid tree with corrupt leaf hash. Query: the entire tree", treeWithCorruptLeafHash, 0, 7, true, ErrInvalidNodeLen},
+		{"invalid tree with corrupt leaf. Query: from the corrupt node until the end of the tree", treeWithCorruptLeafHash, 4, 7, true, ErrInvalidNodeLen},
+		{"invalid tree with corrupt leaf. Query: the corrupt node and the node to its left", treeWithCorruptLeafHash, 3, 5, true, ErrInvalidNodeLen},
+		{"invalid tree with unordered leaves. Query: the entire tree", treeWithUnorderedLeaves, 0, 7, true, ErrUnorderedSiblings},
+		{"invalid tree with unordered leaves. Query: the unordered portion", treeWithUnorderedLeaves, 4, 6, true, ErrUnorderedSiblings},
+		{"invalid tree with unordered leaves. Query: a portion of the tree containing the unordered leaves", treeWithUnorderedLeaves, 3, 7, true, ErrUnorderedSiblings},
+		{"valid tree. Query: start > end", validTree, 3, 1, true, ErrInvalidRange},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
