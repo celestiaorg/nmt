@@ -202,6 +202,7 @@ func (n *Hasher) ValidateNodeFormat(node []byte) (err error) {
 	if nodeLen != expectedNodeLen {
 		return fmt.Errorf("%w: got: %v, want %v", ErrInvalidNodeLen, nodeLen, expectedNodeLen)
 	}
+	// check the namespace range
 	minNID := namespace.ID(n.MinNamespace(node))
 	maxNID := namespace.ID(n.MaxNamespace(node))
 	if maxNID.Less(minNID) {
