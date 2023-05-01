@@ -210,10 +210,10 @@ func (n *Hasher) ValidateNodeFormat(node []byte) (err error) {
 // the minimum namespace ID of the right sibling. It returns ErrUnorderedSiblings error if the check fails.
 func (n *Hasher) validateSiblingsNamespaceOrder(left, right []byte) (err error) {
 	if err := n.ValidateNodeFormat(left); err != nil {
-		return fmt.Errorf("%w: left node is not in the correct format", err)
+		return fmt.Errorf("%w: left node does not match the namesapce hash format", err)
 	}
 	if err := n.ValidateNodeFormat(right); err != nil {
-		return fmt.Errorf("%w: right node is not in the correct format", err)
+		return fmt.Errorf("%w: right node does not match the namesapce hash format", err)
 	}
 	// each NMT node has two namespace IDs for the min and max
 	// totalNamespaceLen := 2 * n.NamespaceLen
