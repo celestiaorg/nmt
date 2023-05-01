@@ -17,9 +17,10 @@ const (
 var _ hash.Hash = (*Hasher)(nil)
 
 var (
-	ErrUnorderedSiblings = errors.New("NMT sibling nodes should be ordered lexicographically by namespace IDs")
-	ErrInvalidNodeLen    = errors.New("invalid NMT node size")
-	ErrInvalidLeafLen    = errors.New("invalid NMT leaf size")
+	ErrUnorderedSiblings         = errors.New("NMT sibling nodes should be ordered lexicographically by namespace IDs")
+	ErrInvalidNodeLen            = errors.New("invalid NMT node size")
+	ErrInvalidLeafLen            = errors.New("invalid NMT leaf size")
+	ErrInvalidNodeNamespaceRange = errors.New("invalid NMT node namespace range")
 )
 
 type Hasher struct {
@@ -201,6 +202,11 @@ func (n *Hasher) ValidateNodeFormat(node []byte) (err error) {
 	if nodeLen != expectedNodeLen {
 		return fmt.Errorf("%w: got: %v, want %v", ErrInvalidNodeLen, nodeLen, expectedNodeLen)
 	}
+	minNID := namespace.ID(n.MinNamespace(node))
+	maxNID := namespace.ID(n.MaxNamespace(node))
+	if maxNID.Less(minNID) {
+		return fmt.Errorf("%w: max namespace ID is less than min namespace ID", ErrInvalidNodeNamespaceRange)
+	}
 	return nil
 }
 
@@ -212,9 +218,8 @@ func (n *Hasher) ValidateNodeFormat(node []byte) (err error) {
 // namespaced hash values. Otherwise, it panics.
 func (n *Hasher) validateSiblingsNamespaceOrder(left, right []byte) (err error) {
 	// each NMT node has two namespace IDs for the min and max
-	totalNamespaceLen := 2 * n.NamespaceLen
-	leftMaxNs := namespace.ID(left[n.NamespaceLen:totalNamespaceLen])
-	rightMinNs := namespace.ID(right[:n.NamespaceLen])
+	leftMaxNs := namespace.ID(n.MaxNamespace(left))
+	rightMinNs := namespace.ID(n.MinNamespace(right))
 
 	// check the namespace range of the left and right children
 	if rightMinNs.Less(leftMaxNs) {
@@ -312,4 +317,20 @@ func min(ns []byte, ns2 []byte) []byte {
 		return ns
 	}
 	return ns2
+}
+
+// MinNamespace extracts the minimum namespace ID from a given namespace hash,
+// which is formatted as: minimum namespace ID || maximum namespace ID || hash
+// digest.
+func (h *Hasher) MinNamespace(namespacedHash []byte) []byte {
+	min := make([]byte, 0, h.NamespaceLen)
+	return append(min, namespacedHash[:h.NamespaceLen]...)
+}
+
+// MaxNamespace extracts the maximum namespace ID from a given namespace hash,
+// which is formatted as: minimum namespace ID || maximum namespace ID || hash
+// digest.
+func (h *Hasher) MaxNamespace(namespacedHash []byte) []byte {
+	max := make([]byte, 0, h.NamespaceLen)
+	return append(max, namespacedHash[h.NamespaceLen:h.NamespaceLen*2]...)
 }
