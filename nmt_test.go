@@ -1045,11 +1045,11 @@ func Test_computeRoot_Error(t *testing.T) {
 	}{
 		{"invalid tree with corrupt leaf hash. Query: the entire tree", treeWithCorruptLeafHash, 0, 7, true, ErrInvalidNodeLen},
 		{"invalid tree with corrupt leaf. Query: from the corrupt node until the end of the tree", treeWithCorruptLeafHash, 4, 7, true, ErrInvalidNodeLen},
-		{"invalid tree with corrupt leaf: Query: the corrupt node and the node to its left", treeWithCorruptLeafHash, 3, 5, true, ErrInvalidNodeLen},
-		{"invalid tree with unordered leaves: Query: the entire tree", treeWithUnorderedLeaves, 0, 7, true, ErrUnorderedSiblings},
-		{"invalid tree with unordered leaves: Query: the unordered portion", treeWithUnorderedLeaves, 4, 6, true, ErrUnorderedSiblings},
-		{"invalid tree with unordered leaves: Query: a portion of the tree containing the unordered leaves", treeWithUnorderedLeaves, 3, 7, true, ErrUnorderedSiblings},
-		{"valid tree: Query: start > end", validTree, 3, 1, true, ErrInvalidRange},
+		{"invalid tree with corrupt leaf. Query: the corrupt node and the node to its left", treeWithCorruptLeafHash, 3, 5, true, ErrInvalidNodeLen},
+		{"invalid tree with unordered leaves. Query: the entire tree", treeWithUnorderedLeaves, 0, 7, true, ErrUnorderedSiblings},
+		{"invalid tree with unordered leaves. Query: the unordered portion", treeWithUnorderedLeaves, 4, 6, true, ErrUnorderedSiblings},
+		{"invalid tree with unordered leaves. Query: a portion of the tree containing the unordered leaves", treeWithUnorderedLeaves, 3, 7, true, ErrUnorderedSiblings},
+		{"valid tree. Query: start > end", validTree, 3, 1, true, ErrInvalidRange},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
