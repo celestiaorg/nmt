@@ -100,18 +100,6 @@ func Test_namespacedTreeHasher_HashNode(t *testing.T) {
 					concat([]byte{0, 0, 0, 0}, randHash),
 					concat([]byte{0, 0, 1, 1}, randHash))),
 		},
-		// XXX: can this happen in practice? or is this an invalid state?
-		{
-			"leftmin>rightmin && leftmax<rightmax", 2,
-			children{
-				concat([]byte{1, 1, 0, 0}, randHash),
-				concat([]byte{0, 0, 0, 1}, randHash),
-			},
-			concat([]byte{0, 0, 0, 1}, // minNID||maxNID
-				sum(crypto.SHA256, []byte{NodePrefix}, // Hash(NodePrefix||left||right)
-					concat([]byte{1, 1, 0, 0}, randHash),
-					concat([]byte{0, 0, 0, 1}, randHash))),
-		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -265,22 +253,22 @@ func TestHashNode_Error(t *testing.T) {
 			nil,
 		},
 		{
-			"invalid left node format: left.min>left.maxNs", 2,
+			"invalid left sibling format: left.minNs>left.maxNs", 2,
 			children{
 				concat([]byte{2, 2, 0, 0}, randHash),
 				concat([]byte{1, 1, 4, 4}, randHash),
 			},
 			true,
-			ErrInvalidNodeNamespaceRange,
+			ErrInvalidNodeNamespaceOrder,
 		},
 		{
-			"invalid right node format: right.min>right.maxNs", 2,
+			"invalid right sibling format: right.minNs>right.maxNs", 2,
 			children{
 				concat([]byte{0, 0, 1, 1}, randHash),
 				concat([]byte{4, 4, 1, 1}, randHash),
 			},
 			true,
-			ErrInvalidNodeNamespaceRange,
+			ErrInvalidNodeNamespaceOrder,
 		},
 	}
 	for _, tt := range tests {
@@ -401,7 +389,7 @@ func TestValidateNodeFormat(t *testing.T) {
 			[]byte{1, 1},
 			concat(hashValue),
 			true,
-			ErrInvalidNodeNamespaceRange,
+			ErrInvalidNodeNamespaceOrder,
 		},
 		{
 			"valid node: minNs = maxNs",
