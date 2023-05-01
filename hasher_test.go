@@ -221,7 +221,8 @@ func TestNamespaceHasherSum(t *testing.T) {
 	}
 }
 
-func TestHashNode_ChildrenNamespaceRange(t *testing.T) {
+// TestHashNode tests the HashNode function for cases that it should and should not produce errors.
+func TestHashNode_Error(t *testing.T) {
 	// create a dummy hash to use as the digest of the left and right child
 	randHash := createByteSlice(sha256.Size, 0x01)
 	type children struct {
@@ -237,7 +238,7 @@ func TestHashNode_ChildrenNamespaceRange(t *testing.T) {
 		errType  error
 	}{
 		{
-			"left.maxNs>right.minNs", 2,
+			"unordered siblings: left.maxNs>right.minNs", 2,
 			children{
 				concat([]byte{0, 0, 1, 1}, randHash),
 				concat([]byte{0, 0, 1, 1}, randHash),
@@ -246,7 +247,7 @@ func TestHashNode_ChildrenNamespaceRange(t *testing.T) {
 			ErrUnorderedSiblings,
 		},
 		{
-			"left.maxNs=right.minNs", 2,
+			"ordered siblings: left.maxNs=right.minNs", 2,
 			children{
 				concat([]byte{0, 0, 1, 1}, randHash),
 				concat([]byte{1, 1, 2, 2}, randHash),
@@ -255,13 +256,31 @@ func TestHashNode_ChildrenNamespaceRange(t *testing.T) {
 			nil,
 		},
 		{
-			"left.maxNs<right.minNs", 2,
+			"ordered siblings: left.maxNs<right.minNs", 2,
 			children{
 				concat([]byte{0, 0, 1, 1}, randHash),
 				concat([]byte{2, 2, 3, 3}, randHash),
 			},
 			false,
 			nil,
+		},
+		{
+			"invalid left node format: left.min>left.maxNs", 2,
+			children{
+				concat([]byte{2, 2, 0, 0}, randHash),
+				concat([]byte{1, 1, 4, 4}, randHash),
+			},
+			true,
+			ErrInvalidNodeNamespaceRange,
+		},
+		{
+			"invalid right node format: right.min>right.maxNs", 2,
+			children{
+				concat([]byte{0, 0, 1, 1}, randHash),
+				concat([]byte{4, 4, 1, 1}, randHash),
+			},
+			true,
+			ErrInvalidNodeNamespaceRange,
 		},
 	}
 	for _, tt := range tests {
@@ -276,7 +295,7 @@ func TestHashNode_ChildrenNamespaceRange(t *testing.T) {
 	}
 }
 
-func TestValidateSiblingsNamespaceOrder(t *testing.T) {
+func TestValidateSiblings(t *testing.T) {
 	// create a dummy hash to use as the digest of the left and right child
 	randHash := createByteSlice(sha256.Size, 0x01)
 
@@ -374,6 +393,33 @@ func TestValidateNodeFormat(t *testing.T) {
 			concat(hashValue, []byte{1}),
 			true,
 			ErrInvalidNodeLen,
+		},
+		{
+			"invalid node: minNS > maxNs",
+			2,
+			[]byte{3, 3},
+			[]byte{1, 1},
+			concat(hashValue),
+			true,
+			ErrInvalidNodeNamespaceRange,
+		},
+		{
+			"valid node: minNs = maxNs",
+			2,
+			minNID,
+			minNID,
+			concat(hashValue),
+			false,
+			nil,
+		},
+		{
+			"valid node: minNs < maxNs",
+			2,
+			minNID,
+			maxNID,
+			concat(hashValue),
+			false,
+			nil,
 		},
 	}
 

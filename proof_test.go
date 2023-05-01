@@ -286,13 +286,16 @@ func TestVerifyLeafHashes_Err(t *testing.T) {
 	root, err := nmt.Root()
 	require.NoError(t, err)
 
+	corruptRoot := root[:nmt.NamespaceSize()]
+
 	// create an NMT proof
 	nID5 := namespace.ID{5, 5}
 	proof5, err := nmt.ProveNamespace(nID5)
 	require.NoError(t, err)
 	// corrupt the leafHash so that the proof verification fails during the root computation.
 	// note that the leaf at index 4 has the namespace ID of 5.
-	leafHash5 := nmt.leafHashes[4][:nmt.NamespaceSize()]
+	leafHash5 := nmt.leafHashes[4]
+	corruptLeafHash5 := leafHash5[:nmt.NamespaceSize()]
 
 	// corrupt the leafHash: replace its namespace ID with a different one.
 	nID3 := createByteSlice(nameIDSize, 3)
@@ -339,7 +342,8 @@ func TestVerifyLeafHashes_Err(t *testing.T) {
 		root               []byte
 		wantErr            bool
 	}{
-		{"wrong leafHash: not namespaced", proof5, hasher, true, nID5, [][]byte{leafHash5}, root, true},
+		{"corrupt root", proof5, hasher, true, nID5, [][]byte{leafHash5}, corruptRoot, true},
+		{"wrong leafHash: not namespaced", proof5, hasher, true, nID5, [][]byte{corruptLeafHash5}, root, true},
 		{"wrong leafHash: smaller namespace", proof5, hasher, true, nID5, [][]byte{leafHash5SmallerNID}, root, true},
 		{"wong leafHash: bigger namespace", proof5, hasher, true, nID5, [][]byte{leafHash5BiggerNID}, root, true},
 		{"wrong proof.nodes: the last node has an incorrect format", proof4InvalidNodes, hasher, false, nID4, [][]byte{leafHash4}, root, true},
@@ -507,8 +511,8 @@ func TestVerifyNamespace_False(t *testing.T) {
 		args   args
 		result bool
 	}{
-		{"nID size of proof < nID size of VerifyNamespace's nmt hasher", proof4_1, args{hasher, nid4_2, [][]byte{leaf}, root2}, false},
-		{"nID size of proof > nID size of VerifyNamespace's nmt hasher", proof4_2, args{hasher, nid4_1, [][]byte{leaf}, root1}, false},
+		{"nID size of proof.nodes < nID size of VerifyNamespace's nmt hasher", proof4_1, args{hasher, nid4_2, [][]byte{leaf}, root2}, false},
+		{"nID size of proof.nodes > nID size of VerifyNamespace's nmt hasher", proof4_2, args{hasher, nid4_1, [][]byte{leaf}, root1}, false},
 		{"nID size of root < nID size of VerifyNamespace's nmt hasher", proof4_2, args{hasher, nid4_2, [][]byte{leaf}, root1}, false},
 		{"nID size of root > nID size of VerifyNamespace's nmt hasher", proof4_1, args{hasher, nid4_1, [][]byte{leaf}, root2}, false},
 		{"nID size of proof.leafHash < nID size of VerifyNamespace's nmt hasher", absenceProof9_2, args{hasher, nid9_2, [][]byte{}, root2}, false},
