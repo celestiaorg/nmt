@@ -304,17 +304,3 @@ func (n *Hasher) HashNode(left, right []byte) ([]byte, error) {
 	h.Write(data)
 	return h.Sum(res), nil
 }
-
-func max(ns []byte, ns2 []byte) []byte {
-	if bytes.Compare(ns, ns2) >= 0 {
-		return ns
-	}
-	return ns2
-}
-
-func min(ns []byte, ns2 []byte) []byte {
-	if bytes.Compare(ns, ns2) <= 0 {
-		return ns
-	}
-	return ns2
-}
