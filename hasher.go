@@ -215,8 +215,6 @@ func (n *Hasher) validateSiblingsNamespaceOrder(left, right []byte) (err error) 
 	if err := n.ValidateNodeFormat(right); err != nil {
 		return fmt.Errorf("%w: right node does not match the namesapce hash format", err)
 	}
-	// each NMT node has two namespace IDs for the min and max
-	// totalNamespaceLen := 2 * n.NamespaceLen
 	leftMaxNs := namespace.ID(MaxNamespace(left, n.NamespaceSize()))
 	rightMinNs := namespace.ID(MinNamespace(right, n.NamespaceSize()))
 
