@@ -283,14 +283,10 @@ func (n *Hasher) HashNode(left, right []byte) ([]byte, error) {
 	leftMinNs, leftMaxNs := left[:n.NamespaceLen], left[n.NamespaceLen:flagLen]
 	rightMinNs, rightMaxNs := right[:n.NamespaceLen], right[n.NamespaceLen:flagLen]
 
-	minNs := min(leftMinNs, rightMinNs)
-	var maxNs []byte
-	if n.ignoreMaxNs && n.precomputedMaxNs.Equal(leftMinNs) {
-		maxNs = n.precomputedMaxNs
-	} else if n.ignoreMaxNs && n.precomputedMaxNs.Equal(rightMinNs) {
+	minNs := leftMinNs
+	maxNs := rightMaxNs
+	if n.ignoreMaxNs && n.precomputedMaxNs.Equal(rightMinNs) {
 		maxNs = leftMaxNs
-	} else {
-		maxNs = max(leftMaxNs, rightMaxNs)
 	}
 
 	res := make([]byte, 0)
