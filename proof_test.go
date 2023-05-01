@@ -280,7 +280,8 @@ func safeAppend(id, data []byte) []byte {
 
 func TestVerifyLeafHashes_Err(t *testing.T) {
 	// create a sample tree
-	nmt := exampleNMT(2, 1, 2, 3, 4, 5, 6, 7, 8)
+	nameIDSize := 2
+	nmt := exampleNMT(nameIDSize, 1, 2, 3, 4, 5, 6, 7, 8)
 	hasher := nmt.treeHasher
 	root, err := nmt.Root()
 	require.NoError(t, err)
@@ -293,15 +294,40 @@ func TestVerifyLeafHashes_Err(t *testing.T) {
 	// note that the leaf at index 4 has the namespace ID of 5.
 	leafHash5 := nmt.leafHashes[4][:nmt.NamespaceSize()]
 
+	// corrupt the leafHash: replace its namespace ID with a different one.
+	nID3 := createByteSlice(nameIDSize, 3)
+	leafHash5SmallerNID := concat(nID3, nID3, nmt.leafHashes[4][2*nmt.NamespaceSize():])
+	require.NoError(t, hasher.ValidateNodeFormat(leafHash5SmallerNID))
+
+	nID6 := createByteSlice(nameIDSize, 7)
+	leafHash5BiggerNID := concat(nID6, nID6, nmt.leafHashes[4][2*nmt.NamespaceSize():])
+	require.NoError(t, hasher.ValidateNodeFormat(leafHash5BiggerNID))
+
 	// create nmt proof for namespace ID 4
 	nID4 := namespace.ID{4, 4}
-	proof4, err := nmt.ProveNamespace(nID4)
+	proof4InvalidNodes, err := nmt.ProveNamespace(nID4)
 	require.NoError(t, err)
 	// corrupt the last node in the proof4.nodes, it resides on the right side of the proof4.end index.
 	// this test scenario makes the proof verification fail when constructing the tree root from the
 	// computed subtree root and the proof.nodes on the right side of the proof.end index.
-	proof4.nodes[2] = proof4.nodes[2][:nmt.NamespaceSize()-1]
+	proof4InvalidNodes.nodes[2] = proof4InvalidNodes.nodes[2][:nmt.NamespaceSize()-1]
 	leafHash4 := nmt.leafHashes[3]
+
+	// create a proof with invalid range: start = end = 0
+	proof4InvalidRangeSEE, err := nmt.ProveNamespace(nID4)
+	require.NoError(t, err)
+	proof4InvalidRangeSEE.end = 0
+	proof4InvalidRangeSEE.start = 0
+
+	// create a proof with invalid range: start > end
+	proof4InvalidRangeSBE, err := nmt.ProveNamespace(nID4)
+	require.NoError(t, err)
+	proof4InvalidRangeSBE.start = proof4InvalidRangeSBE.end + 1
+
+	// create a proof with invalid range: start < 0
+	proof4InvalidRangeSLZ, err := nmt.ProveNamespace(nID4)
+	require.NoError(t, err)
+	proof4InvalidRangeSLZ.start = -1
 
 	tests := []struct {
 		name               string
@@ -314,9 +340,13 @@ func TestVerifyLeafHashes_Err(t *testing.T) {
 		wantErr            bool
 	}{
 		{"wrong leafHash: not namespaced", proof5, hasher, true, nID5, [][]byte{leafHash5}, root, true},
-		{"wrong leafHash: incorrect namespace", proof5, hasher, true, nID5, [][]byte{{10, 10, 10, 10}}, root, true},
-		{"wrong proof.nodes: the last node has an incorrect format", proof4, hasher, false, nID4, [][]byte{leafHash4}, root, true},
+		{"wrong leafHash: smaller namespace", proof5, hasher, true, nID5, [][]byte{leafHash5SmallerNID}, root, true},
+		{"wong leafHash: bigger namespace", proof5, hasher, true, nID5, [][]byte{leafHash5BiggerNID}, root, true},
+		{"wrong proof.nodes: the last node has an incorrect format", proof4InvalidNodes, hasher, false, nID4, [][]byte{leafHash4}, root, true},
 		//  the verifyCompleteness parameter in the verifyProof function should be set to false in order to bypass nodes correctness check during the completeness verification (otherwise it panics).
+		{"wrong proof range: start = end", proof4InvalidRangeSEE, hasher, true, nID4, [][]byte{leafHash4}, root, true},
+		{"wrong proof range: start > end", proof4InvalidRangeSBE, hasher, true, nID4, [][]byte{leafHash4}, root, true},
+		{"wrong proof range: start < 0", proof4InvalidRangeSLZ, hasher, true, nID4, [][]byte{leafHash4}, root, true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -368,6 +398,54 @@ func TestVerifyInclusion_False(t *testing.T) {
 		{"nID size of root > nID size of VerifyInclusion's nmt hasher", proof4_1, args{hasher, nid4_1, [][]byte{leaf}, root2}, false},
 		{"nID size of proof and root < nID size of VerifyInclusion's nmt hasher", proof4_1, args{hasher, nid4_2, [][]byte{leaf}, root1}, false},
 		{"nID size of proof and root > nID size of VerifyInclusion's nmt hasher", proof4_2, args{hasher, nid4_1, [][]byte{leaf}, root2}, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := tt.proof.VerifyInclusion(tt.args.hasher, tt.args.nID, tt.args.leavesWithoutNamespace, tt.args.root)
+			assert.Equal(t, tt.result, got)
+		})
+	}
+}
+
+// TestVerifyInclusion_EmptyProofs tests the correct behaviour of VerifyInclusion in response to valid and invalid empty proofs.
+func TestVerifyInclusion_EmptyProofs(t *testing.T) {
+	hasher := sha256.New()
+
+	// create a tree
+	nIDSize := 1
+	tree := exampleNMT(nIDSize, 1, 2, 3, 4, 5, 6, 7, 8)
+	root, err := tree.Root()
+	require.NoError(t, err)
+
+	sampleLeafWithoutNID := tree.leaves[3][tree.NamespaceSize():] // does not matter which leaf we choose, just a leaf that belongs to the tree
+	sampleNID := tree.leaves[3][:tree.NamespaceSize()]            // the NID of the leaf we chose
+	sampleNode := tree.leafHashes[7]                              // does not matter which node we choose, just a node that belongs to the tree
+
+	// create an empty proof
+	emptyProof := Proof{}
+	// verify that the proof is a valid empty proof
+	// this check is to ensure that we stay consistent with the definition of empty proofs
+	require.True(t, emptyProof.IsEmptyProof())
+
+	// create a non-empty proof
+	nonEmptyProof := Proof{nodes: [][]byte{sampleNode}}
+
+	type args struct {
+		hasher                 hash.Hash
+		nID                    namespace.ID
+		leavesWithoutNamespace [][]byte
+		root                   []byte
+	}
+	tests := []struct {
+		name   string
+		proof  Proof
+		args   args
+		result bool
+	}{
+		{"valid empty proof and leaves == empty", emptyProof, args{hasher, sampleNID, [][]byte{}, root}, true},
+		{"valid empty proof and leaves == non-empty", emptyProof, args{hasher, sampleNID, [][]byte{sampleLeafWithoutNID}, root}, false},
+		{"invalid empty proof and leaves == empty", nonEmptyProof, args{hasher, sampleNID, [][]byte{}, root}, false},
+		{"invalid empty proof and leaves != empty", nonEmptyProof, args{hasher, sampleNID, [][]byte{sampleLeafWithoutNID}, root}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

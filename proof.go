@@ -229,6 +229,11 @@ func (proof Proof) VerifyNamespace(h hash.Hash, nID namespace.ID, leaves [][]byt
 // tree represented by the root parameter that matches the namespace ID nID
 // but is not present in the leafHashes list.
 func (proof Proof) verifyLeafHashes(nth *Hasher, verifyCompleteness bool, nID namespace.ID, leafHashes [][]byte, root []byte) (bool, error) {
+	// check that the proof range is valid
+	if proof.Start() < 0 || proof.Start() >= proof.End() {
+		return false, fmt.Errorf("proof range [proof.start=%d, proof.end=%d) is not valid: %w", proof.Start(), proof.End(), ErrInvalidRange)
+	}
+
 	// perform some consistency checks:
 	if nID.Size() != nth.NamespaceSize() {
 		return false, fmt.Errorf("namespace ID size (%d) does not match the namespace size of the NMT hasher (%d)", nID.Size(), nth.NamespaceSize())
@@ -287,7 +292,7 @@ func (proof Proof) verifyLeafHashes(nth *Hasher, verifyCompleteness bool, nID na
 		if end-start == 1 {
 			// if the leaf index falls within the proof range, pop and return a
 			// leaf
-			if proof.start <= start && start < proof.end {
+			if proof.Start() <= start && start < proof.End() {
 				leafHash := leafHashes[0]
 				// advance leafHashes
 				leafHashes = leafHashes[1:]
@@ -303,7 +308,7 @@ func (proof Proof) verifyLeafHashes(nth *Hasher, verifyCompleteness bool, nID na
 		// if current range does not overlap with the proof range, pop and
 		// return a proof node if present, else return nil because subtree
 		// doesn't exist
-		if end <= proof.start || start >= proof.end {
+		if end <= proof.Start() || start >= proof.End() {
 			return popIfNonEmpty(&proof.nodes), nil
 		}
 
@@ -354,6 +359,20 @@ func (proof Proof) verifyLeafHashes(nth *Hasher, verifyCompleteness bool, nID na
 // `nid`.
 // VerifyInclusion does not verify the completeness of the proof, so it's possible for leavesWithoutNamespace to be a subset of the leaves in the tree that have the namespace ID nid.
 func (proof Proof) VerifyInclusion(h hash.Hash, nid namespace.ID, leavesWithoutNamespace [][]byte, root []byte) bool {
+	// check the range of the proof
+	isEmptyRange := proof.start == proof.end
+	if isEmptyRange {
+		// the only case in which an empty proof is valid is when the supplied leavesWithoutNamespace is also empty.
+		// rationale: no proof (i.e., an empty proof) is needed to prove that an empty set of leaves belong to the tree with root `root`.
+		// unlike VerifyNamespace(), we do not care about the queried `nid` here, because  VerifyInclusion does not verify the completeness of the proof
+		// i.e., whether the leavesWithoutNamespace is the full set of leaves matching the queried `nid`.
+		if proof.IsEmptyProof() && len(leavesWithoutNamespace) == 0 {
+			return true
+		}
+		// if the proof range is empty but !proof.IsEmptyProof() || len(leavesWithoutNamespace) != 0, then the verification should fail
+		return false
+	}
+
 	nth := NewNmtHasher(h, nid.Size(), proof.isMaxNamespaceIDIgnored)
 
 	// perform some consistency checks:
