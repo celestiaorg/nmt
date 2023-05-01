@@ -20,7 +20,7 @@ var (
 	ErrUnorderedSiblings         = errors.New("NMT sibling nodes should be ordered lexicographically by namespace IDs")
 	ErrInvalidNodeLen            = errors.New("invalid NMT node size")
 	ErrInvalidLeafLen            = errors.New("invalid NMT leaf size")
-	ErrInvalidNodeNamespaceRange = errors.New("invalid NMT node namespace range")
+	ErrInvalidNodeNamespaceOrder = errors.New("invalid NMT node namespace order")
 )
 
 type Hasher struct {
@@ -202,11 +202,11 @@ func (n *Hasher) ValidateNodeFormat(node []byte) (err error) {
 	if nodeLen != expectedNodeLen {
 		return fmt.Errorf("%w: got: %v, want %v", ErrInvalidNodeLen, nodeLen, expectedNodeLen)
 	}
-	// check the namespace range
-	minNID := namespace.ID(n.MinNamespace(node))
-	maxNID := namespace.ID(n.MaxNamespace(node))
+	// check the namespace order
+	minNID := namespace.ID(MinNamespace(node, n.NamespaceSize()))
+	maxNID := namespace.ID(MaxNamespace(node, n.NamespaceSize()))
 	if maxNID.Less(minNID) {
-		return fmt.Errorf("%w: max namespace ID is less than min namespace ID", ErrInvalidNodeNamespaceRange)
+		return fmt.Errorf("%w: max namespace ID %d is less than min namespace ID %d ", ErrInvalidNodeNamespaceOrder, maxNID, minNID)
 	}
 	return nil
 }
@@ -321,20 +321,4 @@ func min(ns []byte, ns2 []byte) []byte {
 		return ns
 	}
 	return ns2
-}
-
-// MinNamespace extracts the minimum namespace ID from a given namespace hash,
-// which is formatted as: minimum namespace ID || maximum namespace ID || hash
-// digest.
-func (h *Hasher) MinNamespace(namespacedHash []byte) []byte {
-	min := make([]byte, 0, h.NamespaceLen)
-	return append(min, namespacedHash[:h.NamespaceLen]...)
-}
-
-// MaxNamespace extracts the maximum namespace ID from a given namespace hash,
-// which is formatted as: minimum namespace ID || maximum namespace ID || hash
-// digest.
-func (h *Hasher) MaxNamespace(namespacedHash []byte) []byte {
-	max := make([]byte, 0, h.NamespaceLen)
-	return append(max, namespacedHash[h.NamespaceLen:h.NamespaceLen*2]...)
 }
