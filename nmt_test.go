@@ -1049,7 +1049,9 @@ func Test_computeRoot_Error(t *testing.T) {
 		{"invalid tree with unordered leaves. Query: the entire tree", treeWithUnorderedLeaves, 0, 7, true, ErrUnorderedSiblings},
 		{"invalid tree with unordered leaves. Query: the unordered portion", treeWithUnorderedLeaves, 4, 6, true, ErrUnorderedSiblings},
 		{"invalid tree with unordered leaves. Query: a portion of the tree containing the unordered leaves", treeWithUnorderedLeaves, 3, 7, true, ErrUnorderedSiblings},
+		{"valid tree. Query: start < 0", validTree, -1, 1, true, ErrInvalidRange},
 		{"valid tree. Query: start > end", validTree, 3, 1, true, ErrInvalidRange},
+		{"valid tree. Query: end > total number of leaves", validTree, 3, len(validTree.leaves) + 1, true, ErrInvalidRange},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
