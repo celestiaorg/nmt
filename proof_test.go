@@ -354,7 +354,7 @@ func TestVerifyLeafHashes_Err(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := tt.proof.verifyLeafHashes(tt.Hasher, tt.verifyCompleteness, tt.nID, tt.leafHashes, tt.root)
+			_, err := tt.proof.VerifyLeafHashes(tt.Hasher, tt.verifyCompleteness, tt.nID, tt.leafHashes, tt.root)
 			assert.Equal(t, tt.wantErr, err != nil)
 		})
 	}
@@ -560,19 +560,19 @@ func TestVerifyLeafHashes_False(t *testing.T) {
 		args   args
 		result bool
 	}{
-		{"nID size of proof < nID size of verifyLeafHashes' nmt hasher", proof4_1, args{2, nid4_2, [][]byte{leafHash2}, root2}, false},
-		{"nID size of proof > nID size of verifyLeafHashes' nmt hasher", proof4_2, args{1, nid4_1, [][]byte{leafHash1}, root1}, false},
-		{"nID size of root < nID size of verifyLeafHashes' nmt hasher", proof4_2, args{2, nid4_2, [][]byte{leafHash2}, root1}, false},
-		{"nID size of root > nID size of verifyLeafHashes' nmt hasher", proof4_1, args{1, nid4_1, [][]byte{leafHash1}, root2}, false},
-		{"size of queried nID > nID size of verifyLeafHashes' nmt hasher", proof4_1, args{1, nid4_2, [][]byte{leafHash1}, root1}, false},
-		{"size of queried nID < nID size of verifyLeafHashes' nmt hasher", proof4_2, args{2, nid4_1, [][]byte{leafHash2}, root2}, false},
-		{"nID size of leafHash < nID size of verifyLeafHashes' nmt hasher", proof4_2, args{2, nid4_2, [][]byte{leafHash1}, root2}, false},
-		{"nID size of leafHash > nID size of verifyLeafHashes' nmt hasher", proof4_1, args{1, nid4_1, [][]byte{leafHash2}, root1}, false},
+		{"nID size of proof < nID size of VerifyLeafHashes' nmt hasher", proof4_1, args{2, nid4_2, [][]byte{leafHash2}, root2}, false},
+		{"nID size of proof > nID size of VerifyLeafHashes' nmt hasher", proof4_2, args{1, nid4_1, [][]byte{leafHash1}, root1}, false},
+		{"nID size of root < nID size of VerifyLeafHashes' nmt hasher", proof4_2, args{2, nid4_2, [][]byte{leafHash2}, root1}, false},
+		{"nID size of root > nID size of VerifyLeafHashes' nmt hasher", proof4_1, args{1, nid4_1, [][]byte{leafHash1}, root2}, false},
+		{"size of queried nID > nID size of VerifyLeafHashes' nmt hasher", proof4_1, args{1, nid4_2, [][]byte{leafHash1}, root1}, false},
+		{"size of queried nID < nID size of VerifyLeafHashes' nmt hasher", proof4_2, args{2, nid4_1, [][]byte{leafHash2}, root2}, false},
+		{"nID size of leafHash < nID size of VerifyLeafHashes' nmt hasher", proof4_2, args{2, nid4_2, [][]byte{leafHash1}, root2}, false},
+		{"nID size of leafHash > nID size of VerifyLeafHashes' nmt hasher", proof4_1, args{1, nid4_1, [][]byte{leafHash2}, root1}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			hasher := NewNmtHasher(sha256.New(), tt.args.nIDSize, true)
-			got, _ := tt.proof.verifyLeafHashes(hasher, true, tt.args.nID, tt.args.leaves, tt.args.root)
+			got, _ := tt.proof.VerifyLeafHashes(hasher, true, tt.args.nID, tt.args.leaves, tt.args.root)
 			assert.Equal(t, tt.result, got)
 		})
 	}
