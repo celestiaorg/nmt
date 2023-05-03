@@ -286,7 +286,8 @@ func TestVerifyLeafHashes_Err(t *testing.T) {
 	root, err := nmt.Root()
 	require.NoError(t, err)
 
-	corruptRoot := root[:nmt.NamespaceSize()]
+	// shrink the size of the root so that the root hash is invalid.
+	corruptRoot := root[:len(root)-1]
 
 	// create an NMT proof
 	nID5 := namespace.ID{5, 5}

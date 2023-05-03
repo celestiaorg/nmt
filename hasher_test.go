@@ -209,7 +209,7 @@ func TestNamespaceHasherSum(t *testing.T) {
 	}
 }
 
-// TestHashNode tests the HashNode function for cases that it should and should not produce errors.
+// TestHashNode verifies the HashNode function for scenarios where it is expected to produce errors, as well as those where it is not.
 func TestHashNode_Error(t *testing.T) {
 	// create a dummy hash to use as the digest of the left and right child
 	randHash := createByteSlice(sha256.Size, 0x01)
