@@ -769,3 +769,73 @@ func Test_MustHashLeaf_Panic(t *testing.T) {
 		})
 	}
 }
+
+func TestMax(t *testing.T) {
+	tt := []struct {
+		name     string
+		ns       []byte
+		ns2      []byte
+		expected []byte
+	}{
+		{
+			"First argument is larger",
+			[]byte{1, 2, 3},
+			[]byte{1, 2},
+			[]byte{1, 2, 3},
+		},
+		{
+			"Second argument is larger",
+			[]byte{1, 2},
+			[]byte{1, 2, 3},
+			[]byte{1, 2, 3},
+		},
+		{
+			"Arguments are equal",
+			[]byte{1, 2, 3},
+			[]byte{1, 2, 3},
+			[]byte{1, 2, 3},
+		},
+	}
+
+	for _, ts := range tt {
+		t.Run(ts.name, func(t *testing.T) {
+			maxResult := max(ts.ns, ts.ns2)
+			assert.Equal(t, ts.expected, maxResult)
+		})
+	}
+}
+
+func TestMin(t *testing.T) {
+	tt := []struct {
+		name     string
+		ns       []byte
+		ns2      []byte
+		expected []byte
+	}{
+		{
+			"First argument is smaller",
+			[]byte{1, 2},
+			[]byte{1, 2, 3},
+			[]byte{1, 2},
+		},
+		{
+			"Second argument is smaller",
+			[]byte{1, 2, 3},
+			[]byte{1, 2},
+			[]byte{1, 2},
+		},
+		{
+			"Arguments are equal",
+			[]byte{1, 2, 3},
+			[]byte{1, 2, 3},
+			[]byte{1, 2, 3},
+		},
+	}
+
+	for _, ts := range tt {
+		t.Run(ts.name, func(t *testing.T) {
+			minResult := min(ts.ns, ts.ns2)
+			assert.Equal(t, ts.expected, minResult)
+		})
+	}
+}
