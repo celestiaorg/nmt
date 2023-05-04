@@ -66,7 +66,7 @@ func (proof Proof) Nodes() [][]byte {
 // IsOfAbsence returns true if this proof proves the absence of leaves of a
 // namespace in the tree.
 func (proof Proof) IsOfAbsence() bool {
-	return len(proof.leafHash) > 0
+	return len(proof.leafHash) > 0 && !(proof.start < 0) && (proof.end == proof.start+1)
 }
 
 // LeafHash returns nil if the namespace has leaves in the NMT. In case the
@@ -108,7 +108,7 @@ func NewAbsenceProof(proofStart, proofEnd int, proofNodes [][]byte, leafHash []b
 
 // IsEmptyProof checks whether the proof corresponds to an empty proof as defined in NMT specifications https://github.com/celestiaorg/nmt/blob/master/docs/spec/nmt.md.
 func (proof Proof) IsEmptyProof() bool {
-	return proof.start == proof.end && len(proof.nodes) == 0
+	return proof.start == proof.end && len(proof.nodes) == 0 && len(proof.leafHash) == 0
 }
 
 // VerifyNamespace verifies a whole namespace, i.e. 1) it verifies inclusion of
