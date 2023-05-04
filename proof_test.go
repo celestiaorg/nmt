@@ -573,3 +573,117 @@ func TestVerifyLeafHashes_False(t *testing.T) {
 		})
 	}
 }
+
+func TestIsOfAbsence(t *testing.T) {
+	tests := []struct {
+		name     string
+		proof    Proof
+		expected bool
+	}{
+		{
+			name: "valid absence proof",
+			proof: Proof{
+				leafHash: []byte{0x01, 0x02, 0x03},
+				nodes:    nil,
+				start:    0,
+				end:      1,
+			},
+			expected: true,
+		},
+		{
+			name: "invalid absence proof - start < 0",
+			proof: Proof{
+				leafHash: []byte{0x01, 0x02, 0x03},
+				nodes:    nil,
+				start:    -1,
+				end:      0,
+			},
+			expected: false,
+		},
+		{
+			name: "invalid proof - end != start + 1",
+			proof: Proof{
+				leafHash: []byte{0x01, 0x02, 0x03},
+				nodes:    nil,
+				start:    0,
+				end:      2,
+			},
+			expected: false,
+		},
+		{
+			name: "invalid absence proof",
+			proof: Proof{
+				leafHash: nil,
+				nodes:    nil,
+				start:    0,
+				end:      1,
+			},
+			expected: false,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			result := test.proof.IsOfAbsence()
+			assert.Equal(t, test.expected, result)
+		})
+	}
+}
+
+func TestIsEmptyProof(t *testing.T) {
+	tests := []struct {
+		name     string
+		proof    Proof
+		expected bool
+	}{
+		{
+			name: "valid absence proof",
+			proof: Proof{
+				leafHash: nil,
+				nodes:    nil,
+				start:    0,
+				end:      1,
+			},
+			expected: true,
+		},
+		{
+			name: "invalid absence proof - start < 0",
+			proof: Proof{
+				leafHash: nil,
+				nodes:    nil,
+				start:    -1,
+				end:      0,
+			},
+			expected: false,
+		},
+		{
+			name: "invalid proof - end != start + 1",
+			proof: Proof{
+				leafHash: nil,
+				nodes:    nil,
+				start:    0,
+				end:      2,
+			},
+			expected: false,
+		},
+		{
+			name: "invalid absence proof",
+			proof: Proof{
+				leafHash: nil,
+				nodes:    nil,
+				start:    0,
+				end:      1,
+			},
+			expected: false,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			result := test.proof.IsEmptyProof()
+			if result != test.expected {
+				t.Errorf("unexpected result: expected %v but got %v", test.expected, result)
+			}
+		})
+	}
+}
