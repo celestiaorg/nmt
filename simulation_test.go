@@ -2,7 +2,7 @@ package nmt_test
 
 import (
 	"crypto/sha256"
-	"io/ioutil"
+	"os"
 	"testing"
 
 	"github.com/celestiaorg/nmt"
@@ -13,16 +13,17 @@ import (
 const nidSize = 2
 
 func getLeavesFromState(state gjson.Result, nidSize int, key string) [][]byte {
-	itf_leaves := state.Get(key).Array()
-	var leaves [][]byte
+	itfLeaves := state.Get(key).Array()
 
-	for _, itf_leaf := range itf_leaves {
-		stateNamespace := int(itf_leaf.Get("namespaceId").Int())
-		dataString := itf_leaf.Get("value.#tup.1").String()
+	leaves := make([][]byte, len(itfLeaves))
+
+	for idx, itfLeaf := range itfLeaves {
+		stateNamespace := int(itfLeaf.Get("namespaceId").Int())
+		dataString := itfLeaf.Get("value.#tup.1").String()
 		pushData := namespace.PrefixedData(append(
 			intToBytes(stateNamespace, nidSize),
 			[]byte(dataString)...))
-		leaves = append(leaves, pushData)
+		leaves[idx] = pushData
 
 	}
 	return leaves
@@ -39,18 +40,18 @@ func checkProof(modelProof gjson.Result, execProof nmt.Proof, nidSize int) bool 
 	if modelProofStart != execProofStart || modelProofEnd != execProofEnd {
 		return false
 	}
-	supporting_hashes := modelProof.Get("supporting_hashes").Array()
-	if len(supporting_hashes) != len(execProof.Nodes()) {
+	supportingHashes := modelProof.Get("supporting_hashes").Array()
+	if len(supportingHashes) != len(execProof.Nodes()) {
 		return false
 	}
-	for idx, supporting_hash := range supporting_hashes {
-		modelMinNS := int(supporting_hash.Get("minNS").Int())
+	for idx, supportingHash := range supportingHashes {
+		modelMinNS := int(supportingHash.Get("minNS").Int())
 		execMinNs := bytesToInt(execProof.Nodes()[idx][:nidSize])
 		if modelMinNS != execMinNs {
 			return false
 		}
 
-		modelMaxNS := int(supporting_hash.Get("maxNS").Int())
+		modelMaxNS := int(supportingHash.Get("maxNS").Int())
 		execMaxNs := bytesToInt(execProof.Nodes()[idx][nidSize:(2 * nidSize)])
 		if modelMaxNS != execMaxNs {
 			return false
@@ -58,7 +59,6 @@ func checkProof(modelProof gjson.Result, execProof nmt.Proof, nidSize int) bool 
 	}
 
 	return true
-
 }
 
 func intToBytes(n int, bytesSize int) []byte {
@@ -79,12 +79,11 @@ func bytesToInt(bytes []byte) int {
 }
 
 func TestFromITF(t *testing.T) {
-
 	var tree *nmt.NamespacedMerkleTree
 
 	itfFileName := "formal_spec/ITF_files/runTest.itf.json"
 	// itfFileName := "formal_spec/ITF_files/panicIssue.itf.json"
-	data, err := ioutil.ReadFile(itfFileName)
+	data, err := os.ReadFile(itfFileName)
 	if err != nil {
 		t.Errorf("Error opening file: %v", err)
 	}
@@ -117,10 +116,10 @@ func TestFromITF(t *testing.T) {
 			if err != nil {
 				t.Errorf("Error on prove: %v", err)
 			}
-			var new_hashes [][]byte
+			var newHashes [][]byte
 			t.Logf("Proof: %v\n", proof)
 
-			var corruption_type string
+			var corruptionType string
 			if !corrupted {
 				proofMatching := checkProof(modelProof, proof, nidSize)
 				if !proofMatching {
@@ -128,14 +127,14 @@ func TestFromITF(t *testing.T) {
 				}
 			} else {
 				// CORRUPTED: now we are modifying the proof to be corrupted here as well
-				corruption_type = state.Get("corruption_type").String()
-				t.Log("Corruption type: ", corruption_type)
-				if corruption_type == "supporting_hashes" {
+				corruptionType = state.Get("corruption_type").String()
+				t.Log("Corruption type: ", corruptionType)
+				if corruptionType == "supporting_hashes" {
 					for idx := 0; idx < len(state.Get("corruption_diff.changed_indices").Array()); idx++ {
-						new_hashes = append(new_hashes, proof.Nodes()[idx])
+						newHashes = append(newHashes, proof.Nodes()[idx])
 					}
 				} else {
-					new_hashes = proof.Nodes()
+					newHashes = proof.Nodes()
 				}
 				// We could examine for different corruption types and then only user `modelProof` for
 				// the corrupted parts of the proof and the rest from the `proof`. The way we do it now,
@@ -144,7 +143,7 @@ func TestFromITF(t *testing.T) {
 				proof = nmt.NewInclusionProof(
 					int(modelProof.Get("start").Int()),
 					int(modelProof.Get("end").Int()),
-					new_hashes,
+					newHashes,
 					true,
 				)
 				t.Logf("Corrupted proof: %v\n", proof)
@@ -174,7 +173,7 @@ func TestFromITF(t *testing.T) {
 
 func TestFromScenario(t *testing.T) {
 	itfFileName := "formal_spec/ITF_files/scenario.json"
-	data, err := ioutil.ReadFile(itfFileName)
+	data, err := os.ReadFile(itfFileName)
 	if err != nil {
 		t.Errorf("Error opening file: %v", err)
 	}
@@ -183,22 +182,22 @@ func TestFromScenario(t *testing.T) {
 	for _, tt := range tests {
 		states := tt.Get("states").Array()
 		lastState := states[len(states)-1]
-		namespaceId := int(lastState.Get("namespace_v").Int())
+		namespaceID := int(lastState.Get("namespace_v").Int())
 
-		itf_leaves := lastState.Get("leaves_namespace_idx_v").Array()
+		itfLeaves := lastState.Get("leaves_namespace_idx_v").Array()
 
 		tree := nmt.New(sha256.New(), nmt.NamespaceIDSize(nidSize))
-		for _, itf_leaf := range itf_leaves {
-			leaf_id := int(itf_leaf.Int())
+		for _, itfLeaf := range itfLeaves {
+			leafID := int(itfLeaf.Int())
 			pushData := namespace.PrefixedData(append(
-				intToBytes(leaf_id, nidSize),
+				intToBytes(leafID, nidSize),
 				[]byte("dummy_data")...))
 			err := tree.Push(pushData)
 			if err != nil {
 				t.Fatalf("invalid test case: %v, error on Push(): %v", tt.Get("name").String(), err)
 			}
 		}
-		proveNID := intToBytes(namespaceId, nidSize)
+		proveNID := intToBytes(namespaceID, nidSize)
 		gotProof, err := tree.ProveNamespace(proveNID)
 		if err != nil {
 			t.Fatalf("ProveNamespace() unexpected error: %v", err)
