@@ -100,18 +100,6 @@ func Test_namespacedTreeHasher_HashNode(t *testing.T) {
 					concat([]byte{0, 0, 0, 0}, randHash),
 					concat([]byte{0, 0, 1, 1}, randHash))),
 		},
-		// XXX: can this happen in practice? or is this an invalid state?
-		{
-			"leftmin>rightmin && leftmax<rightmax", 2,
-			children{
-				concat([]byte{1, 1, 0, 0}, randHash),
-				concat([]byte{0, 0, 0, 1}, randHash),
-			},
-			concat([]byte{0, 0, 0, 1}, // minNID||maxNID
-				sum(crypto.SHA256, []byte{NodePrefix}, // Hash(NodePrefix||left||right)
-					concat([]byte{1, 1, 0, 0}, randHash),
-					concat([]byte{0, 0, 0, 1}, randHash))),
-		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -221,7 +209,8 @@ func TestNamespaceHasherSum(t *testing.T) {
 	}
 }
 
-func TestHashNode_ChildrenNamespaceRange(t *testing.T) {
+// TestHashNode verifies the HashNode function for scenarios where it is expected to produce errors, as well as those where it is not.
+func TestHashNode_Error(t *testing.T) {
 	// create a dummy hash to use as the digest of the left and right child
 	randHash := createByteSlice(sha256.Size, 0x01)
 	type children struct {
@@ -237,7 +226,7 @@ func TestHashNode_ChildrenNamespaceRange(t *testing.T) {
 		errType  error
 	}{
 		{
-			"left.maxNs>right.minNs", 2,
+			"unordered siblings: left.maxNs>right.minNs", 2,
 			children{
 				concat([]byte{0, 0, 1, 1}, randHash),
 				concat([]byte{0, 0, 1, 1}, randHash),
@@ -246,7 +235,7 @@ func TestHashNode_ChildrenNamespaceRange(t *testing.T) {
 			ErrUnorderedSiblings,
 		},
 		{
-			"left.maxNs=right.minNs", 2,
+			"ordered siblings: left.maxNs=right.minNs", 2,
 			children{
 				concat([]byte{0, 0, 1, 1}, randHash),
 				concat([]byte{1, 1, 2, 2}, randHash),
@@ -255,13 +244,31 @@ func TestHashNode_ChildrenNamespaceRange(t *testing.T) {
 			nil,
 		},
 		{
-			"left.maxNs<right.minNs", 2,
+			"ordered siblings: left.maxNs<right.minNs", 2,
 			children{
 				concat([]byte{0, 0, 1, 1}, randHash),
 				concat([]byte{2, 2, 3, 3}, randHash),
 			},
 			false,
 			nil,
+		},
+		{
+			"invalid left sibling format: left.minNs>left.maxNs", 2,
+			children{
+				concat([]byte{2, 2, 0, 0}, randHash),
+				concat([]byte{1, 1, 4, 4}, randHash),
+			},
+			true,
+			ErrInvalidNodeNamespaceOrder,
+		},
+		{
+			"invalid right sibling format: right.minNs>right.maxNs", 2,
+			children{
+				concat([]byte{0, 0, 1, 1}, randHash),
+				concat([]byte{4, 4, 1, 1}, randHash),
+			},
+			true,
+			ErrInvalidNodeNamespaceOrder,
 		},
 	}
 	for _, tt := range tests {
@@ -276,7 +283,7 @@ func TestHashNode_ChildrenNamespaceRange(t *testing.T) {
 	}
 }
 
-func TestValidateSiblingsNamespaceOrder(t *testing.T) {
+func TestValidateSiblings(t *testing.T) {
 	// create a dummy hash to use as the digest of the left and right child
 	randHash := createByteSlice(sha256.Size, 0x01)
 
@@ -374,6 +381,33 @@ func TestValidateNodeFormat(t *testing.T) {
 			concat(hashValue, []byte{1}),
 			true,
 			ErrInvalidNodeLen,
+		},
+		{
+			"invalid node: minNS > maxNs",
+			2,
+			[]byte{3, 3},
+			[]byte{1, 1},
+			concat(hashValue),
+			true,
+			ErrInvalidNodeNamespaceOrder,
+		},
+		{
+			"valid node: minNs = maxNs",
+			2,
+			minNID,
+			minNID,
+			concat(hashValue),
+			false,
+			nil,
+		},
+		{
+			"valid node: minNs < maxNs",
+			2,
+			minNID,
+			maxNID,
+			concat(hashValue),
+			false,
+			nil,
 		},
 	}
 
@@ -732,6 +766,76 @@ func Test_MustHashLeaf_Panic(t *testing.T) {
 					hasher.MustHashLeaf(tt.leaf)
 				})
 			}
+		})
+	}
+}
+
+func TestMax(t *testing.T) {
+	tt := []struct {
+		name     string
+		ns       []byte
+		ns2      []byte
+		expected []byte
+	}{
+		{
+			"First argument is larger",
+			[]byte{1, 2, 3},
+			[]byte{1, 2},
+			[]byte{1, 2, 3},
+		},
+		{
+			"Second argument is larger",
+			[]byte{1, 2},
+			[]byte{1, 2, 3},
+			[]byte{1, 2, 3},
+		},
+		{
+			"Arguments are equal",
+			[]byte{1, 2, 3},
+			[]byte{1, 2, 3},
+			[]byte{1, 2, 3},
+		},
+	}
+
+	for _, ts := range tt {
+		t.Run(ts.name, func(t *testing.T) {
+			maxResult := max(ts.ns, ts.ns2)
+			assert.Equal(t, ts.expected, maxResult)
+		})
+	}
+}
+
+func TestMin(t *testing.T) {
+	tt := []struct {
+		name     string
+		ns       []byte
+		ns2      []byte
+		expected []byte
+	}{
+		{
+			"First argument is smaller",
+			[]byte{1, 2},
+			[]byte{1, 2, 3},
+			[]byte{1, 2},
+		},
+		{
+			"Second argument is smaller",
+			[]byte{1, 2, 3},
+			[]byte{1, 2},
+			[]byte{1, 2},
+		},
+		{
+			"Arguments are equal",
+			[]byte{1, 2, 3},
+			[]byte{1, 2, 3},
+			[]byte{1, 2, 3},
+		},
+	}
+
+	for _, ts := range tt {
+		t.Run(ts.name, func(t *testing.T) {
+			minResult := min(ts.ns, ts.ns2)
+			assert.Equal(t, ts.expected, minResult)
 		})
 	}
 }
