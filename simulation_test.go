@@ -137,6 +137,10 @@ func TestFromITF(t *testing.T) {
 				} else {
 					new_hashes = proof.Nodes()
 				}
+				// We could examine for different corruption types and then only user `modelProof` for
+				// the corrupted parts of the proof and the rest from the `proof`. The way we do it now,
+				// however, is not a problem since for non-corrupted parts, `modelProof` and `proof` are
+				// the same.
 				proof = nmt.NewInclusionProof(
 					int(modelProof.Get("start").Int()),
 					int(modelProof.Get("end").Int()),

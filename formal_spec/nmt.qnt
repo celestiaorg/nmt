@@ -158,6 +158,14 @@ module nmt_helpers{
                 }
             ) 
 
+    // This function takes as parameters:
+    //  - `namespaceBordersSet`: a sorted list of integers which defines borders between different namespaces.
+    //     For instance, [3, 5] would indicate that leaves 0,1,2, belong to a same namespace; leaves 3 and 4 to another namespace; 
+    //     leaf 5 and all leaves after 5 to a third namespace.
+    //  - `power`: an integer defining the height of the tree. The tree will have 2^(power-1) leaves
+    // 
+    // The function returns a list of data items. In this model, we don't care about the data itself, so we just use dummy data.
+    // Our format for dummy ddata is a pair (str, int), where the first element is always "data" and the second element is the index of the leaf.    
     def GenerateLeavesCorrectly(power: int, namespaceBordersSet : Set[int]) : List[DATA_ITEM] =
         
         // add left-most and right-most borders to namespaces
@@ -273,7 +281,10 @@ module nmt {
     
 
     
-
+    // This function creates a proof for a given `namespaceId` and a given `tree`.
+    // Following the NMT documentation (https://github.com/celestiaorg/nmt/blob/master/docs/spec/nmt.md#namespace-proof),
+    // the tproof consists of `start` and `end` indices and the hashes of the nodes (`supporting_hashes`) that are left siblings
+    // in the regular Merkle proof of `start` and those that are right hashes in the regular proof of `end-1` 
     def CreateProofNamespace(namespaceId: int, tree: TREE): PROOF =
         val leavesStart = min(tree.leaves.keys())                
         // take only those keys that are of the desired namespace
@@ -325,13 +336,13 @@ module nmt {
         }
 
        
+    
+    
     def SensibleStartEnd(start: int, end: int) : bool =
         and {
             start >= 0,            
             start < end
         }
-
-        
 
     // all leaf nodes in the proof should have the same namespace
     def CorrectNamespaceValue(proof: PROOF, namespaceId: int, leaves: List[DATA_ITEM]) : bool =
@@ -339,7 +350,7 @@ module nmt {
         length(elementsWithWrongId) == 0
         
        
-    
+    // Given `proof` and `leaves`, this function calculates the Merkle roo (which is hash) for that range.
     def MerkleRangeHash(proof: PROOF, leaves: List[DATA_ITEM]) : WORD =
         
         // the number of leaves in a complete subtree that covers the last leaf
@@ -435,6 +446,7 @@ module nmt {
             (acc, levelHashes) => Hash(acc.concat(levelHashes.hash))
         )
         
+        // a hash value that is returned
         calculatedRootHash
 
 
@@ -720,7 +732,9 @@ module nmtTest {
 
             // corrupting the proof
             any{
-                // corrupting the start value
+                // corrupting the start value: we will change its value, while maintaining the property that it must
+                // be smaller than `proof_v.end` (we get that by requiring `new_start` to be from the set {0, ..., proof_v.end - 1}).
+                // We will also require that it is indeed different from `proof_v.start`.
                 all{
                     proof_v.end != 1,
                     namespace_v' = namespace_v,
@@ -735,7 +749,8 @@ module nmtTest {
                     }
                 },
 
-                // corrupting the end value
+                // corrupting the end value: we will change its value, while maintaining the property that it must 
+                // be greater than start by at least 1 (we get that by requiring `new_end` to be from the set {proof_v.start, ..., proof_v.end - 1})
                 all{
                     proof_v.start < proof_v.end - 1,
                     namespace_v' = namespace_v,
@@ -748,10 +763,14 @@ module nmtTest {
                     
                 },
                 
-                // corrupting the supporting hashes in a controlled way
+                // corrupting the supporting hashes in a controlled way: we will take a subset of existing supporting hashes
                 all{
                     proof_v.supporting_hashes.length() > 1,
                     namespace_v' = namespace_v,
+                    // We use the original set of indices and then take a subset of it as a corrupted one.
+                    // We do so by selecting `oneOf` from the set of all subsets of existing indices (`powerse`), 
+                    // provided that it is not the empty set and not the full set of indices. (`filter`).
+                    // Note that this is non-deterministic value (`nondet`) because of the function `oneOf`.
                     nondet new_supporting_hashes_indices = oneOf(
                         0.to(proof_v.supporting_hashes.length()-1)
                             .powerset()
@@ -763,6 +782,11 @@ module nmtTest {
                                 }
                         )
                     )
+
+                    // Now we use the calculated subset of indices to extract the corresponding subset of supporting hashes.
+                    // We do so by iterating over the set of indices. Iteration over lists in Quint is done by using the concept of 
+                    // the left fold (`foldl`). For more info on `foldl`, check 
+                    // https://github.com/informalsystems/quint/blob/main/doc/builtin.md#pure-def-foldl-lista-b-b-a--b--b
                     val new_supporting_hashes = range(0, proof_v.supporting_hashes.length())
                         .foldl(
                             [],
@@ -789,7 +813,9 @@ module nmtTest {
                     
                 },
                 
-                // corrupting the namespace value
+                // corrupting the namespace value: we will change the value of the namespace for which the proof is written.
+                // We do so by selecting `newNamespace` from the set {1,...,MAX_NAMESPACE_ID}, while requiring that it is 
+                // indeed different from `namespace_v`.
                 all{                 
                     proof_v' = proof_v,
                     nondet newNamespace = 1.to(MAX_NAMESPACE_ID).exclude(Set(namespace_v)).oneOf()
