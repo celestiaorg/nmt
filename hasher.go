@@ -17,9 +17,10 @@ const (
 var _ hash.Hash = (*Hasher)(nil)
 
 var (
-	ErrUnorderedSiblings = errors.New("NMT sibling nodes should be ordered lexicographically by namespace IDs")
-	ErrInvalidNodeLen    = errors.New("invalid NMT node size")
-	ErrInvalidLeafLen    = errors.New("invalid NMT leaf size")
+	ErrUnorderedSiblings         = errors.New("NMT sibling nodes should be ordered lexicographically by namespace IDs")
+	ErrInvalidNodeLen            = errors.New("invalid NMT node size")
+	ErrInvalidLeafLen            = errors.New("invalid NMT leaf size")
+	ErrInvalidNodeNamespaceOrder = errors.New("invalid NMT node namespace order")
 )
 
 type Hasher struct {
@@ -200,6 +201,12 @@ func (n *Hasher) ValidateNodeFormat(node []byte) (err error) {
 	nodeLen := len(node)
 	if nodeLen != expectedNodeLen {
 		return fmt.Errorf("%w: got: %v, want %v", ErrInvalidNodeLen, nodeLen, expectedNodeLen)
+	}
+	// check the namespace order
+	minNID := namespace.ID(MinNamespace(node, n.NamespaceSize()))
+	maxNID := namespace.ID(MaxNamespace(node, n.NamespaceSize()))
+	if maxNID.Less(minNID) {
+		return fmt.Errorf("%w: max namespace ID %d is less than min namespace ID %d ", ErrInvalidNodeNamespaceOrder, maxNID, minNID)
 	}
 	return nil
 }
