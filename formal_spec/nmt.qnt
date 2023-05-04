@@ -506,7 +506,7 @@ module nmtProofVerification {
     // step is modelled as a loop of the four always repeating states: 
     // 1) requirements, 2) generation,  3) verification, and 4) final state.
     // 
-    // 1) when in the "requirements" or "init" state, a random size of the tree and the namespaces 
+    // 1) when in the "requirements" state, a random size of the tree and the namespaces 
     // corresponding to leaves,
     // are generated and one of the namespaces is chosen to generate a proof for
     // 2) when in the "generation" state, a proof is generated for the generated tree and the chosen namespace
@@ -610,7 +610,7 @@ module nmtTest {
 
     // this module iteratively generates a proof and then non-deterministically corrupts it.
     // run by:
-    // quint run --main=nmtTest --max-samples=1 --max-steps=100 nmt.qnt --out-itf=ITF_files/out.itf.json
+    // quint run --main=nmtTest --max-samples=2 --max-steps=100 nmt.qnt --out-itf=ITF_files/out.itf.json
     // to simulate 100 steps and save output into `out.itf.json`. This output can be used to generate 
     // test cases (eg., in `simulation_test.go`)
 
@@ -632,7 +632,7 @@ module nmtTest {
             tree_v' = EMPTY_TREE,
             proof_v' = EMPTY_PROOF,
             corrupted' = false,
-            state_v' = "init",
+            state_v' = "requirements",
             namespace_v' = -1,
             leaves_v' = EMPTY_LEAVES,
             corruption_type' = "",
@@ -837,11 +837,11 @@ module nmtTest {
 
     }
 
-    // step is modelled as by 4 states:
+    // step is modelled by 4 states:
     // 1) requirements, 2) generation,  2a) corruptProof, and 3) final state.
     // 
     // The state `corruptProof` is marked by 2a because it may be skipped (leaving the proof uncorrupted)
-    // 1) when in the "requirements" or "init" state, a random size of the tree and the namespaces 
+    // 1) when in the "requirements"  state, a random size of the tree and the namespaces 
     // corresponding to leaves,
     // are generated and one of the namespaces is chosen to generate a proof for
     // 2) when in the "generation" state, a proof is generated for the generated tree and the chosen namespace
