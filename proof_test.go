@@ -625,7 +625,6 @@ func TestIsEmptyProof(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			result := test.proof.IsEmptyProof()
 			assert.Equal(t, test.expected, result)
-
 		})
 	}
 }
@@ -665,7 +664,6 @@ func TestIsEmptyProofOverlapAbsenceProof(t *testing.T) {
 			if absenceResult {
 				assert.False(t, result)
 			}
-
 		})
 	}
 }
