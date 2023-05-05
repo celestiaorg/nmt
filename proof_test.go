@@ -583,62 +583,6 @@ func TestVerifyLeafHashes_False(t *testing.T) {
 	}
 }
 
-func TestIsOfAbsence(t *testing.T) {
-	tests := []struct {
-		name     string
-		proof    Proof
-		expected bool
-	}{
-		{
-			name: "valid absence proof",
-			proof: Proof{
-				leafHash: []byte{0x01, 0x02, 0x03},
-				nodes:    nil,
-				start:    0,
-				end:      1,
-			},
-			expected: true,
-		},
-		{
-			name: "invalid absence proof - start < 0",
-			proof: Proof{
-				leafHash: []byte{0x01, 0x02, 0x03},
-				nodes:    nil,
-				start:    -1,
-				end:      0,
-			},
-			expected: false,
-		},
-		{
-			name: "invalid proof - end != start + 1",
-			proof: Proof{
-				leafHash: []byte{0x01, 0x02, 0x03},
-				nodes:    nil,
-				start:    0,
-				end:      2,
-			},
-			expected: false,
-		},
-		{
-			name: "invalid absence proof",
-			proof: Proof{
-				leafHash: nil,
-				nodes:    nil,
-				start:    0,
-				end:      1,
-			},
-			expected: false,
-		},
-	}
-
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			test.proof.IsOfAbsence()
-			// assert.Equal(t, test.expected, result)
-		})
-	}
-}
-
 func TestIsEmptyProof(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -691,6 +635,46 @@ func TestIsEmptyProof(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			result := test.proof.IsEmptyProof()
 			assert.Equal(t, test.expected, result)
+
+		})
+	}
+}
+
+// TestIsEmptyProofOverlapAbsenceProof ensures there is no overlap between empty proofs and absence proofs.
+func TestIsEmptyProofOverlapAbsenceProof(t *testing.T) {
+	tests := []struct {
+		name  string
+		proof Proof
+	}{
+		{
+			name: "valid empty proof",
+			proof: Proof{
+				leafHash: nil,
+				nodes:    nil,
+				start:    1,
+				end:      1,
+			},
+		},
+		{
+			name: "valid absence proof",
+			proof: Proof{
+				leafHash: []byte{0x01, 0x02, 0x03},
+				nodes:    nil,
+				start:    1,
+				end:      1,
+			},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			result := test.proof.IsEmptyProof()
+			absenceResult := test.proof.IsOfAbsence()
+			if result {
+				assert.False(t, absenceResult)
+			}
+			if absenceResult {
+				assert.False(t, result)
+			}
 
 		})
 	}

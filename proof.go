@@ -66,7 +66,7 @@ func (proof Proof) Nodes() [][]byte {
 // IsOfAbsence returns true if this proof proves the absence of leaves of a
 // namespace in the tree.
 func (proof Proof) IsOfAbsence() bool {
-	return len(proof.leafHash) > 0 && !(proof.start < 0) && (proof.end == proof.start+1)
+	return len(proof.leafHash) > 0
 }
 
 // LeafHash returns nil if the namespace has leaves in the NMT. In case the
