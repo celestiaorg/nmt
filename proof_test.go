@@ -24,33 +24,17 @@ func TestVerifyNamespace_EmptyProof(t *testing.T) {
 	// build a proof for an NID that is outside the namespace range of the tree
 	// start = end = 0, nodes = empty
 	nID0 := []byte{0}
-	validEmptyProofZeroRange, err := tree.ProveNamespace(nID0)
+	validEmptyProof, err := tree.ProveNamespace(nID0)
 	require.NoError(t, err)
-
-	// build a proof for an NID that is outside the namespace range of the tree
-	// start = end = 1, nodes = nil
-	validEmptyProofNonZeroRange, err := tree.ProveNamespace(nID0)
-	require.NoError(t, err)
-	// modify the proof range to be non-zero, it should still be valid
-	validEmptyProofNonZeroRange.start = 1
-	validEmptyProofNonZeroRange.end = 1
 
 	// build a proof for an NID that is within the namespace range of the tree
 	// start = end = 0, nodes = non-empty
 	nID1 := []byte{1}
-	zeroRangeOnlyProof, err := tree.ProveNamespace(nID1)
+	invalidEmptyProof, err := tree.ProveNamespace(nID1)
 	require.NoError(t, err)
 	// modify the proof to contain a zero range
-	zeroRangeOnlyProof.start = 0
-	zeroRangeOnlyProof.end = 0
-
-	// build a proof for an NID that is within the namespace range of the tree
-	// start = 0, end = 1, nodes = empty
-	nonEmptyNodesProof, err := tree.ProveNamespace(nID1)
-	require.NoError(t, err)
-	// modify the proof nodes to be empty
-	nonEmptyNodesProof.start = 1
-	nonEmptyNodesProof.end = 1
+	invalidEmptyProof.start = 0
+	invalidEmptyProof.end = 0
 
 	emptyRoot := tree.treeHasher.EmptyRoot()
 	hasher := tree.treeHasher.baseHasher
@@ -70,25 +54,28 @@ func TestVerifyNamespace_EmptyProof(t *testing.T) {
 		want              bool
 		isValidEmptyProof bool
 	}{
-		// proof.range should be empty always
-		// test cases for a non-empty tree
+		// in the following tests, proof should always contain an empty range
+
+		// test cases for a non-empty tree hence non-empty root
 		// proof.IsEmptyProof() && len(leaves) == 0 true
-		{"valid empty proof and empty leaves", args{validEmptyProofZeroRange, hasher, nID0, [][]byte{}, root}, true, true},
+		{"valid empty proof & empty leaves & nID not in range", args{validEmptyProof, hasher, nID0, [][]byte{}, root}, true, true},
 		// !proof.IsEmptyProof() && len(leaves) == 0
-		{"invalid empty proof with nodes == non-empty and empty leaves", args{zeroRangeOnlyProof, hasher, nID1, [][]byte{}, root}, false, false},
+		{"invalid empty proof & empty leaves & nID in range", args{invalidEmptyProof, hasher, nID1, [][]byte{}, root}, false, false},
 		// proof.IsEmptyProof() && !len(leaves) == 0
-		{"valid empty proof and non-empty leaves", args{validEmptyProofZeroRange, hasher, nID0, [][]byte{{1}}, root}, false, true},
+		{"valid empty proof & non-empty leaves & nID not in range", args{validEmptyProof, hasher, nID0, [][]byte{{1}}, root}, false, true},
 		// !proof.IsEmptyProof() && !len(leaves) == 0
-		{"invalid empty proof  with nodes == non-empty", args{zeroRangeOnlyProof, hasher, nID1, [][]byte{}, root}, false, false},
-		// test cases for an empty tree
+		{"invalid empty proof & empty leaves & nID in range", args{invalidEmptyProof, hasher, nID1, [][]byte{}, root}, false, false},
+		{"valid empty proof & empty leaves & nID in range", args{validEmptyProof, hasher, nID1, [][]byte{}, root}, false, true},
+
+		// test cases for an empty tree hence empty root
 		// proof.IsEmptyProof() && len(leaves) == 0 true
-		{"valid empty proof and empty leaves", args{validEmptyProofZeroRange, hasher, nID0, [][]byte{}, emptyRoot}, true, true},
+		{"valid empty proof and empty leaves", args{validEmptyProof, hasher, nID0, [][]byte{}, emptyRoot}, true, true},
 		// !proof.IsEmptyProof() && len(leaves) == 0
-		{"invalid empty proof with nodes == non-empty and empty leaves", args{zeroRangeOnlyProof, hasher, nID1, [][]byte{}, emptyRoot}, false, false},
+		{"invalid empty proof with nodes == non-empty and empty leaves", args{invalidEmptyProof, hasher, nID1, [][]byte{}, emptyRoot}, false, false},
 		// proof.IsEmptyProof() && !len(leaves) == 0
-		{"valid empty proof and non-empty leaves", args{validEmptyProofZeroRange, hasher, nID0, [][]byte{{1}}, emptyRoot}, false, true},
+		{"valid empty proof and non-empty leaves", args{validEmptyProof, hasher, nID0, [][]byte{{1}}, emptyRoot}, false, true},
 		// !proof.IsEmptyProof() && !len(leaves) == 0
-		{"invalid empty proof  with nodes == non-empty", args{zeroRangeOnlyProof, hasher, nID1, [][]byte{}, emptyRoot}, false, false},
+		{"invalid empty proof  with nodes == non-empty", args{invalidEmptyProof, hasher, nID1, [][]byte{}, emptyRoot}, false, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
