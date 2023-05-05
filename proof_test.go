@@ -642,41 +642,41 @@ func TestIsEmptyProof(t *testing.T) {
 		expected bool
 	}{
 		{
-			name: "valid absence proof",
+			name: "valid empty proof",
+			proof: Proof{
+				leafHash: nil,
+				nodes:    nil,
+				start:    1,
+				end:      1,
+			},
+			expected: true,
+		},
+		{
+			name: "invalid empty proof - start != end",
 			proof: Proof{
 				leafHash: nil,
 				nodes:    nil,
 				start:    0,
 				end:      1,
 			},
-			expected: true,
+			expected: false,
 		},
 		{
-			name: "invalid absence proof - start < 0",
+			name: "invalid empty proof - non-empty nodes",
 			proof: Proof{
 				leafHash: nil,
-				nodes:    nil,
-				start:    -1,
-				end:      0,
+				nodes:    [][]byte{{0x01}},
+				start:    1,
+				end:      1,
 			},
 			expected: false,
 		},
 		{
-			name: "invalid proof - end != start + 1",
+			name: "invalid absence proof - non-empty leafHash",
 			proof: Proof{
-				leafHash: nil,
+				leafHash: []byte{0x01},
 				nodes:    nil,
-				start:    0,
-				end:      2,
-			},
-			expected: false,
-		},
-		{
-			name: "invalid absence proof",
-			proof: Proof{
-				leafHash: nil,
-				nodes:    nil,
-				start:    0,
+				start:    1,
 				end:      1,
 			},
 			expected: false,
@@ -686,9 +686,8 @@ func TestIsEmptyProof(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			result := test.proof.IsEmptyProof()
-			if result != test.expected {
-				t.Errorf("unexpected result: expected %v but got %v", test.expected, result)
-			}
+			assert.Equal(t, test.expected, result)
+
 		})
 	}
 }
