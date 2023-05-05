@@ -263,17 +263,11 @@ func (n *Hasher) ValidateNodes(left, right []byte) error {
 // equal to the maximum possible namespace ID value. If all the namespace IDs are equal
 // to the maximum possible value, then the maximum possible value is used.
 func (n *Hasher) HashNode(left, right []byte) ([]byte, error) {
-	if err := n.ValidateNodeFormat(left); err != nil {
-		return nil, err
-	}
-	if err := n.ValidateNodeFormat(right); err != nil {
+	// validate the inputs
+	if err := n.ValidateNodes(left, right); err != nil {
 		return nil, err
 	}
 
-	// check the namespace range of the left and right children
-	if err := n.validateSiblingsNamespaceOrder(left, right); err != nil {
-		return nil, err
-	}
 	h := n.baseHasher
 	h.Reset()
 
