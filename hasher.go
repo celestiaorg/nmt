@@ -311,15 +311,3 @@ func computeNsRange(leftMinNs, leftMaxNs, rightMinNs, rightMaxNs []byte, ignoreM
 	}
 	return minNs, maxNs
 }
-
-func computeNsRangeVerbose(leftMinNs, leftMaxNs, rightMinNs, rightMaxNs []byte, ignoreMaxNs bool, precomputedMaxNs namespace.ID) (minNs []byte, maxNs []byte) {
-	minNs = min(leftMinNs, rightMinNs)
-	if ignoreMaxNs && precomputedMaxNs.Equal(leftMinNs) {
-		maxNs = precomputedMaxNs
-	} else if ignoreMaxNs && precomputedMaxNs.Equal(rightMinNs) {
-		maxNs = leftMaxNs
-	} else {
-		maxNs = max(leftMaxNs, rightMaxNs)
-	}
-	return minNs, maxNs
-}
