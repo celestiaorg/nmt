@@ -840,8 +840,8 @@ func TestMin(t *testing.T) {
 	}
 }
 
-// TestComputeRange tests the ComputeRange function.
-func TestComputeRange(t *testing.T) {
+// TestComputeNsRange tests the ComputeRange function.
+func TestComputeNsRange(t *testing.T) {
 	nIDSize := 1
 	precomputedMaxNs := bytes.Repeat([]byte{0xFF}, nIDSize)
 
