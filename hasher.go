@@ -268,17 +268,10 @@ func (n *Hasher) HashNode(left, right []byte) ([]byte, error) {
 	h := n.baseHasher
 	h.Reset()
 
-	// the actual hash result of the children got extended (or flagged) by their
-	// children's minNs || maxNs; hence the flagLen = 2 * NamespaceLen:
-	flagLen := 2 * n.NamespaceLen
-	leftMinNs, leftMaxNs := left[:n.NamespaceLen], left[n.NamespaceLen:flagLen]
-	rightMinNs, rightMaxNs := right[:n.NamespaceLen], right[n.NamespaceLen:flagLen]
+	leftMinNs, leftMaxNs := MinNamespace(left, n.NamespaceLen), MaxNamespace(left, n.NamespaceLen)
+	rightMinNs, rightMaxNs := MinNamespace(right, n.NamespaceLen), MaxNamespace(right, n.NamespaceLen)
 
-	minNs := leftMinNs
-	maxNs := rightMaxNs
-	if n.ignoreMaxNs && n.precomputedMaxNs.Equal(rightMinNs) {
-		maxNs = leftMaxNs
-	}
+	minNs, maxNs := computeNsRange(leftMinNs, leftMaxNs, rightMinNs, rightMaxNs, n.ignoreMaxNs, n.precomputedMaxNs)
 
 	res := make([]byte, 0)
 	res = append(res, minNs...)
@@ -294,4 +287,39 @@ func (n *Hasher) HashNode(left, right []byte) ([]byte, error) {
 	//nolint:errcheck
 	h.Write(data)
 	return h.Sum(res), nil
+}
+
+func max(ns []byte, ns2 []byte) []byte {
+	if bytes.Compare(ns, ns2) >= 0 {
+		return ns
+	}
+	return ns2
+}
+
+func min(ns []byte, ns2 []byte) []byte {
+	if bytes.Compare(ns, ns2) <= 0 {
+		return ns
+	}
+	return ns2
+}
+
+func computeNsRange(leftMinNs, leftMaxNs, rightMinNs, rightMaxNs []byte, ignoreMaxNs bool, precomputedMaxNs namespace.ID) (minNs []byte, maxNs []byte) {
+	minNs = leftMinNs
+	maxNs = rightMaxNs
+	if ignoreMaxNs && bytes.Equal(precomputedMaxNs, rightMinNs) {
+		maxNs = leftMaxNs
+	}
+	return minNs, maxNs
+}
+
+func computeNsRangeVerbose(leftMinNs, leftMaxNs, rightMinNs, rightMaxNs []byte, ignoreMaxNs bool, precomputedMaxNs namespace.ID) (minNs []byte, maxNs []byte) {
+	minNs = min(leftMinNs, rightMinNs)
+	if ignoreMaxNs && precomputedMaxNs.Equal(leftMinNs) {
+		maxNs = precomputedMaxNs
+	} else if ignoreMaxNs && precomputedMaxNs.Equal(rightMinNs) {
+		maxNs = leftMaxNs
+	} else {
+		maxNs = max(leftMaxNs, rightMaxNs)
+	}
+	return minNs, maxNs
 }
