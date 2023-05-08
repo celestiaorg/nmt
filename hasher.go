@@ -260,17 +260,11 @@ func (n *Hasher) ValidateNodes(left, right []byte) error {
 // If the namespace range of the right child is start=end=MAXNID, indicating that it represents the root of a subtree whose leaves all have the namespace ID of `MAXNID`, then exclude the right child from the namespace range calculation. Instead,
 // assign the namespace range of the left child as the parent's namespace range.
 func (n *Hasher) HashNode(left, right []byte) ([]byte, error) {
-	if err := n.ValidateNodeFormat(left); err != nil {
-		return nil, err
-	}
-	if err := n.ValidateNodeFormat(right); err != nil {
+	// validate the inputs
+	if err := n.ValidateNodes(left, right); err != nil {
 		return nil, err
 	}
 
-	// check the namespace range of the left and right children
-	if err := n.validateSiblingsNamespaceOrder(left, right); err != nil {
-		return nil, err
-	}
 	h := n.baseHasher
 	h.Reset()
 

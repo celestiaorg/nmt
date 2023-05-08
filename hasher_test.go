@@ -209,7 +209,7 @@ func TestNamespaceHasherSum(t *testing.T) {
 	}
 }
 
-// TestHashNode tests the HashNode function for cases that it should and should not produce errors.
+// TestHashNode verifies the HashNode function for scenarios where it is expected to produce errors, as well as those where it is not.
 func TestHashNode_Error(t *testing.T) {
 	// create a dummy hash to use as the digest of the left and right child
 	randHash := createByteSlice(sha256.Size, 0x01)
@@ -766,6 +766,76 @@ func Test_MustHashLeaf_Panic(t *testing.T) {
 					hasher.MustHashLeaf(tt.leaf)
 				})
 			}
+		})
+	}
+}
+
+func TestMax(t *testing.T) {
+	tt := []struct {
+		name     string
+		ns       []byte
+		ns2      []byte
+		expected []byte
+	}{
+		{
+			"First argument is larger",
+			[]byte{1, 2, 3},
+			[]byte{1, 2},
+			[]byte{1, 2, 3},
+		},
+		{
+			"Second argument is larger",
+			[]byte{1, 2},
+			[]byte{1, 2, 3},
+			[]byte{1, 2, 3},
+		},
+		{
+			"Arguments are equal",
+			[]byte{1, 2, 3},
+			[]byte{1, 2, 3},
+			[]byte{1, 2, 3},
+		},
+	}
+
+	for _, ts := range tt {
+		t.Run(ts.name, func(t *testing.T) {
+			maxResult := max(ts.ns, ts.ns2)
+			assert.Equal(t, ts.expected, maxResult)
+		})
+	}
+}
+
+func TestMin(t *testing.T) {
+	tt := []struct {
+		name     string
+		ns       []byte
+		ns2      []byte
+		expected []byte
+	}{
+		{
+			"First argument is smaller",
+			[]byte{1, 2},
+			[]byte{1, 2, 3},
+			[]byte{1, 2},
+		},
+		{
+			"Second argument is smaller",
+			[]byte{1, 2, 3},
+			[]byte{1, 2},
+			[]byte{1, 2},
+		},
+		{
+			"Arguments are equal",
+			[]byte{1, 2, 3},
+			[]byte{1, 2, 3},
+			[]byte{1, 2, 3},
+		},
+	}
+
+	for _, ts := range tt {
+		t.Run(ts.name, func(t *testing.T) {
+			minResult := min(ts.ns, ts.ns2)
+			assert.Equal(t, ts.expected, minResult)
 		})
 	}
 }

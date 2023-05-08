@@ -22,36 +22,24 @@ func TestVerifyNamespace_EmptyProof(t *testing.T) {
 	require.NoError(t, err)
 
 	// build a proof for an NID that is outside the namespace range of the tree
-	// start = end = 0, nodes = empty
+	// start = end = 0, nodes = empty, leafHash = empty
 	nID0 := []byte{0}
-	validEmptyProofZeroRange, err := tree.ProveNamespace(nID0)
+	validEmptyProof, err := tree.ProveNamespace(nID0)
 	require.NoError(t, err)
 
-	// build a proof for an NID that is outside the namespace range of the tree
-	// start = end = 1, nodes = nil
-	validEmptyProofNonZeroRange, err := tree.ProveNamespace(nID0)
-	require.NoError(t, err)
-	// modify the proof range to be non-zero, it should still be valid
-	validEmptyProofNonZeroRange.start = 1
-	validEmptyProofNonZeroRange.end = 1
-
-	// build a proof for an NID that is within the namespace range of the tree
-	// start = end = 0, nodes = non-empty
+	// build a proof for an NID that is within the namespace range of the tree, then corrupt it to have a zero range
+	// start = end = 0, nodes = non-empty, leafHash = empty
 	nID1 := []byte{1}
-	zeroRangeOnlyProof, err := tree.ProveNamespace(nID1)
+	invalidEmptyProof, err := tree.ProveNamespace(nID1)
 	require.NoError(t, err)
 	// modify the proof to contain a zero range
-	zeroRangeOnlyProof.start = 0
-	zeroRangeOnlyProof.end = 0
+	invalidEmptyProof.start = 0
+	invalidEmptyProof.end = 0
 
-	// build a proof for an NID that is within the namespace range of the tree
-	// start = 0, end = 1, nodes = empty
-	emptyNodesOnlyProof, err := tree.ProveNamespace(nID1)
-	require.NoError(t, err)
-	// modify the proof nodes to be empty
-	emptyNodesOnlyProof.nodes = [][]byte{}
+	// root of an empty tree
+	emptyRoot := tree.treeHasher.EmptyRoot()
+	hasher := tree.treeHasher.baseHasher
 
-	hasher := sha256.New()
 	type args struct {
 		proof  Proof
 		hasher hash.Hash
@@ -66,12 +54,18 @@ func TestVerifyNamespace_EmptyProof(t *testing.T) {
 		want              bool
 		isValidEmptyProof bool
 	}{
-		{"valid empty proof  with (start == end) == 0 and empty leaves", args{validEmptyProofZeroRange, hasher, nID0, [][]byte{}, root}, true, true},
-		{"valid empty proof with (start == end) != 0 and empty leaves", args{validEmptyProofNonZeroRange, hasher, nID0, [][]byte{}, root}, true, true},
-		{"valid empty proof  with (start == end) == 0 and non-empty leaves", args{validEmptyProofZeroRange, hasher, nID0, [][]byte{{1}}, root}, false, true},
-		{"valid empty proof with (start == end) != 0 and non-empty leaves", args{validEmptyProofNonZeroRange, hasher, nID0, [][]byte{{1}}, root}, false, true},
-		{"invalid empty proof: start == end == 0, nodes == non-empty", args{zeroRangeOnlyProof, hasher, nID1, [][]byte{}, root}, false, false},
-		{"invalid empty proof:  start == 0, end == 1, nodes == empty", args{emptyNodesOnlyProof, hasher, nID1, [][]byte{}, root}, false, false},
+		// in the following tests, proof should always contain an empty range
+
+		// test cases for a non-empty tree hence non-empty root
+		{"valid empty proof & empty leaves & nID not in range", args{validEmptyProof, hasher, nID0, [][]byte{}, root}, true, true},
+		{"invalid empty proof & empty leaves & nID in range", args{invalidEmptyProof, hasher, nID1, [][]byte{}, root}, false, false},
+		{"valid empty proof & non-empty leaves & nID not in range", args{validEmptyProof, hasher, nID0, [][]byte{{1}}, root}, false, true},
+		{"valid empty proof & empty leaves & nID in range", args{validEmptyProof, hasher, nID1, [][]byte{}, root}, false, true},
+
+		// test cases for an empty tree hence empty root
+		{"valid empty proof & empty leaves & nID not in range ", args{validEmptyProof, hasher, nID0, [][]byte{}, emptyRoot}, true, true},
+		{"invalid empty proof & empty leaves & nID in range", args{invalidEmptyProof, hasher, nID1, [][]byte{}, emptyRoot}, false, false},
+		{"valid empty proof & non-empty leaves & nID not in range", args{validEmptyProof, hasher, nID0, [][]byte{{1}}, emptyRoot}, false, true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -286,7 +280,8 @@ func TestVerifyLeafHashes_Err(t *testing.T) {
 	root, err := nmt.Root()
 	require.NoError(t, err)
 
-	corruptRoot := root[:nmt.NamespaceSize()]
+	// shrink the size of the root so that the root hash is invalid.
+	corruptRoot := root[:len(root)-1]
 
 	// create an NMT proof
 	nID5 := namespace.ID{5, 5}
@@ -354,7 +349,7 @@ func TestVerifyLeafHashes_Err(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := tt.proof.verifyLeafHashes(tt.Hasher, tt.verifyCompleteness, tt.nID, tt.leafHashes, tt.root)
+			_, err := tt.proof.VerifyLeafHashes(tt.Hasher, tt.verifyCompleteness, tt.nID, tt.leafHashes, tt.root)
 			assert.Equal(t, tt.wantErr, err != nil)
 		})
 	}
@@ -560,20 +555,115 @@ func TestVerifyLeafHashes_False(t *testing.T) {
 		args   args
 		result bool
 	}{
-		{"nID size of proof < nID size of verifyLeafHashes' nmt hasher", proof4_1, args{2, nid4_2, [][]byte{leafHash2}, root2}, false},
-		{"nID size of proof > nID size of verifyLeafHashes' nmt hasher", proof4_2, args{1, nid4_1, [][]byte{leafHash1}, root1}, false},
-		{"nID size of root < nID size of verifyLeafHashes' nmt hasher", proof4_2, args{2, nid4_2, [][]byte{leafHash2}, root1}, false},
-		{"nID size of root > nID size of verifyLeafHashes' nmt hasher", proof4_1, args{1, nid4_1, [][]byte{leafHash1}, root2}, false},
-		{"size of queried nID > nID size of verifyLeafHashes' nmt hasher", proof4_1, args{1, nid4_2, [][]byte{leafHash1}, root1}, false},
-		{"size of queried nID < nID size of verifyLeafHashes' nmt hasher", proof4_2, args{2, nid4_1, [][]byte{leafHash2}, root2}, false},
-		{"nID size of leafHash < nID size of verifyLeafHashes' nmt hasher", proof4_2, args{2, nid4_2, [][]byte{leafHash1}, root2}, false},
-		{"nID size of leafHash > nID size of verifyLeafHashes' nmt hasher", proof4_1, args{1, nid4_1, [][]byte{leafHash2}, root1}, false},
+		{"nID size of proof < nID size of VerifyLeafHashes' nmt hasher", proof4_1, args{2, nid4_2, [][]byte{leafHash2}, root2}, false},
+		{"nID size of proof > nID size of VerifyLeafHashes' nmt hasher", proof4_2, args{1, nid4_1, [][]byte{leafHash1}, root1}, false},
+		{"nID size of root < nID size of VerifyLeafHashes' nmt hasher", proof4_2, args{2, nid4_2, [][]byte{leafHash2}, root1}, false},
+		{"nID size of root > nID size of VerifyLeafHashes' nmt hasher", proof4_1, args{1, nid4_1, [][]byte{leafHash1}, root2}, false},
+		{"size of queried nID > nID size of VerifyLeafHashes' nmt hasher", proof4_1, args{1, nid4_2, [][]byte{leafHash1}, root1}, false},
+		{"size of queried nID < nID size of VerifyLeafHashes' nmt hasher", proof4_2, args{2, nid4_1, [][]byte{leafHash2}, root2}, false},
+		{"nID size of leafHash < nID size of VerifyLeafHashes' nmt hasher", proof4_2, args{2, nid4_2, [][]byte{leafHash1}, root2}, false},
+		{"nID size of leafHash > nID size of VerifyLeafHashes' nmt hasher", proof4_1, args{1, nid4_1, [][]byte{leafHash2}, root1}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			hasher := NewNmtHasher(sha256.New(), tt.args.nIDSize, true)
-			got, _ := tt.proof.verifyLeafHashes(hasher, true, tt.args.nID, tt.args.leaves, tt.args.root)
+			got, _ := tt.proof.VerifyLeafHashes(hasher, true, tt.args.nID, tt.args.leaves, tt.args.root)
 			assert.Equal(t, tt.result, got)
+		})
+	}
+}
+
+func TestIsEmptyProof(t *testing.T) {
+	tests := []struct {
+		name     string
+		proof    Proof
+		expected bool
+	}{
+		{
+			name: "valid empty proof",
+			proof: Proof{
+				leafHash: nil,
+				nodes:    nil,
+				start:    1,
+				end:      1,
+			},
+			expected: true,
+		},
+		{
+			name: "invalid empty proof - start != end",
+			proof: Proof{
+				leafHash: nil,
+				nodes:    nil,
+				start:    0,
+				end:      1,
+			},
+			expected: false,
+		},
+		{
+			name: "invalid empty proof - non-empty nodes",
+			proof: Proof{
+				leafHash: nil,
+				nodes:    [][]byte{{0x01}},
+				start:    1,
+				end:      1,
+			},
+			expected: false,
+		},
+		{
+			name: "invalid absence proof - non-empty leafHash",
+			proof: Proof{
+				leafHash: []byte{0x01},
+				nodes:    nil,
+				start:    1,
+				end:      1,
+			},
+			expected: false,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			result := test.proof.IsEmptyProof()
+			assert.Equal(t, test.expected, result)
+		})
+	}
+}
+
+// TestIsEmptyProofOverlapAbsenceProof ensures there is no overlap between empty proofs and absence proofs.
+func TestIsEmptyProofOverlapAbsenceProof(t *testing.T) {
+	tests := []struct {
+		name  string
+		proof Proof
+	}{
+		{
+			name: "valid empty proof",
+			proof: Proof{
+				leafHash: nil,
+				nodes:    nil,
+				start:    1,
+				end:      1,
+			},
+		},
+		{
+			name: "valid absence proof",
+			proof: Proof{
+				leafHash: []byte{0x01, 0x02, 0x03},
+				nodes:    nil,
+				start:    1,
+				end:      1,
+			},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			result := test.proof.IsEmptyProof()
+			absenceResult := test.proof.IsOfAbsence()
+			if result {
+				assert.False(t, absenceResult)
+			}
+			if absenceResult {
+				assert.False(t, result)
+			}
 		})
 	}
 }

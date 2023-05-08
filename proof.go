@@ -108,7 +108,7 @@ func NewAbsenceProof(proofStart, proofEnd int, proofNodes [][]byte, leafHash []b
 
 // IsEmptyProof checks whether the proof corresponds to an empty proof as defined in NMT specifications https://github.com/celestiaorg/nmt/blob/master/docs/spec/nmt.md.
 func (proof Proof) IsEmptyProof() bool {
-	return proof.start == proof.end && len(proof.nodes) == 0
+	return proof.start == proof.end && len(proof.nodes) == 0 && len(proof.leafHash) == 0
 }
 
 // VerifyNamespace verifies a whole namespace, i.e. 1) it verifies inclusion of
@@ -212,14 +212,14 @@ func (proof Proof) VerifyNamespace(h hash.Hash, nID namespace.ID, leaves [][]byt
 		return false
 	}
 	// with verifyCompleteness set to true:
-	res, err := proof.verifyLeafHashes(nth, true, nID, gotLeafHashes, root)
+	res, err := proof.VerifyLeafHashes(nth, true, nID, gotLeafHashes, root)
 	if err != nil {
 		return false
 	}
 	return res
 }
 
-// The verifyLeafHashes function checks whether the given proof is a valid Merkle
+// The VerifyLeafHashes function checks whether the given proof is a valid Merkle
 // range proof for the leaves in the leafHashes input. It returns true or false accordingly.
 // If there is an issue during the proof verification e.g., a node does not conform to the namespace hash format, then a proper error is returned to indicate the root cause of the issue.
 // The leafHashes parameter is a list of leaf hashes, where each leaf hash is represented
@@ -228,7 +228,7 @@ func (proof Proof) VerifyNamespace(h hash.Hash, nID namespace.ID, leaves [][]byt
 // the completeness of the proof by verifying that there is no leaf in the
 // tree represented by the root parameter that matches the namespace ID nID
 // but is not present in the leafHashes list.
-func (proof Proof) verifyLeafHashes(nth *Hasher, verifyCompleteness bool, nID namespace.ID, leafHashes [][]byte, root []byte) (bool, error) {
+func (proof Proof) VerifyLeafHashes(nth *Hasher, verifyCompleteness bool, nID namespace.ID, leafHashes [][]byte, root []byte) (bool, error) {
 	// check that the proof range is valid
 	if proof.Start() < 0 || proof.Start() >= proof.End() {
 		return false, fmt.Errorf("proof range [proof.start=%d, proof.end=%d) is not valid: %w", proof.Start(), proof.End(), ErrInvalidRange)
@@ -401,7 +401,7 @@ func (proof Proof) VerifyInclusion(h hash.Hash, nid namespace.ID, leavesWithoutN
 		hashes[i] = res
 	}
 
-	res, err := proof.verifyLeafHashes(nth, false, nid, hashes, root)
+	res, err := proof.VerifyLeafHashes(nth, false, nid, hashes, root)
 	if err != nil {
 		return false
 	}
