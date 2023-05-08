@@ -271,6 +271,7 @@ func (n *Hasher) HashNode(left, right []byte) ([]byte, error) {
 	leftMinNs, leftMaxNs := MinNamespace(left, n.NamespaceLen), MaxNamespace(left, n.NamespaceLen)
 	rightMinNs, rightMaxNs := MinNamespace(right, n.NamespaceLen), MaxNamespace(right, n.NamespaceLen)
 
+	// compute the namespace range of the parent node
 	minNs, maxNs := computeNsRange(leftMinNs, leftMaxNs, rightMinNs, rightMaxNs, n.ignoreMaxNs, n.precomputedMaxNs)
 
 	res := make([]byte, 0)
@@ -303,6 +304,7 @@ func min(ns []byte, ns2 []byte) []byte {
 	return ns2
 }
 
+// computeNsRange computes the namespace range of the parent node based on the namespace ranges of its left and right children.
 func computeNsRange(leftMinNs, leftMaxNs, rightMinNs, rightMaxNs []byte, ignoreMaxNs bool, precomputedMaxNs namespace.ID) (minNs []byte, maxNs []byte) {
 	minNs = leftMinNs
 	maxNs = rightMaxNs
