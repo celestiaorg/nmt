@@ -217,7 +217,7 @@ func (n *NamespacedMerkleTree) ProveNamespace(nID namespace.ID) (Proof, error) {
 	if err != nil {
 		return Proof{}, fmt.Errorf("failed to get root: %w", err)
 	}
-	treeMinNs := MinNamespace(root, n.NamespaceSize())
+	treeMinNs := namespace.ID(MinNamespace(root, n.NamespaceSize()))
 	treeMaxNs := namespace.ID(MaxNamespace(root, n.NamespaceSize()))
 
 	// case 1) In the cases (n.nID < treeMinNs) or (treeMaxNs < nID), return empty
