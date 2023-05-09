@@ -1102,3 +1102,28 @@ func Test_MinMaxNamespace_Err(t *testing.T) {
 		})
 	}
 }
+
+// TestProveNamespace checks the output of the ProveNamespace method when queried for the maximum namespace ID.
+func TestProveNamespace_MaxNamespace(t *testing.T) {
+	nidSize := 1
+	MaxNS := byte(math.MaxUint8)
+	tests := []struct {
+		name         string
+		nIDList      []byte
+		isEmptyProof bool
+	}{
+		{"tree with no leaf", []byte{}, true},
+		{"tree with one leaf with MaxNS", []byte{MaxNS}, false},
+		{"tree with two leaves, the right leaf has MaxNS", []byte{1, MaxNS}, true},
+		{"tree with four leaves, the right half has MaxNS", []byte{1, 2, MaxNS, MaxNS}, true},
+		{"tree with 8 leaves, the right half has MaxNS", []byte{1, 2, 3, 4, MaxNS, MaxNS, MaxNS, MaxNS}, true},
+	}
+	for _, tt := range tests {
+		tree := exampleNMT(nidSize, true, tt.nIDList...)
+		t.Run(tt.name, func(t *testing.T) {
+			proof, err := tree.ProveNamespace(namespace.ID{MaxNS})
+			assert.NoError(t, err)
+			assert.Equal(t, tt.isEmptyProof, proof.IsEmptyProof())
+		})
+	}
+}
