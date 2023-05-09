@@ -513,7 +513,10 @@ func TestIgnoreMaxNamespace(t *testing.T) {
 				if gotIgnored := proof.IsMaxNamespaceIDIgnored(); gotIgnored != tc.ignoreMaxNamespace {
 					t.Fatalf("Proof.IsMaxNamespaceIDIgnored() got: %v, want: %v", gotIgnored, tc.ignoreMaxNamespace)
 				}
-				leaves := tree.Get(d.NamespaceID())
+				var leaves [][]byte
+				if !proof.IsEmptyProof() {
+					leaves = tree.Get(d.NamespaceID())
+				}
 				r, err := tree.Root()
 				require.NoError(t, err)
 				if !proof.VerifyNamespace(hash, d.NamespaceID(), leaves, r) {
