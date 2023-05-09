@@ -212,9 +212,17 @@ func (n *NamespacedMerkleTree) ProveRange(start, end int) (Proof, error) {
 // Any error returned by this method is irrecoverable and indicates an illegal state of the tree (n).
 func (n *NamespacedMerkleTree) ProveNamespace(nID namespace.ID) (Proof, error) {
 	isMaxNsIgnored := n.treeHasher.IsMaxNamespaceIDIgnored()
-	// case 1) In the cases (n.nID < minNID) or (n.maxNID < nID), return empty
+	// extract the min and max namespace of the tree
+	root, err := n.Root()
+	if err != nil {
+		return Proof{}, fmt.Errorf("failed to get root: %w", err)
+	}
+	treeMinNs := MinNamespace(root, n.NamespaceSize())
+	treeMaxNs := namespace.ID(MaxNamespace(root, n.NamespaceSize()))
+
+	// case 1) In the cases (n.nID < treeMinNs) or (treeMaxNs < nID), return empty
 	// range proof
-	if nID.Less(n.minNID) || n.maxNID.Less(nID) {
+	if nID.Less(treeMinNs) || treeMaxNs.Less(nID) {
 		return NewEmptyRangeProof(isMaxNsIgnored), nil
 	}
 
