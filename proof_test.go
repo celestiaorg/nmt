@@ -17,7 +17,7 @@ import (
 func TestVerifyNamespace_EmptyProof(t *testing.T) {
 	// create a tree with 4 leaves
 	nIDSize := 1
-	tree := exampleNMT(nIDSize, 1, 2, 3, 4)
+	tree := exampleNMT(nIDSize, true, 1, 2, 3, 4)
 	root, err := tree.Root()
 	require.NoError(t, err)
 
@@ -275,7 +275,7 @@ func safeAppend(id, data []byte) []byte {
 func TestVerifyLeafHashes_Err(t *testing.T) {
 	// create a sample tree
 	nameIDSize := 2
-	nmt := exampleNMT(nameIDSize, 1, 2, 3, 4, 5, 6, 7, 8)
+	nmt := exampleNMT(nameIDSize, true, 1, 2, 3, 4, 5, 6, 7, 8)
 	hasher := nmt.treeHasher
 	root, err := nmt.Root()
 	require.NoError(t, err)
@@ -359,7 +359,7 @@ func TestVerifyInclusion_False(t *testing.T) {
 	hasher := sha256.New()
 
 	// create a sample tree with namespace ID size of 1
-	nmt1 := exampleNMT(1, 1, 2, 3, 4, 5, 6, 7, 8)
+	nmt1 := exampleNMT(1, true, 1, 2, 3, 4, 5, 6, 7, 8)
 	root1, err := nmt1.Root()
 	require.NoError(t, err)
 	nid4_1 := namespace.ID{4}
@@ -368,7 +368,7 @@ func TestVerifyInclusion_False(t *testing.T) {
 	leaf4_1 := nmt1.leaves[3][nmt1.NamespaceSize():]
 
 	// create a sample tree with namespace ID size of 2
-	nmt2 := exampleNMT(2, 1, 2, 3, 4, 5, 6, 7, 8)
+	nmt2 := exampleNMT(2, true, 1, 2, 3, 4, 5, 6, 7, 8)
 	root2, err := nmt2.Root()
 	require.NoError(t, err)
 	nid4_2 := namespace.ID{4, 4}
@@ -412,7 +412,7 @@ func TestVerifyInclusion_EmptyProofs(t *testing.T) {
 
 	// create a tree
 	nIDSize := 1
-	tree := exampleNMT(nIDSize, 1, 2, 3, 4, 5, 6, 7, 8)
+	tree := exampleNMT(nIDSize, true, 1, 2, 3, 4, 5, 6, 7, 8)
 	root, err := tree.Root()
 	require.NoError(t, err)
 
@@ -458,7 +458,7 @@ func TestVerifyNamespace_False(t *testing.T) {
 	nIDs := []byte{1, 2, 3, 4, 5, 6, 7, 8, 11}
 
 	// create a sample tree with namespace ID size of 1
-	nmt1 := exampleNMT(1, nIDs...)
+	nmt1 := exampleNMT(1, true, nIDs...)
 	root1, err := nmt1.Root()
 	require.NoError(t, err)
 	nid4_1 := namespace.ID{4}
@@ -466,7 +466,7 @@ func TestVerifyNamespace_False(t *testing.T) {
 	require.NoError(t, err)
 
 	// create a sample tree with namespace ID size of 2
-	nmt2 := exampleNMT(2, nIDs...)
+	nmt2 := exampleNMT(2, true, nIDs...)
 	root2, err := nmt2.Root()
 	require.NoError(t, err)
 	nid4_2 := namespace.ID{4, 4}
@@ -525,7 +525,7 @@ func TestVerifyLeafHashes_False(t *testing.T) {
 	nIDs := []byte{1, 2, 3, 4, 5, 6, 7, 8}
 
 	// create a sample tree with namespace ID size of 1
-	nmt1 := exampleNMT(1, nIDs...)
+	nmt1 := exampleNMT(1, true, nIDs...)
 	root1, err := nmt1.Root()
 	require.NoError(t, err)
 	nid4_1 := namespace.ID{4}
@@ -533,7 +533,7 @@ func TestVerifyLeafHashes_False(t *testing.T) {
 	require.NoError(t, err)
 
 	// create a sample tree with namespace ID size of 2
-	nmt2 := exampleNMT(2, nIDs...)
+	nmt2 := exampleNMT(2, true, nIDs...)
 	root2, err := nmt2.Root()
 	require.NoError(t, err)
 	nid4_2 := namespace.ID{4, 4}
