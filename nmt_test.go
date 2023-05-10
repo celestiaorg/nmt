@@ -1106,7 +1106,7 @@ func Test_MinMaxNamespace_Err(t *testing.T) {
 	}
 }
 
-// TestProveNamespace checks the output of the ProveNamespace method when queried for the maximum namespace ID.
+// TestProveNamespace_MaxNamespace checks the output of the ProveNamespace method when queried for the maximum namespace ID.
 func TestProveNamespace_MaxNamespace(t *testing.T) {
 	nidSize := 1
 	MaxNS := byte(math.MaxUint8)
