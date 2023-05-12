@@ -1137,7 +1137,7 @@ func TestEmptyRoot_NMT(t *testing.T) {
 	ignoreMaxNS := true
 	nIDList := []byte{1, 2, 3, 4}
 
-	// Create a nmt using the above configs
+	// create a nmt using the above configs
 	tree := New(sha256.New(), NamespaceIDSize(nIDSzie), IgnoreMaxNamespace(ignoreMaxNS))
 	for i, nid := range nIDList {
 		namespace := bytes.Repeat([]byte{nid}, nIDSzie)
@@ -1146,10 +1146,10 @@ func TestEmptyRoot_NMT(t *testing.T) {
 			panic(fmt.Sprintf("unexpected error: %v", err))
 		}
 	}
-	// Calculate the empty root by accessing the `Hasher` field of the tree
+	// calculate the empty root by accessing the `Hasher` field of the tree
 	expectedEmptyRoot := tree.treeHasher.EmptyRoot()
 
-	// Create  a hasher identical to the one used for the tree
+	// create  a hasher identical to the one used for the tree
 	hasher := NewNmtHasher(sha256.New(), namespace.IDSize(nIDSzie), ignoreMaxNS)
 	gotEmptyRoot := hasher.EmptyRoot()
 
