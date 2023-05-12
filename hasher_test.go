@@ -839,3 +839,111 @@ func TestMin(t *testing.T) {
 		})
 	}
 }
+
+// TestComputeNsRange tests the ComputeRange function.
+func TestComputeNsRange(t *testing.T) {
+	nIDSize := 1
+	precomputedMaxNs := bytes.Repeat([]byte{0xFF}, nIDSize)
+
+	testCases := []struct {
+		leftMinNs, leftMaxNs, rightMinNs, rightMaxNs, expectedMinNs, expectedMaxNs []byte
+		ignoreMaxNs                                                                bool
+	}{
+		{
+			ignoreMaxNs:   true,
+			leftMinNs:     precomputedMaxNs,
+			leftMaxNs:     precomputedMaxNs,
+			rightMinNs:    precomputedMaxNs,
+			rightMaxNs:    precomputedMaxNs,
+			expectedMinNs: precomputedMaxNs,
+			expectedMaxNs: precomputedMaxNs,
+		},
+		{
+			ignoreMaxNs:   true,
+			leftMinNs:     []byte{0x00},
+			leftMaxNs:     precomputedMaxNs,
+			rightMinNs:    precomputedMaxNs,
+			rightMaxNs:    precomputedMaxNs,
+			expectedMinNs: []byte{0x00},
+			expectedMaxNs: precomputedMaxNs,
+		},
+		{
+			ignoreMaxNs:   true,
+			leftMinNs:     []byte{0x00},
+			leftMaxNs:     []byte{0x01},
+			rightMinNs:    precomputedMaxNs,
+			rightMaxNs:    precomputedMaxNs,
+			expectedMinNs: []byte{0x00},
+			expectedMaxNs: []byte{0x01},
+		},
+		{
+			ignoreMaxNs:   true,
+			leftMinNs:     []byte{0x00},
+			leftMaxNs:     []byte{0x01},
+			rightMinNs:    []byte{0x02},
+			rightMaxNs:    precomputedMaxNs,
+			expectedMinNs: []byte{0x00},
+			expectedMaxNs: precomputedMaxNs,
+		},
+		{
+			ignoreMaxNs:   true,
+			leftMinNs:     []byte{0x00},
+			leftMaxNs:     []byte{0x01},
+			rightMinNs:    []byte{0x02},
+			rightMaxNs:    []byte{0x03},
+			expectedMinNs: []byte{0x00},
+			expectedMaxNs: []byte{0x03},
+		},
+		{
+			ignoreMaxNs:   false,
+			leftMinNs:     precomputedMaxNs,
+			leftMaxNs:     precomputedMaxNs,
+			rightMinNs:    precomputedMaxNs,
+			rightMaxNs:    precomputedMaxNs,
+			expectedMinNs: precomputedMaxNs,
+			expectedMaxNs: precomputedMaxNs,
+		},
+		{
+			ignoreMaxNs:   false,
+			leftMinNs:     []byte{0x00},
+			leftMaxNs:     precomputedMaxNs,
+			rightMinNs:    precomputedMaxNs,
+			rightMaxNs:    precomputedMaxNs,
+			expectedMinNs: []byte{0x00},
+			expectedMaxNs: precomputedMaxNs,
+		},
+		{
+			ignoreMaxNs:   false,
+			leftMinNs:     []byte{0x00},
+			leftMaxNs:     []byte{0x01},
+			rightMinNs:    precomputedMaxNs,
+			rightMaxNs:    precomputedMaxNs,
+			expectedMinNs: []byte{0x00},
+			expectedMaxNs: precomputedMaxNs,
+		},
+		{
+			ignoreMaxNs:   false,
+			leftMinNs:     []byte{0x00},
+			leftMaxNs:     []byte{0x01},
+			rightMinNs:    []byte{0x02},
+			rightMaxNs:    precomputedMaxNs,
+			expectedMinNs: []byte{0x00},
+			expectedMaxNs: precomputedMaxNs,
+		},
+		{
+			ignoreMaxNs:   false,
+			leftMinNs:     []byte{0x00},
+			leftMaxNs:     []byte{0x01},
+			rightMinNs:    []byte{0x02},
+			rightMaxNs:    []byte{0x03},
+			expectedMinNs: []byte{0x00},
+			expectedMaxNs: []byte{0x03},
+		},
+	}
+
+	for _, tc := range testCases {
+		minNs, maxNs := computeNsRange(tc.leftMinNs, tc.leftMaxNs, tc.rightMinNs, tc.rightMaxNs, tc.ignoreMaxNs, precomputedMaxNs)
+		assert.True(t, bytes.Equal(tc.expectedMinNs, minNs))
+		assert.True(t, bytes.Equal(tc.expectedMaxNs, maxNs))
+	}
+}
