@@ -957,7 +957,8 @@ func TestEmptyRoot(t *testing.T) {
 	expectedEmptyRoot := hasher.EmptyRoot()
 
 	// perform some operation with the hasher
-	hasher.HashNode(createByteSlice(hasher.Size(), 1), createByteSlice(hasher.Size(), 1))
+	_, err := hasher.HashNode(createByteSlice(hasher.Size(), 1), createByteSlice(hasher.Size(), 1))
+	assert.NoError(t, err)
 	gotEmptyRoot := hasher.EmptyRoot()
 
 	// the empty root should be the same before and after the operation
