@@ -1130,3 +1130,31 @@ func TestProveNamespace_MaxNamespace(t *testing.T) {
 		})
 	}
 }
+
+func TestEmptyRoot(t *testing.T) {
+	nIDSzie := 1
+	ignoreMaxNS := true
+	nIDList := []byte{1, 2, 3, 4}
+	//tree := exampleNMT(nIDSzie, ignoreMaxNS, nIDList...)
+
+	tree := New(sha256.New(), NamespaceIDSize(nIDSzie), IgnoreMaxNamespace(ignoreMaxNS))
+	for i, nid := range nIDList {
+		namespace := bytes.Repeat([]byte{nid}, nIDSzie)
+		d := append(namespace, []byte(fmt.Sprintf("leaf_%d", i))...)
+		if err := tree.Push(d); err != nil {
+			panic(fmt.Sprintf("unexpected error: %v", err))
+		}
+	}
+	expectedEmptyRoot := tree.treeHasher.EmptyRoot()
+
+	// create a hasher identical to one used for the tree
+	hasher := NewNmtHasher(sha256.New(), namespace.IDSize(nIDSzie), ignoreMaxNS)
+	gotEmptyRoot := hasher.EmptyRoot()
+
+	assert.True(t, bytes.Equal(gotEmptyRoot, expectedEmptyRoot))
+
+	// create a hasher identical to one used for the tree
+	hasher2 := NewNmtHasher(sha256.New(), namespace.IDSize(nIDSzie), ignoreMaxNS)
+	gotEmptyRoot2 := hasher2.EmptyRoot()
+	assert.True(t, bytes.Equal(gotEmptyRoot, gotEmptyRoot2))
+}
