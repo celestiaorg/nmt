@@ -947,3 +947,19 @@ func TestComputeNsRange(t *testing.T) {
 		assert.True(t, bytes.Equal(tc.expectedMaxNs, maxNs))
 	}
 }
+
+// TestEmptyRoot ensures that the empty root is always the same, under the same configuration, regardless of the state of the Hasher.
+func TestEmptyRoot(t *testing.T) {
+	nIDSzie := 1
+	ignoreMaxNS := true
+
+	hasher := NewNmtHasher(sha256.New(), namespace.IDSize(nIDSzie), ignoreMaxNS)
+	expectedEmptyRoot := hasher.EmptyRoot()
+
+	// perform some operation with the hasher
+	hasher.HashNode(createByteSlice(hasher.Size(), 1), createByteSlice(hasher.Size(), 1))
+	gotEmptyRoot := hasher.EmptyRoot()
+
+	// the empty root should be the same before and after the operation
+	assert.True(t, bytes.Equal(gotEmptyRoot, expectedEmptyRoot))
+}

@@ -1131,12 +1131,13 @@ func TestProveNamespace_MaxNamespace(t *testing.T) {
 	}
 }
 
-func TestEmptyRoot(t *testing.T) {
+// TestEmptyRoot_NMT tests that the empty root of a tree is the same as the empty root of a hasher with the same configuration.
+func TestEmptyRoot_NMT(t *testing.T) {
 	nIDSzie := 1
 	ignoreMaxNS := true
 	nIDList := []byte{1, 2, 3, 4}
-	//tree := exampleNMT(nIDSzie, ignoreMaxNS, nIDList...)
 
+	// Create a nmt using the above configs
 	tree := New(sha256.New(), NamespaceIDSize(nIDSzie), IgnoreMaxNamespace(ignoreMaxNS))
 	for i, nid := range nIDList {
 		namespace := bytes.Repeat([]byte{nid}, nIDSzie)
@@ -1145,16 +1146,12 @@ func TestEmptyRoot(t *testing.T) {
 			panic(fmt.Sprintf("unexpected error: %v", err))
 		}
 	}
+	// Calculate the empty root by accessing the `Hasher` field of the tree
 	expectedEmptyRoot := tree.treeHasher.EmptyRoot()
 
-	// create a hasher identical to one used for the tree
+	// Create  a hasher identical to the one used for the tree
 	hasher := NewNmtHasher(sha256.New(), namespace.IDSize(nIDSzie), ignoreMaxNS)
 	gotEmptyRoot := hasher.EmptyRoot()
 
 	assert.True(t, bytes.Equal(gotEmptyRoot, expectedEmptyRoot))
-
-	// create a hasher identical to one used for the tree
-	hasher2 := NewNmtHasher(sha256.New(), namespace.IDSize(nIDSzie), ignoreMaxNS)
-	gotEmptyRoot2 := hasher2.EmptyRoot()
-	assert.True(t, bytes.Equal(gotEmptyRoot, gotEmptyRoot2))
 }
