@@ -136,6 +136,7 @@ func (n *Hasher) BlockSize() int {
 }
 
 func (n *Hasher) EmptyRoot() []byte {
+	n.baseHasher.Reset()
 	emptyNs := bytes.Repeat([]byte{0}, int(n.NamespaceLen))
 	h := n.baseHasher.Sum(nil)
 	digest := append(append(emptyNs, emptyNs...), h...)
