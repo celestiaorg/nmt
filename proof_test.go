@@ -37,8 +37,8 @@ func TestVerifyNamespace_EmptyProof(t *testing.T) {
 	invalidEmptyProof.end = 0
 
 	// root of an empty tree
+	hasher := sha256.New()
 	emptyRoot := tree.treeHasher.EmptyRoot()
-	hasher := tree.treeHasher.baseHasher
 
 	type args struct {
 		proof  Proof
