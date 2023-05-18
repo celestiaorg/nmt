@@ -43,11 +43,11 @@ idSize := tree.NamespaceSize() // outputs 1
 ```
 
 ### Ignore Max Namespace
+
 If the NMT is configured with `IgnoreMaxNamespace` set to true (the flag is explained [here](#nmt-initialization-and-configuration)), then the calculation of the namespace ID range of non-leaf nodes in the [namespace hash function](./spec/nmt.md#namespaced-hash) will change slightly.
 That is, if the right child of a node is entirely filled with leaves with the maximum possible namespace `maxPossibleNamespace`, i.e., its minimum and maximum namespace are equal to the `maxPossibleNamespace`, then the right child is excluded from the calculation of the namespace ID range of the parent node, and the parent node inherits the namespace range of the left child.
 In the preceding code example with the ID size of `1` byte, the value of `maxPossibleNamespace` is $2^8-1 = 0xFF$.
-
-Concretely, consider a node `n` with children `l` and `r`. If `r.minNs` and `r.maxNs` are both equal to `maxPossibleNamespace` (indicating that it represents the root of a subtree whose leaves all have the namespace ID of `maxPossibleNamespace`), then the namespace ID range of `n` is set to the namespace range of `l`, i.e., `n.MinNs = l.MinNs` and `n.MaxNs = l.MaxNs`. 
+Concretely, consider a node `n` with children `l` and `r`. If `r.minNs` and `r.maxNs` are both equal to `maxPossibleNamespace` (indicating that it represents the root of a subtree whose leaves all have the namespace ID of `maxPossibleNamespace`), then the namespace ID range of `n` is set to the namespace range of `l`, i.e., `n.MinNs = l.MinNs` and `n.MaxNs = l.MaxNs`.  
 Otherwise, the namespace ID range of `n` is set as normal i.e., `n.minNs = min(l.minNs, r.minNs)` and `n.maxNs = max(l.maxNs, r.maxNs)`.
 
 Note that the `IgnoreMaxNamespace` flag is Celestia-specific and is motivated by the fact that half of the data items in the NMT are associated with reserved namespace IDs (i.e., the highest possible value within the ID size) and do not need to be queried using their namespace IDs.
