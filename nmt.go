@@ -419,8 +419,6 @@ func (n *NamespacedMerkleTree) foundInRange(nID namespace.ID) (found bool, start
 	// This is a faster version of this code snippet:
 	// https://github.com/celestiaorg/celestiaorg-prototype/blob/2aeca6f55ad389b9d68034a0a7038f80a8d2982e/simpleblock.go#L106-L117
 	foundRng, found := n.namespaceRanges[string(nID)]
-	// XXX casting from uint64 to int is kinda crappy but nebolousLabs' range
-	// proof api requires int params only to convert them to uint64 ...
 	return found, foundRng.start, foundRng.end
 }
 
