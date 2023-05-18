@@ -419,9 +419,7 @@ func (n *NamespacedMerkleTree) foundInRange(nID namespace.ID) (found bool, start
 	// This is a faster version of this code snippet:
 	// https://github.com/celestiaorg/celestiaorg-prototype/blob/2aeca6f55ad389b9d68034a0a7038f80a8d2982e/simpleblock.go#L106-L117
 	foundRng, found := n.namespaceRanges[string(nID)]
-	// XXX casting from uint64 to int is kinda crappy but nebolousLabs' range
-	// proof api requires int params only to convert them to uint64 ...
-	return found, int(foundRng.start), int(foundRng.end)
+	return found, foundRng.start, foundRng.end
 }
 
 // NamespaceSize returns the underlying namespace size. Note that all namespaced
@@ -555,8 +553,8 @@ func (n *NamespacedMerkleTree) updateNamespaceRanges() {
 		lastRange, found := n.namespaceRanges[lastNsStr]
 		if !found {
 			n.namespaceRanges[lastNsStr] = leafRange{
-				start: uint64(lastIndex),
-				end:   uint64(lastIndex + 1),
+				start: lastIndex,
+				end:   lastIndex + 1,
 			}
 		} else {
 			n.namespaceRanges[lastNsStr] = leafRange{
@@ -612,7 +610,7 @@ type leafRange struct {
 	// start and end denote the indices of a leaf in the tree. start ranges from
 	// 0 up to the total number of leaves minus 1 end ranges from 1 up to the
 	// total number of leaves end is non-inclusive
-	start, end uint64
+	start, end int
 }
 
 // MinNamespace extracts the minimum namespace ID from a given namespace hash,
