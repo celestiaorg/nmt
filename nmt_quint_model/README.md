@@ -27,7 +27,7 @@ iteratively generates proofs and non-deterministically corrupts them.
 These generated test runs are exported in a json format
 (e.g., file [ITF_traces/runTest.itf.json](../nmt_quint_model/ITF_files/runTest.itf.json)).
 To be executed as a part of the standard suite, an adapter
-[simulation_test.go](../nmt_quint_model/simulation_test.go)
+[simulation_test.go](../simulation_test.go)
 is necessary.
 (The adapter iterates through the json-represented execution state and
 translates them to function calls.)
