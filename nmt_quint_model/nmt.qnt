@@ -283,7 +283,7 @@ module nmt {
     
     // This function creates a proof for a given `namespaceId` and a given `tree`.
     // Following the NMT documentation (https://github.com/celestiaorg/nmt/blob/master/docs/spec/nmt.md#namespace-proof),
-    // the tproof consists of `start` and `end` indices and the hashes of the nodes (`supporting_hashes`) that are left siblings
+    // the proof consists of `start` and `end` indices and the hashes of the nodes (`supporting_hashes`) that are left siblings
     // in the regular Merkle proof of `start` and those that are right hashes in the regular proof of `end-1` 
     def CreateProofNamespace(namespaceId: int, tree: TREE): PROOF =
         val leavesStart = min(tree.leaves.keys())                
@@ -350,7 +350,7 @@ module nmt {
         length(elementsWithWrongId) == 0
         
        
-    // Given `proof` and `leaves`, this function calculates the Merkle roo (which is hash) for that range.
+    // Given `proof` and `leaves`, this function calculates the Merkle root (which is hash) for that range.
     def MerkleRangeHash(proof: PROOF, leaves: List[DATA_ITEM]) : WORD =
         
         // the number of leaves in a complete subtree that covers the last leaf
@@ -610,7 +610,7 @@ module nmtTest {
 
     // this module iteratively generates a proof and then non-deterministically corrupts it.
     // run by:
-    // quint run --main=nmtTest --max-samples=2 --max-steps=100 nmt.qnt --out-itf=ITF_files/out.itf.json
+    // quint run --main=nmtTest --max-samples=1 --max-steps=100 nmt.qnt --out-itf=ITF_files/out.itf.json
     // to simulate 100 steps and save output into `out.itf.json`. This output can be used to generate 
     // test cases (eg., in `simulation_test.go`)
 

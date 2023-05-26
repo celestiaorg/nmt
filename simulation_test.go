@@ -81,8 +81,8 @@ func bytesToInt(bytes []byte) int {
 func TestFromITF(t *testing.T) {
 	var tree *nmt.NamespacedMerkleTree
 
-	itfFileName := "formal_spec/ITF_files/runTest.itf.json"
-	// itfFileName := "formal_spec/ITF_files/panicIssue.itf.json"
+	itfFileName := "nmt_quint_model/ITF_files/runTest.itf.json"
+	// itfFileName := "nmt_quint_model/ITF_files/panicIssue.itf.json"
 	data, err := os.ReadFile(itfFileName)
 	if err != nil {
 		t.Errorf("Error opening file: %v", err)
@@ -172,7 +172,7 @@ func TestFromITF(t *testing.T) {
 }
 
 func TestFromScenario(t *testing.T) {
-	itfFileName := "formal_spec/ITF_files/scenario.json"
+	itfFileName := "nmt_quint_model/ITF_files/scenario.json"
 	data, err := os.ReadFile(itfFileName)
 	if err != nil {
 		t.Errorf("Error opening file: %v", err)

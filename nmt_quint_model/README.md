@@ -1,6 +1,6 @@
-The folder `formal_spec` contains a formal specification of the NMT proof/verification logic in [Quint](https://github.com/informalsystems/quint).
-
 # What is Quint?
+
+The folder `nmt_quint_model` contains a formal specification of the NMT proof/verification logic in [Quint](https://github.com/informalsystems/quint).
 
 [Quint](https://github.com/informalsystems/quint) is a specification language, best suited modeling and analyzing distributed systems.
 Quint builds upon Temporal Logic of Actions (TLA) and aims to be easy to learn and use, with state-of-the-art static analysis and development tooling.
@@ -45,7 +45,7 @@ Then you can play with the REPL by trying some basic expressions, e.g.
 As a first step, examine the model operators from within REPL.
 Example commands to try out after running `quint` within the `formal_spec` folder:
 
-```
+```bluespec
 .load nmt.qnt
 
 import basics.*
