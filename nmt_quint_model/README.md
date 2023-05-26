@@ -16,18 +16,18 @@ The benefits of having a Quint specification are threefold:
 and yet it resides on a higher level of abstraction than the code.
 Furthermore, it is executable, which makes it easier to spot and
 eliminate mistakes in the specification.
-Module [nmt](https://github.com/ivan-gavran/nmt/blob/c3cc6b7acba34c97a1a4d5e8fa4be1d355535c1e/formal_spec/nmt.qnt#L253)
+Module [nmt](../nmt_quint_model/nmt.qnt#L253)
 captures the logic of namespace proof generation and verification,
 and the invariant
-[`verificationAlwaysCorrect`](https://github.com/ivan-gavran/nmt/blob/c3cc6b7acba34c97a1a4d5e8fa4be1d355535c1e/formal_spec/nmt.qnt#L592)
+[`verificationAlwaysCorrect`](../nmt_quint_model/nmt.qnt#L592)
 is an example of a property against which a specification can be checked.
 - It allows for test generation.
-Module [`nmtTest`](https://github.com/ivan-gavran/nmt/blob/c3cc6b7acba34c97a1a4d5e8fa4be1d355535c1e/formal_spec/nmt.qnt#LL597C17-L597C17)
+Module [`nmtTest`](../nmt_quint_model/nmt.qnt#LL597C17-L597C17)
 iteratively generates proofs and non-deterministically corrupts them.
 These generated test runs are exported in a json format
-(e.g., file [ITF_traces/runTest.itf.json](https://github.com/ivan-gavran/nmt/blob/ivan/quint_spec/formal_spec/ITF_files/runTest.itf.json)).
+(e.g., file [ITF_traces/runTest.itf.json](../nmt_quint_model/ITF_files/runTest.itf.json)).
 To be executed as a part of the standard suite, an adapter
-[simulation_test.go](https://github.com/ivan-gavran/nmt/blob/ivan/quint_spec/simulation_test.go)
+[simulation_test.go](../nmt_quint_model/simulation_test.go)
 is necessary.
 (The adapter iterates through the json-represented execution state and
 translates them to function calls.)
@@ -143,4 +143,4 @@ Once a test file is generated, it is read by `simulation_test.go`,
 a regular go test.
 (A path to the json file that should be tested needs to be given -
 at the moment
-[hardcoded](https://github.com/ivan-gavran/nmt/blob/c3cc6b7acba34c97a1a4d5e8fa4be1d355535c1e/simulation_test.go#L85).)
+[hardcoded](../simulation_test.go#L84).)
