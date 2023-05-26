@@ -27,12 +27,7 @@ func (nid ID) Size() IDSize {
 	return IDSize(len(nid))
 }
 
-// String stringifies the nid.
+// String returns the hexadecimal encoding of the nid.
 func (nid ID) String() string {
-	return string(nid)
-}
-
-// HexString returns hexadecimal encoding of nid.
-func (nid ID) HexString() string {
 	return hex.EncodeToString(nid)
 }
