@@ -1,6 +1,9 @@
 package namespace
 
-import "bytes"
+import (
+	"bytes"
+	"encoding/hex"
+)
 
 type ID []byte
 
@@ -27,4 +30,9 @@ func (nid ID) Size() IDSize {
 // String stringifies the nid.
 func (nid ID) String() string {
 	return string(nid)
+}
+
+// HexString returns hexadecimal encoding of nid.
+func (nid ID) HexString() string {
+	return hex.EncodeToString(nid)
 }
