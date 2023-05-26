@@ -1,6 +1,7 @@
 package nmt
 
 import (
+	"bytes"
 	"crypto"
 	"crypto/sha256"
 	"errors"
@@ -64,7 +65,8 @@ func Test_namespacedTreeHasher_HashLeaf(t *testing.T) {
 }
 
 func Test_namespacedTreeHasher_HashNode(t *testing.T) {
-	sum(crypto.SHA256, []byte{NodePrefix}, []byte{0, 0, 0, 0}, []byte{1, 1, 1, 1})
+	// create a dummy hash to use as the digest of the left and right child
+	randHash := createByteSlice(crypto.SHA256.Size(), 0x01)
 	type children struct {
 		l []byte
 		r []byte
@@ -78,28 +80,25 @@ func Test_namespacedTreeHasher_HashNode(t *testing.T) {
 	}{
 		{
 			"leftmin<rightmin && leftmax<rightmax", 2,
-			children{[]byte{0, 0, 0, 0}, []byte{1, 1, 1, 1}},
-			append(
-				[]byte{0, 0, 1, 1},
-				sum(crypto.SHA256, []byte{NodePrefix}, []byte{0, 0, 0, 0}, []byte{1, 1, 1, 1})...,
-			),
+			children{
+				concat([]byte{0, 0, 0, 0}, randHash),
+				concat([]byte{1, 1, 1, 1}, randHash),
+			},
+			concat([]byte{0, 0, 1, 1}, // minNID||maxNID
+				sum(crypto.SHA256, []byte{NodePrefix}, // Hash(NodePrefix||left||right)
+					concat([]byte{0, 0, 0, 0}, randHash),
+					concat([]byte{1, 1, 1, 1}, randHash))),
 		},
 		{
 			"leftmin==rightmin && leftmax<rightmax", 2,
-			children{[]byte{0, 0, 0, 0}, []byte{0, 0, 1, 1}},
-			append(
-				[]byte{0, 0, 1, 1},
-				sum(crypto.SHA256, []byte{NodePrefix}, []byte{0, 0, 0, 0}, []byte{0, 0, 1, 1})...,
-			),
-		},
-		// XXX: can this happen in practice? or is this an invalid state?
-		{
-			"leftmin>rightmin && leftmax<rightmax", 2,
-			children{[]byte{1, 1, 0, 0}, []byte{0, 0, 0, 1}},
-			append(
-				[]byte{0, 0, 0, 1},
-				sum(crypto.SHA256, []byte{NodePrefix}, []byte{1, 1, 0, 0}, []byte{0, 0, 0, 1})...,
-			),
+			children{
+				concat([]byte{0, 0, 0, 0}, randHash),
+				concat([]byte{0, 0, 1, 1}, randHash),
+			},
+			concat([]byte{0, 0, 1, 1}, // minNID||maxNID
+				sum(crypto.SHA256, []byte{NodePrefix}, // Hash(NodePrefix||left||right)
+					concat([]byte{0, 0, 0, 0}, randHash),
+					concat([]byte{0, 0, 1, 1}, randHash))),
 		},
 	}
 	for _, tt := range tests {
@@ -122,6 +121,21 @@ func sum(hash crypto.Hash, data ...[]byte) []byte {
 	}
 
 	return h.Sum(nil)
+}
+
+// concat concatenates the given byte slices.
+func concat(data ...[]byte) []byte {
+	var result []byte
+	for _, d := range data {
+		result = append(result, d...)
+	}
+
+	return result
+}
+
+// createByteSlice returns a byte slice of length n with all bytes set to b.
+func createByteSlice(n int, b byte) []byte {
+	return bytes.Repeat([]byte{b}, n)
 }
 
 func TestNamespaceHasherWrite(t *testing.T) {
@@ -195,7 +209,10 @@ func TestNamespaceHasherSum(t *testing.T) {
 	}
 }
 
-func TestHashNode_ChildrenNamespaceRange(t *testing.T) {
+// TestHashNode verifies the HashNode function for scenarios where it is expected to produce errors, as well as those where it is not.
+func TestHashNode_Error(t *testing.T) {
+	// create a dummy hash to use as the digest of the left and right child
+	randHash := createByteSlice(sha256.Size, 0x01)
 	type children struct {
 		l []byte // namespace hash of the left child with the format of MinNs||MaxNs||h
 		r []byte // namespace hash of the right child with the format of MinNs||MaxNs||h
@@ -209,22 +226,49 @@ func TestHashNode_ChildrenNamespaceRange(t *testing.T) {
 		errType  error
 	}{
 		{
-			"left.maxNs>right.minNs", 2,
-			children{[]byte{0, 0, 1, 1}, []byte{0, 0, 1, 1}},
+			"unordered siblings: left.maxNs>right.minNs", 2,
+			children{
+				concat([]byte{0, 0, 1, 1}, randHash),
+				concat([]byte{0, 0, 1, 1}, randHash),
+			},
 			true, // this test case should emit an error since in an ordered NMT, left.maxNs cannot be greater than right.minNs
 			ErrUnorderedSiblings,
 		},
 		{
-			"left.maxNs=right.minNs", 2,
-			children{[]byte{0, 0, 1, 1}, []byte{1, 1, 2, 2}},
+			"ordered siblings: left.maxNs=right.minNs", 2,
+			children{
+				concat([]byte{0, 0, 1, 1}, randHash),
+				concat([]byte{1, 1, 2, 2}, randHash),
+			},
 			false,
 			nil,
 		},
 		{
-			"left.maxNs<right.minNs", 2,
-			children{[]byte{0, 0, 1, 1}, []byte{2, 2, 3, 3}},
+			"ordered siblings: left.maxNs<right.minNs", 2,
+			children{
+				concat([]byte{0, 0, 1, 1}, randHash),
+				concat([]byte{2, 2, 3, 3}, randHash),
+			},
 			false,
 			nil,
+		},
+		{
+			"invalid left sibling format: left.minNs>left.maxNs", 2,
+			children{
+				concat([]byte{2, 2, 0, 0}, randHash),
+				concat([]byte{1, 1, 4, 4}, randHash),
+			},
+			true,
+			ErrInvalidNodeNamespaceOrder,
+		},
+		{
+			"invalid right sibling format: right.minNs>right.maxNs", 2,
+			children{
+				concat([]byte{0, 0, 1, 1}, randHash),
+				concat([]byte{4, 4, 1, 1}, randHash),
+			},
+			true,
+			ErrInvalidNodeNamespaceOrder,
 		},
 	}
 	for _, tt := range tests {
@@ -239,7 +283,10 @@ func TestHashNode_ChildrenNamespaceRange(t *testing.T) {
 	}
 }
 
-func TestValidateSiblingsNamespaceOrder(t *testing.T) {
+func TestValidateSiblings(t *testing.T) {
+	// create a dummy hash to use as the digest of the left and right child
+	randHash := createByteSlice(sha256.Size, 0x01)
+
 	type children struct {
 		l []byte // namespace hash of the left child with the format of MinNs||MaxNs||h
 		r []byte // namespace hash of the right child with the format of MinNs||MaxNs||h
@@ -252,18 +299,28 @@ func TestValidateSiblingsNamespaceOrder(t *testing.T) {
 		wantErr  bool
 	}{
 		{
+			"wrong left node format", 2,
+			children{concat([]byte{0, 0, 1, 1}, randHash[:len(randHash)-1]), concat([]byte{0, 0, 1, 1}, randHash)},
+			true,
+		},
+		{
+			"wrong right node format", 2,
+			children{concat([]byte{0, 0, 1, 1}, randHash), concat([]byte{0, 0, 1, 1}, randHash[:len(randHash)-1])},
+			true,
+		},
+		{
 			"left.maxNs>right.minNs", 2,
-			children{[]byte{0, 0, 1, 1}, []byte{0, 0, 1, 1}},
+			children{concat([]byte{0, 0, 1, 1}, randHash), concat([]byte{0, 0, 1, 1}, randHash)},
 			true,
 		},
 		{
 			"left.maxNs=right.minNs", 2,
-			children{[]byte{0, 0, 1, 1}, []byte{1, 1, 2, 2}},
+			children{concat([]byte{0, 0, 1, 1}, randHash), concat([]byte{1, 1, 2, 2}, randHash)},
 			false,
 		},
 		{
 			"left.maxNs<right.minNs", 2,
-			children{[]byte{0, 0, 1, 1}, []byte{2, 2, 3, 3}},
+			children{concat([]byte{0, 0, 1, 1}, randHash), concat([]byte{2, 2, 3, 3}, randHash)},
 			false,
 		},
 	}
@@ -277,6 +334,9 @@ func TestValidateSiblingsNamespaceOrder(t *testing.T) {
 }
 
 func TestValidateNodeFormat(t *testing.T) {
+	hashValue := createByteSlice(sha256.Size, 0x01)
+	minNID := createByteSlice(2, 0x00)
+	maxNID := createByteSlice(2, 0x01)
 	tests := []struct {
 		name    string
 		nIDLen  namespace.IDSize
@@ -286,23 +346,68 @@ func TestValidateNodeFormat(t *testing.T) {
 		wantErr bool
 		errType error
 	}{
-		{ // valid node
+		{
 			"valid node",
 			2,
-			[]byte{0, 0},
-			[]byte{1, 1},
-			[]byte{1, 2, 3, 4},
+			minNID,
+			maxNID,
+			hashValue,
 			false,
 			nil,
 		},
-		{ // mismatched namespace size
-			"invalid node: length",
+		{
+			"invalid node: length < 2 * namespace size",
 			2,
-			[]byte{0},
-			[]byte{1},
-			[]byte{0},
+			minNID,
+			[]byte{},
+			[]byte{},
 			true,
 			ErrInvalidNodeLen,
+		},
+		{
+			"invalid node: length < 2 * namespace Size + hash size",
+			2,
+			minNID,
+			maxNID,
+			[]byte{},
+			true,
+			ErrInvalidNodeLen,
+		},
+		{
+			"invalid node: length > 2 * namespace size + hash size",
+			2,
+			minNID,
+			maxNID,
+			concat(hashValue, []byte{1}),
+			true,
+			ErrInvalidNodeLen,
+		},
+		{
+			"invalid node: minNS > maxNs",
+			2,
+			[]byte{3, 3},
+			[]byte{1, 1},
+			concat(hashValue),
+			true,
+			ErrInvalidNodeNamespaceOrder,
+		},
+		{
+			"valid node: minNs = maxNs",
+			2,
+			minNID,
+			minNID,
+			concat(hashValue),
+			false,
+			nil,
+		},
+		{
+			"valid node: minNs < maxNs",
+			2,
+			minNID,
+			maxNID,
+			concat(hashValue),
+			false,
+			nil,
 		},
 	}
 
@@ -415,6 +520,8 @@ func TestHashLeafWithIsNamespacedData(t *testing.T) {
 
 // TestHashNode_ErrorsCheck checks that the HashNode emits error only on invalid inputs. It also checks whether the returned error types are correct.
 func TestHashNode_ErrorsCheck(t *testing.T) {
+	// create a dummy hash to use as the digest of the left and right child
+	randHash := createByteSlice(sha256.Size, 0x01)
 	type children struct {
 		l []byte // namespace hash of the left child with the format of MinNs||MaxNs||h
 		r []byte // namespace hash of the right child with the format of MinNs||MaxNs||h
@@ -429,31 +536,46 @@ func TestHashNode_ErrorsCheck(t *testing.T) {
 	}{
 		{
 			"left.maxNs<right.minNs", 2,
-			children{[]byte{0, 0, 1, 1}, []byte{2, 2, 3, 3}},
+			children{
+				concat([]byte{0, 0, 1, 1}, randHash),
+				concat([]byte{2, 2, 3, 3}, randHash),
+			},
 			false,
 			nil,
 		},
 		{
 			"left.maxNs=right.minNs", 2,
-			children{[]byte{0, 0, 1, 1}, []byte{1, 1, 2, 2}},
+			children{
+				concat([]byte{0, 0, 1, 1}, randHash),
+				concat([]byte{1, 1, 2, 2}, randHash),
+			},
 			false,
 			nil,
 		},
 		{
 			"left.maxNs>right.minNs", 2,
-			children{[]byte{0, 0, 1, 1}, []byte{0, 0, 1, 1}},
+			children{
+				concat([]byte{0, 0, 1, 1}, randHash),
+				concat([]byte{0, 0, 1, 1}, randHash),
+			},
 			true,
 			ErrUnorderedSiblings,
 		},
 		{
-			"len(left)<NamespaceLen", 2,
-			children{[]byte{0, 0, 1}, []byte{2, 2, 3, 3}},
+			"len(left)<hasher.Size", 2,
+			children{
+				[]byte{0, 0, 1},
+				concat([]byte{2, 2, 3, 3}, randHash),
+			},
 			true,
 			ErrInvalidNodeLen,
 		},
 		{
-			"len(right)<NamespaceLen", 2,
-			children{[]byte{0, 0, 1, 1}, []byte{2, 2, 3}},
+			"len(right)<hasher.Size", 2,
+			children{
+				concat([]byte{0, 0, 1, 1}, randHash),
+				[]byte{2, 2, 3},
+			},
 			true,
 			ErrInvalidNodeLen,
 		},
@@ -560,6 +682,8 @@ func TestSum_Err(t *testing.T) {
 
 // TestValidateNodes checks that the ValidateNodes method only emits error on invalid inputs. It also checks whether the returned error types are correct.
 func TestValidateNodes(t *testing.T) {
+	// create a dummy hash to use as the digest of the left and right child
+	randHash := createByteSlice(sha256.Size, 0x01)
 	tests := []struct {
 		name    string
 		nIDLen  namespace.IDSize
@@ -571,24 +695,24 @@ func TestValidateNodes(t *testing.T) {
 		{
 			"left.maxNs<right.minNs",
 			2,
-			[]byte{0, 0, 1, 1},
-			[]byte{2, 2, 3, 3},
+			concat([]byte{0, 0, 1, 1}, randHash),
+			concat([]byte{2, 2, 3, 3}, randHash),
 			false,
 			nil,
 		},
 		{
 			"left.maxNs=right.minNs",
 			2,
-			[]byte{0, 0, 1, 1},
-			[]byte{1, 1, 2, 2},
+			concat([]byte{0, 0, 1, 1}, randHash),
+			concat([]byte{1, 1, 2, 2}, randHash),
 			false,
 			nil,
 		},
 		{
 			"left.maxNs>right.minNs",
 			2,
-			[]byte{0, 0, 1, 1},
-			[]byte{0, 0, 1, 1},
+			concat([]byte{0, 0, 1, 1}, randHash),
+			concat([]byte{0, 0, 1, 1}, randHash),
 			true,
 			ErrUnorderedSiblings,
 		},
@@ -596,13 +720,13 @@ func TestValidateNodes(t *testing.T) {
 			"len(left)<NamespaceLen",
 			2,
 			[]byte{0, 0, 1},
-			[]byte{2, 2, 3, 3},
+			concat([]byte{2, 2, 3, 3}, randHash),
 			true,
 			ErrInvalidNodeLen,
 		},
 		{
 			"len(right)<NamespaceLen", 2,
-			[]byte{0, 0, 1, 1},
+			concat([]byte{0, 0, 1, 1}, randHash),
 			[]byte{2, 2, 3},
 			true,
 			ErrInvalidNodeLen,
@@ -618,4 +742,225 @@ func TestValidateNodes(t *testing.T) {
 			}
 		})
 	}
+}
+
+// Test_MustHashLeaf_panic checks that the MustHashLeaf method panics only on invalid inputs.
+func Test_MustHashLeaf_Panic(t *testing.T) {
+	hasher := NewNmtHasher(sha256.New(), 2, false)
+	tests := []struct {
+		name      string
+		leaf      []byte
+		wantPanic bool
+	}{
+		{"valid leaf length", []byte{0, 0}, false},
+		{"invalid leaf length", []byte{0}, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.wantPanic {
+				assert.Panics(t, func() {
+					hasher.MustHashLeaf(tt.leaf)
+				})
+			} else {
+				assert.NotPanics(t, func() {
+					hasher.MustHashLeaf(tt.leaf)
+				})
+			}
+		})
+	}
+}
+
+func TestMax(t *testing.T) {
+	tt := []struct {
+		name     string
+		ns       []byte
+		ns2      []byte
+		expected []byte
+	}{
+		{
+			"First argument is larger",
+			[]byte{1, 2, 3},
+			[]byte{1, 2},
+			[]byte{1, 2, 3},
+		},
+		{
+			"Second argument is larger",
+			[]byte{1, 2},
+			[]byte{1, 2, 3},
+			[]byte{1, 2, 3},
+		},
+		{
+			"Arguments are equal",
+			[]byte{1, 2, 3},
+			[]byte{1, 2, 3},
+			[]byte{1, 2, 3},
+		},
+	}
+
+	for _, ts := range tt {
+		t.Run(ts.name, func(t *testing.T) {
+			maxResult := max(ts.ns, ts.ns2)
+			assert.Equal(t, ts.expected, maxResult)
+		})
+	}
+}
+
+func TestMin(t *testing.T) {
+	tt := []struct {
+		name     string
+		ns       []byte
+		ns2      []byte
+		expected []byte
+	}{
+		{
+			"First argument is smaller",
+			[]byte{1, 2},
+			[]byte{1, 2, 3},
+			[]byte{1, 2},
+		},
+		{
+			"Second argument is smaller",
+			[]byte{1, 2, 3},
+			[]byte{1, 2},
+			[]byte{1, 2},
+		},
+		{
+			"Arguments are equal",
+			[]byte{1, 2, 3},
+			[]byte{1, 2, 3},
+			[]byte{1, 2, 3},
+		},
+	}
+
+	for _, ts := range tt {
+		t.Run(ts.name, func(t *testing.T) {
+			minResult := min(ts.ns, ts.ns2)
+			assert.Equal(t, ts.expected, minResult)
+		})
+	}
+}
+
+// TestComputeNsRange tests the ComputeRange function.
+func TestComputeNsRange(t *testing.T) {
+	nIDSize := 1
+	precomputedMaxNs := bytes.Repeat([]byte{0xFF}, nIDSize)
+
+	testCases := []struct {
+		leftMinNs, leftMaxNs, rightMinNs, rightMaxNs, expectedMinNs, expectedMaxNs []byte
+		ignoreMaxNs                                                                bool
+	}{
+		{
+			ignoreMaxNs:   true,
+			leftMinNs:     precomputedMaxNs,
+			leftMaxNs:     precomputedMaxNs,
+			rightMinNs:    precomputedMaxNs,
+			rightMaxNs:    precomputedMaxNs,
+			expectedMinNs: precomputedMaxNs,
+			expectedMaxNs: precomputedMaxNs,
+		},
+		{
+			ignoreMaxNs:   true,
+			leftMinNs:     []byte{0x00},
+			leftMaxNs:     precomputedMaxNs,
+			rightMinNs:    precomputedMaxNs,
+			rightMaxNs:    precomputedMaxNs,
+			expectedMinNs: []byte{0x00},
+			expectedMaxNs: precomputedMaxNs,
+		},
+		{
+			ignoreMaxNs:   true,
+			leftMinNs:     []byte{0x00},
+			leftMaxNs:     []byte{0x01},
+			rightMinNs:    precomputedMaxNs,
+			rightMaxNs:    precomputedMaxNs,
+			expectedMinNs: []byte{0x00},
+			expectedMaxNs: []byte{0x01},
+		},
+		{
+			ignoreMaxNs:   true,
+			leftMinNs:     []byte{0x00},
+			leftMaxNs:     []byte{0x01},
+			rightMinNs:    []byte{0x02},
+			rightMaxNs:    precomputedMaxNs,
+			expectedMinNs: []byte{0x00},
+			expectedMaxNs: precomputedMaxNs,
+		},
+		{
+			ignoreMaxNs:   true,
+			leftMinNs:     []byte{0x00},
+			leftMaxNs:     []byte{0x01},
+			rightMinNs:    []byte{0x02},
+			rightMaxNs:    []byte{0x03},
+			expectedMinNs: []byte{0x00},
+			expectedMaxNs: []byte{0x03},
+		},
+		{
+			ignoreMaxNs:   false,
+			leftMinNs:     precomputedMaxNs,
+			leftMaxNs:     precomputedMaxNs,
+			rightMinNs:    precomputedMaxNs,
+			rightMaxNs:    precomputedMaxNs,
+			expectedMinNs: precomputedMaxNs,
+			expectedMaxNs: precomputedMaxNs,
+		},
+		{
+			ignoreMaxNs:   false,
+			leftMinNs:     []byte{0x00},
+			leftMaxNs:     precomputedMaxNs,
+			rightMinNs:    precomputedMaxNs,
+			rightMaxNs:    precomputedMaxNs,
+			expectedMinNs: []byte{0x00},
+			expectedMaxNs: precomputedMaxNs,
+		},
+		{
+			ignoreMaxNs:   false,
+			leftMinNs:     []byte{0x00},
+			leftMaxNs:     []byte{0x01},
+			rightMinNs:    precomputedMaxNs,
+			rightMaxNs:    precomputedMaxNs,
+			expectedMinNs: []byte{0x00},
+			expectedMaxNs: precomputedMaxNs,
+		},
+		{
+			ignoreMaxNs:   false,
+			leftMinNs:     []byte{0x00},
+			leftMaxNs:     []byte{0x01},
+			rightMinNs:    []byte{0x02},
+			rightMaxNs:    precomputedMaxNs,
+			expectedMinNs: []byte{0x00},
+			expectedMaxNs: precomputedMaxNs,
+		},
+		{
+			ignoreMaxNs:   false,
+			leftMinNs:     []byte{0x00},
+			leftMaxNs:     []byte{0x01},
+			rightMinNs:    []byte{0x02},
+			rightMaxNs:    []byte{0x03},
+			expectedMinNs: []byte{0x00},
+			expectedMaxNs: []byte{0x03},
+		},
+	}
+
+	for _, tc := range testCases {
+		minNs, maxNs := computeNsRange(tc.leftMinNs, tc.leftMaxNs, tc.rightMinNs, tc.rightMaxNs, tc.ignoreMaxNs, precomputedMaxNs)
+		assert.True(t, bytes.Equal(tc.expectedMinNs, minNs))
+		assert.True(t, bytes.Equal(tc.expectedMaxNs, maxNs))
+	}
+}
+
+// TestEmptyRoot ensures that the empty root is always the same, under the same configuration, regardless of the state of the Hasher.
+func TestEmptyRoot(t *testing.T) {
+	nIDSzie := 1
+	ignoreMaxNS := true
+
+	hasher := NewNmtHasher(sha256.New(), namespace.IDSize(nIDSzie), ignoreMaxNS)
+	expectedEmptyRoot := hasher.EmptyRoot()
+
+	// perform some operation with the hasher
+	_, err := hasher.HashNode(createByteSlice(hasher.Size(), 1), createByteSlice(hasher.Size(), 1))
+	assert.NoError(t, err)
+	gotEmptyRoot := hasher.EmptyRoot()
+
+	// the empty root should be the same before and after the operation
+	assert.True(t, bytes.Equal(gotEmptyRoot, expectedEmptyRoot))
 }

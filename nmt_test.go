@@ -20,6 +20,19 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// prefixedData8 like namespace.PrefixedData is just a slice of bytes. It
+// assumes that the slice it represents is at least 8 bytes. This assumption is
+// not enforced by the type system though.
+type prefixedData8 []byte
+
+func (d prefixedData8) NamespaceID() namespace.ID {
+	return namespace.ID(d[:8])
+}
+
+func (d prefixedData8) Data() []byte {
+	return d[8:]
+}
+
 type namespaceDataPair struct {
 	ID   namespace.ID
 	Data []byte
@@ -339,140 +352,140 @@ func TestIgnoreMaxNamespace(t *testing.T) {
 	tests := []struct {
 		name               string
 		ignoreMaxNamespace bool
-		pushData           []namespace.PrefixedData8
+		pushData           []prefixedData8
 		wantRootMaxNID     namespace.ID
 	}{
 		{
 			"single leaf with MaxNID (ignored)",
 			true,
-			[]namespace.PrefixedData8{namespace.PrefixedData8(append(maxNID, []byte("leaf_1")...))},
+			[]prefixedData8{prefixedData8(append(maxNID, []byte("leaf_1")...))},
 			maxNID,
 		},
 		{
 			"single leaf with MaxNID (not ignored)",
 			false,
-			[]namespace.PrefixedData8{namespace.PrefixedData8(append(maxNID, []byte("leaf_1")...))},
+			[]prefixedData8{prefixedData8(append(maxNID, []byte("leaf_1")...))},
 			maxNID,
 		},
 		{
 			"two leaves, one with MaxNID (ignored)",
 			true,
-			[]namespace.PrefixedData8{
-				namespace.PrefixedData8(append(secondNID, []byte("leaf_1")...)),
-				namespace.PrefixedData8(append(maxNID, []byte("leaf_2")...)),
+			[]prefixedData8{
+				prefixedData8(append(secondNID, []byte("leaf_1")...)),
+				prefixedData8(append(maxNID, []byte("leaf_2")...)),
 			},
 			secondNID,
 		},
 		{
 			"two leaves, one with MaxNID (not ignored)",
 			false,
-			[]namespace.PrefixedData8{
-				namespace.PrefixedData8(append(secondNID, []byte("leaf_1")...)),
-				namespace.PrefixedData8(append(maxNID, []byte("leaf_2")...)),
+			[]prefixedData8{
+				prefixedData8(append(secondNID, []byte("leaf_1")...)),
+				prefixedData8(append(maxNID, []byte("leaf_2")...)),
 			},
 			maxNID,
 		},
 		{
 			"two leaves with MaxNID (ignored)",
 			true,
-			[]namespace.PrefixedData8{
-				namespace.PrefixedData8(append(maxNID, []byte("leaf_1")...)),
-				namespace.PrefixedData8(append(maxNID, []byte("leaf_2")...)),
+			[]prefixedData8{
+				prefixedData8(append(maxNID, []byte("leaf_1")...)),
+				prefixedData8(append(maxNID, []byte("leaf_2")...)),
 			},
 			maxNID,
 		},
 		{
 			"two leaves with MaxNID (not ignored)",
 			false,
-			[]namespace.PrefixedData8{
-				namespace.PrefixedData8(append(maxNID, []byte("leaf_1")...)),
-				namespace.PrefixedData8(append(maxNID, []byte("leaf_2")...)),
+			[]prefixedData8{
+				prefixedData8(append(maxNID, []byte("leaf_1")...)),
+				prefixedData8(append(maxNID, []byte("leaf_2")...)),
 			},
 			maxNID,
 		},
 		{
 			"two leaves, none with MaxNID (ignored)",
 			true,
-			[]namespace.PrefixedData8{
-				namespace.PrefixedData8(append(minNID, []byte("leaf_1")...)),
-				namespace.PrefixedData8(append(secondNID, []byte("leaf_2")...)),
+			[]prefixedData8{
+				prefixedData8(append(minNID, []byte("leaf_1")...)),
+				prefixedData8(append(secondNID, []byte("leaf_2")...)),
 			},
 			secondNID,
 		},
 		{
 			"two leaves, none with MaxNID (not ignored)",
 			false,
-			[]namespace.PrefixedData8{
-				namespace.PrefixedData8(append(minNID, []byte("leaf_1")...)),
-				namespace.PrefixedData8(append(secondNID, []byte("leaf_2")...)),
+			[]prefixedData8{
+				prefixedData8(append(minNID, []byte("leaf_1")...)),
+				prefixedData8(append(secondNID, []byte("leaf_2")...)),
 			},
 			secondNID,
 		},
 		{
 			"three leaves, one with MaxNID (ignored)",
 			true,
-			[]namespace.PrefixedData8{
-				namespace.PrefixedData8(append(minNID, []byte("leaf_1")...)),
-				namespace.PrefixedData8(append(secondNID, []byte("leaf_2")...)),
-				namespace.PrefixedData8(append(maxNID, []byte("leaf_2")...)),
+			[]prefixedData8{
+				prefixedData8(append(minNID, []byte("leaf_1")...)),
+				prefixedData8(append(secondNID, []byte("leaf_2")...)),
+				prefixedData8(append(maxNID, []byte("leaf_2")...)),
 			},
 			secondNID,
 		},
 		{
 			"three leaves, one with MaxNID (not ignored)",
 			false,
-			[]namespace.PrefixedData8{
-				namespace.PrefixedData8(append(minNID, []byte("leaf_1")...)),
-				namespace.PrefixedData8(append(secondNID, []byte("leaf_2")...)),
-				namespace.PrefixedData8(append(maxNID, []byte("leaf_2")...)),
+			[]prefixedData8{
+				prefixedData8(append(minNID, []byte("leaf_1")...)),
+				prefixedData8(append(secondNID, []byte("leaf_2")...)),
+				prefixedData8(append(maxNID, []byte("leaf_2")...)),
 			},
 			maxNID,
 		},
 
 		{
 			"4 leaves, none maxNID (ignored)", true,
-			[]namespace.PrefixedData8{
-				namespace.PrefixedData8(append(minNID, []byte("leaf_1")...)),
-				namespace.PrefixedData8(append(minNID, []byte("leaf_2")...)),
-				namespace.PrefixedData8(append(secondNID, []byte("leaf_3")...)),
-				namespace.PrefixedData8(append(thirdNID, []byte("leaf_4")...)),
+			[]prefixedData8{
+				prefixedData8(append(minNID, []byte("leaf_1")...)),
+				prefixedData8(append(minNID, []byte("leaf_2")...)),
+				prefixedData8(append(secondNID, []byte("leaf_3")...)),
+				prefixedData8(append(thirdNID, []byte("leaf_4")...)),
 			},
 			thirdNID,
 		},
 		{
 			"4 leaves, half maxNID (ignored)",
 			true,
-			[]namespace.PrefixedData8{
-				namespace.PrefixedData8(append(minNID, []byte("leaf_1")...)),
-				namespace.PrefixedData8(append(secondNID, []byte("leaf_2")...)),
-				namespace.PrefixedData8(append(maxNID, []byte("leaf_3")...)),
-				namespace.PrefixedData8(append(maxNID, []byte("leaf_4")...)),
+			[]prefixedData8{
+				prefixedData8(append(minNID, []byte("leaf_1")...)),
+				prefixedData8(append(secondNID, []byte("leaf_2")...)),
+				prefixedData8(append(maxNID, []byte("leaf_3")...)),
+				prefixedData8(append(maxNID, []byte("leaf_4")...)),
 			},
 			secondNID,
 		},
 		{
 			"4 leaves, half maxNID (not ignored)",
 			false,
-			[]namespace.PrefixedData8{
-				namespace.PrefixedData8(append(minNID, []byte("leaf_1")...)),
-				namespace.PrefixedData8(append(secondNID, []byte("leaf_2")...)),
-				namespace.PrefixedData8(append(maxNID, []byte("leaf_3")...)),
-				namespace.PrefixedData8(append(maxNID, []byte("leaf_4")...)),
+			[]prefixedData8{
+				prefixedData8(append(minNID, []byte("leaf_1")...)),
+				prefixedData8(append(secondNID, []byte("leaf_2")...)),
+				prefixedData8(append(maxNID, []byte("leaf_3")...)),
+				prefixedData8(append(maxNID, []byte("leaf_4")...)),
 			},
 			maxNID,
 		},
 		{
 			"8 leaves, 4 maxNID (ignored)",
 			true,
-			[]namespace.PrefixedData8{
-				namespace.PrefixedData8(append(minNID, []byte("leaf_1")...)),
-				namespace.PrefixedData8(append(secondNID, []byte("leaf_2")...)),
-				namespace.PrefixedData8(append(thirdNID, []byte("leaf_3")...)),
-				namespace.PrefixedData8(append(thirdNID, []byte("leaf_4")...)),
-				namespace.PrefixedData8(append(maxNID, []byte("leaf_5")...)),
-				namespace.PrefixedData8(append(maxNID, []byte("leaf_6")...)),
-				namespace.PrefixedData8(append(maxNID, []byte("leaf_7")...)),
-				namespace.PrefixedData8(append(maxNID, []byte("leaf_8")...)),
+			[]prefixedData8{
+				prefixedData8(append(minNID, []byte("leaf_1")...)),
+				prefixedData8(append(secondNID, []byte("leaf_2")...)),
+				prefixedData8(append(thirdNID, []byte("leaf_3")...)),
+				prefixedData8(append(thirdNID, []byte("leaf_4")...)),
+				prefixedData8(append(maxNID, []byte("leaf_5")...)),
+				prefixedData8(append(maxNID, []byte("leaf_6")...)),
+				prefixedData8(append(maxNID, []byte("leaf_7")...)),
+				prefixedData8(append(maxNID, []byte("leaf_8")...)),
 			},
 			thirdNID,
 		},
@@ -500,7 +513,10 @@ func TestIgnoreMaxNamespace(t *testing.T) {
 				if gotIgnored := proof.IsMaxNamespaceIDIgnored(); gotIgnored != tc.ignoreMaxNamespace {
 					t.Fatalf("Proof.IsMaxNamespaceIDIgnored() got: %v, want: %v", gotIgnored, tc.ignoreMaxNamespace)
 				}
-				leaves := tree.Get(d.NamespaceID())
+				var leaves [][]byte
+				if !proof.IsEmptyProof() {
+					leaves = tree.Get(d.NamespaceID())
+				}
 				r, err := tree.Root()
 				require.NoError(t, err)
 				if !proof.VerifyNamespace(hash, d.NamespaceID(), leaves, r) {
@@ -596,12 +612,17 @@ func TestNamespacedMerkleTree_calculateAbsenceIndex_Panic(t *testing.T) {
 		nID      namespace.ID
 		pushData []namespaceDataPair
 	}{
-		{"((0,0) == nID < minNID == (0,1))", []byte{0, 0}, generateLeafData(nidLen, 1, 3, []byte{})},
-		{"((0,3) == nID > maxNID == (0,2))", []byte{0, 3}, generateLeafData(nidLen, 1, 3, []byte{})},
+		{"empty tree", []byte{0, 0}, []namespaceDataPair{}},
+		{"non-empty tree with 2 leaves: ((0,0) == nID < minNID == (0,1))", []byte{0, 0}, generateLeafData(nidLen, 1, 3, []byte{})},
+		{"non-empty tree with 2 leaves: ((0,3) == nID > maxNID == (0,2))", []byte{0, 3}, generateLeafData(nidLen, 1, 3, []byte{})},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			n := New(sha256.New(), NamespaceIDSize(2))
+			for _, d := range tt.pushData {
+				err := n.Push(namespace.PrefixedData(append(d.ID, d.Data...)))
+				assert.NoError(t, err)
+			}
 			shouldPanic(t,
 				func() { n.calculateAbsenceIndex(tt.nID) })
 		})
@@ -800,13 +821,13 @@ func TestMinMaxNamespace(t *testing.T) {
 	testCases := []testCase{
 		{
 			name:    "example tree with four leaves",
-			tree:    exampleTreeWithFourLeaves(),
+			tree:    exampleNMT(1, true, 0, 0, 1, 3),
 			wantMin: namespace.ID{0},
 			wantMax: namespace.ID{3},
 		},
 		{
 			name:    "example tree with eight leaves",
-			tree:    exampleTreeWithEightLeaves(),
+			tree:    exampleNMT(2, true, 1, 2, 3, 4, 5, 6, 7, 8),
 			wantMin: namespace.ID{1, 1},
 			wantMax: namespace.ID{8, 8},
 		},
@@ -824,39 +845,12 @@ func TestMinMaxNamespace(t *testing.T) {
 	}
 }
 
-func exampleTreeWithFourLeaves() *NamespacedMerkleTree {
-	nidSize := 1
-	data := [][]byte{
-		append(namespace.ID{0}, []byte("leaf_0")...),
-		append(namespace.ID{0}, []byte("leaf_1")...),
-		append(namespace.ID{1}, []byte("leaf_2")...),
-		append(namespace.ID{3}, []byte("leaf_3")...),
-	}
-
-	tree := New(sha256.New(), NamespaceIDSize(nidSize))
-	for _, d := range data {
-		if err := tree.Push(d); err != nil {
-			panic(fmt.Sprintf("unexpected error: %v", err))
-		}
-	}
-	return tree
-}
-
-func exampleTreeWithEightLeaves() *NamespacedMerkleTree {
-	nidSize := 2
-	data := [][]byte{
-		append(namespace.ID{1, 1}, []byte("leaf_0")...),
-		append(namespace.ID{2, 2}, []byte("leaf_1")...),
-		append(namespace.ID{3, 3}, []byte("leaf_2")...),
-		append(namespace.ID{4, 4}, []byte("leaf_3")...),
-		append(namespace.ID{5, 5}, []byte("leaf_4")...),
-		append(namespace.ID{6, 6}, []byte("leaf_5")...),
-		append(namespace.ID{7, 7}, []byte("leaf_6")...),
-		append(namespace.ID{8, 8}, []byte("leaf_7")...),
-	}
-
-	tree := New(sha256.New(), NamespaceIDSize(nidSize))
-	for _, d := range data {
+// exampleNMT creates a new NamespacedMerkleTree with the given namespace ID size and leaf namespace IDs. Each byte in the leavesNIDs parameter corresponds to one leaf's namespace ID. If nidSize is greater than 1, the function repeats each NID in leavesNIDs nidSize times before prepending it to the leaf data.
+func exampleNMT(nidSize int, ignoreMaxNamespace bool, leavesNIDs ...byte) *NamespacedMerkleTree {
+	tree := New(sha256.New(), NamespaceIDSize(nidSize), IgnoreMaxNamespace(ignoreMaxNamespace))
+	for i, nid := range leavesNIDs {
+		namespace := bytes.Repeat([]byte{nid}, nidSize)
+		d := append(namespace, []byte(fmt.Sprintf("leaf_%d", i))...)
 		if err := tree.Push(d); err != nil {
 			panic(fmt.Sprintf("unexpected error: %v", err))
 		}
@@ -872,19 +866,21 @@ func swap(slice [][]byte, i int, j int) {
 
 // Test_buildRangeProof_Err tests that buildRangeProof returns an error when the underlying tree has an invalid state e.g., leaves are not ordered by namespace ID or a leaf hash is corrupted.
 func Test_buildRangeProof_Err(t *testing.T) {
+	nIDList := []byte{1, 2, 3, 4, 5, 6, 7, 8}
+	nIDSize := 2
+
 	// create a nmt, 8 leaves namespaced sequentially from 1-8
-	treeWithCorruptLeafHash := exampleTreeWithEightLeaves()
-	err := treeWithCorruptLeafHash.computeLeafHashesIfNecessary()
-	require.NoError(t, err)
+	treeWithCorruptLeafHash := exampleNMT(nIDSize, true, nIDList...)
 	// corrupt a leaf hash
 	treeWithCorruptLeafHash.leafHashes[4] = treeWithCorruptLeafHash.leafHashes[4][:treeWithCorruptLeafHash.NamespaceSize()]
 
 	// create an NMT with 8 sequentially namespaced leaves, numbered from 1 to 8.
-	treeWithUnorderedLeafHashes := exampleTreeWithEightLeaves()
+	treeWithUnorderedLeafHashes := exampleNMT(nIDSize, true, nIDList...)
 	// swap the positions of the 4th and 5th leaves
 	swap(treeWithUnorderedLeafHashes.leaves, 4, 5)
-	err = treeWithUnorderedLeafHashes.computeLeafHashesIfNecessary()
-	require.NoError(t, err)
+	swap(treeWithUnorderedLeafHashes.leafHashes, 4, 5)
+
+	validTree := exampleNMT(nIDSize, true, nIDList...)
 
 	tests := []struct {
 		name                 string
@@ -899,6 +895,10 @@ func Test_buildRangeProof_Err(t *testing.T) {
 		// not just the corrupted range.
 		{"unordered leaf hashes: the last leaf", treeWithUnorderedLeafHashes, 7, 8, true, ErrUnorderedSiblings}, // for a tree with an unordered set of leaves, the buildRangeProof function  should produce an error for any input range,
 		// not just the corrupted range.
+		{"invalid proof range: start > end", validTree, 5, 4, true, ErrInvalidRange},
+		{"invalid proof range: start = end", validTree, 5, 5, true, ErrInvalidRange},
+		{"invalid proof range: start < 0", validTree, -1, 4, true, ErrInvalidRange},
+		{"invalid proof range: end > number of leaves", validTree, 0, len(validTree.leaves) + 1, true, ErrInvalidRange},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -914,23 +914,15 @@ func Test_buildRangeProof_Err(t *testing.T) {
 // Test_ProveRange_Err tests that ProveRange returns an error when the underlying tree has an invalid state e.g., leaves are not ordered by namespace ID or a leaf hash is corrupted.
 func Test_ProveRange_Err(t *testing.T) {
 	// create an NMT with 8 sequentially namespaced leaves, numbered from 1 to 8.
-	treeWithCorruptLeaf := exampleTreeWithEightLeaves()
-	// corrupt a leaf
-	treeWithCorruptLeaf.leaves[4] = treeWithCorruptLeaf.leaves[4][:treeWithCorruptLeaf.NamespaceSize()-1]
-
-	// create an NMT with 8 sequentially namespaced leaves, numbered from 1 to 8.
-	treeWithCorruptLeafHash := exampleTreeWithEightLeaves()
-	err := treeWithCorruptLeafHash.computeLeafHashesIfNecessary()
-	require.NoError(t, err)
+	treeWithCorruptLeafHash := exampleNMT(2, true, 1, 2, 3, 4, 5, 6, 7, 8)
 	// corrupt a leaf hash
 	treeWithCorruptLeafHash.leafHashes[4] = treeWithCorruptLeafHash.leafHashes[4][:treeWithCorruptLeafHash.NamespaceSize()]
 
 	// create an NMT with 8 sequentially namespaced leaves, numbered from 1 to 8.
-	treeWithUnorderedLeafHashes := exampleTreeWithEightLeaves()
+	treeWithUnorderedLeafHashes := exampleNMT(2, true, 1, 2, 3, 4, 5, 6, 7, 8)
 	// swap the positions of the 4th and 5th leaves
 	swap(treeWithUnorderedLeafHashes.leaves, 4, 5)
-	err = treeWithUnorderedLeafHashes.computeLeafHashesIfNecessary()
-	require.NoError(t, err)
+	swap(treeWithUnorderedLeafHashes.leafHashes, 4, 5)
 
 	tests := []struct {
 		name                 string
@@ -939,7 +931,6 @@ func Test_ProveRange_Err(t *testing.T) {
 		wantErr              bool
 		errType              error
 	}{
-		{"corrupt leaf", treeWithCorruptLeaf, 4, 5, true, ErrInvalidLeafLen},
 		{"corrupt leaf hash", treeWithCorruptLeafHash, 4, 5, true, ErrInvalidNodeLen},
 		{"unordered leaf hashes: the out of order leaf", treeWithUnorderedLeafHashes, 4, 5, true, ErrUnorderedSiblings},
 		{"unordered leaf hashes: first leaf", treeWithUnorderedLeafHashes, 1, 2, true, ErrUnorderedSiblings}, // for a tree with an unordered set of leaves, the ProveRange method  should produce an error for any input range,
@@ -961,23 +952,15 @@ func Test_ProveRange_Err(t *testing.T) {
 // The Test_ProveNamespace_Err function tests that ProveNamespace returns an error when the underlying tree is in an invalid state, such as when the leaves are not ordered by namespace ID or when a leaf hash is corrupt.
 func Test_ProveNamespace_Err(t *testing.T) {
 	// create an NMT with 8 sequentially namespaced leaves, numbered from 1 to 8.
-	treeWithCorruptLeaf := exampleTreeWithEightLeaves()
-	// corrupt a leaf
-	treeWithCorruptLeaf.leaves[4] = treeWithCorruptLeaf.leaves[4][:treeWithCorruptLeaf.NamespaceSize()-1]
-
-	// create an NMT with 8 sequentially namespaced leaves, numbered from 1 to 8.
-	treeWithCorruptLeafHash := exampleTreeWithEightLeaves()
-	err := treeWithCorruptLeafHash.computeLeafHashesIfNecessary()
-	require.NoError(t, err)
+	treeWithCorruptLeafHash := exampleNMT(2, true, 1, 2, 3, 4, 5, 6, 7, 8)
 	// corrupt a leaf hash
 	treeWithCorruptLeafHash.leafHashes[4] = treeWithCorruptLeafHash.leafHashes[4][:treeWithCorruptLeafHash.NamespaceSize()]
 
 	// create an NMT with 8 sequentially namespaced leaves, numbered from 1 to 8.
-	treeWithUnorderedLeafHashes := exampleTreeWithEightLeaves()
+	treeWithUnorderedLeafHashes := exampleNMT(2, true, 1, 2, 3, 4, 5, 6, 7, 8)
 	// swap the positions of the 4th and 5th leaves
 	swap(treeWithUnorderedLeafHashes.leaves, 4, 5)
-	err = treeWithUnorderedLeafHashes.computeLeafHashesIfNecessary()
-	require.NoError(t, err)
+	swap(treeWithUnorderedLeafHashes.leafHashes, 4, 5)
 
 	tests := []struct {
 		name    string
@@ -986,7 +969,6 @@ func Test_ProveNamespace_Err(t *testing.T) {
 		wantErr bool
 		errType error
 	}{
-		{"corrupt leaf", treeWithCorruptLeaf, namespace.ID{5, 5}, true, ErrInvalidLeafLen},
 		{"corrupt leaf hash", treeWithCorruptLeafHash, namespace.ID{5, 5}, true, ErrInvalidNodeLen},
 		{"unordered leaf hashes: the queried namespace falls in the corrupted range", treeWithUnorderedLeafHashes, namespace.ID{5, 5}, true, ErrUnorderedSiblings},
 		{"unordered leaf hashes: query for the first namespace", treeWithUnorderedLeafHashes, namespace.ID{1, 1}, true, ErrUnorderedSiblings}, // for a tree with an unordered set of leaves,
@@ -1008,14 +990,15 @@ func Test_ProveNamespace_Err(t *testing.T) {
 // Test_Root_Error tests that the Root method returns an error when the underlying tree is in an invalid state, such as when the leaves are not ordered by namespace ID or when a leaf is corrupt.
 func Test_Root_Error(t *testing.T) {
 	// create an NMT with 8 sequentially namespaced leaves, numbered from 1 to 8.
-	treeWithCorruptLeaf := exampleTreeWithEightLeaves()
-	// corrupt a leaf
-	treeWithCorruptLeaf.leaves[4] = treeWithCorruptLeaf.leaves[4][:treeWithCorruptLeaf.NamespaceSize()-1]
+	treeWithCorruptLeafHash := exampleNMT(2, true, 1, 2, 3, 4, 5, 6, 7, 8)
+	// corrupt a leaf hash
+	treeWithCorruptLeafHash.leafHashes[4] = treeWithCorruptLeafHash.leafHashes[4][:treeWithCorruptLeafHash.NamespaceSize()-1]
 
 	// create an NMT with 8 sequentially namespaced leaves, numbered from 1 to 8.
-	treeWithUnorderedLeaves := exampleTreeWithEightLeaves()
+	treeWithUnorderedLeaves := exampleNMT(2, true, 1, 2, 3, 4, 5, 6, 7, 8)
 	// swap the positions of the 4th and 5th leaves
 	swap(treeWithUnorderedLeaves.leaves, 4, 5)
+	swap(treeWithUnorderedLeaves.leafHashes, 4, 5)
 
 	tests := []struct {
 		name    string
@@ -1023,7 +1006,7 @@ func Test_Root_Error(t *testing.T) {
 		wantErr bool
 		errType error
 	}{
-		{"corrupt leaf hash", treeWithCorruptLeaf, true, ErrInvalidLeafLen},
+		{"corrupt leaf hash", treeWithCorruptLeafHash, true, ErrInvalidNodeLen},
 		{"unordered leaf hashes", treeWithUnorderedLeaves, true, ErrUnorderedSiblings},
 	}
 	for _, tt := range tests {
@@ -1039,15 +1022,22 @@ func Test_Root_Error(t *testing.T) {
 
 // Test_computeRoot_Error tests that the computeRoot method returns an error when the underlying tree is in an invalid state, such as when the leaves are not ordered by namespace ID or when a leaf is corrupt.
 func Test_computeRoot_Error(t *testing.T) {
-	// create an NMT with 8 sequentially namespaced leaves, numbered from 1 to 8.
-	treeWithCorruptLeaf := exampleTreeWithEightLeaves()
-	// corrupt a leaf
-	treeWithCorruptLeaf.leaves[4] = treeWithCorruptLeaf.leaves[4][:treeWithCorruptLeaf.NamespaceSize()-1]
+	nIDSize := 2
+	nIDList := []byte{1, 2, 3, 4, 5, 6, 7, 8}
 
 	// create an NMT with 8 sequentially namespaced leaves, numbered from 1 to 8.
-	treeWithUnorderedLeaves := exampleTreeWithEightLeaves()
+	treeWithCorruptLeafHash := exampleNMT(nIDSize, true, nIDList...)
+	// corrupt a leaf hash
+	treeWithCorruptLeafHash.leafHashes[4] = treeWithCorruptLeafHash.leafHashes[4][:treeWithCorruptLeafHash.NamespaceSize()-1]
+
+	// create an NMT with 8 sequentially namespaced leaves, numbered from 1 to 8.
+	treeWithUnorderedLeaves := exampleNMT(nIDSize, true, nIDList...)
 	// swap the positions of the 4th and 5th leaves
 	swap(treeWithUnorderedLeaves.leaves, 4, 5)
+	swap(treeWithUnorderedLeaves.leafHashes, 4, 5)
+
+	// create an NMT with 8 sequentially namespaced leaves, numbered from 1 to 8.
+	validTree := exampleNMT(nIDSize, true, nIDList...)
 
 	tests := []struct {
 		name       string
@@ -1056,13 +1046,15 @@ func Test_computeRoot_Error(t *testing.T) {
 		wantErr    bool
 		errType    error
 	}{
-		{"corrupt leaf: the entire tree", treeWithCorruptLeaf, 0, 7, true, ErrInvalidLeafLen},
-		{"corrupt leaf: the corrupt node", treeWithCorruptLeaf, 4, 5, true, ErrInvalidLeafLen},
-		{"corrupt leaf: from the corrupt node until the end of the tree", treeWithCorruptLeaf, 4, 7, true, ErrInvalidLeafLen},
-		{"corrupt leaf: the corrupt node and the node to its left", treeWithCorruptLeaf, 3, 5, true, ErrInvalidLeafLen},
-		{"unordered leaves: the entire tree", treeWithUnorderedLeaves, 0, 7, true, ErrUnorderedSiblings},
-		{"unordered leaves: the unordered portion", treeWithUnorderedLeaves, 4, 6, true, ErrUnorderedSiblings},
-		{"unordered leaves: a portion of the tree containing the unordered leaves", treeWithUnorderedLeaves, 3, 7, true, ErrUnorderedSiblings},
+		{"invalid tree with corrupt leaf hash. Query: the entire tree", treeWithCorruptLeafHash, 0, 7, true, ErrInvalidNodeLen},
+		{"invalid tree with corrupt leaf. Query: from the corrupt node until the end of the tree", treeWithCorruptLeafHash, 4, 7, true, ErrInvalidNodeLen},
+		{"invalid tree with corrupt leaf. Query: the corrupt node and the node to its left", treeWithCorruptLeafHash, 3, 5, true, ErrInvalidNodeLen},
+		{"invalid tree with unordered leaves. Query: the entire tree", treeWithUnorderedLeaves, 0, 7, true, ErrUnorderedSiblings},
+		{"invalid tree with unordered leaves. Query: the unordered portion", treeWithUnorderedLeaves, 4, 6, true, ErrUnorderedSiblings},
+		{"invalid tree with unordered leaves. Query: a portion of the tree containing the unordered leaves", treeWithUnorderedLeaves, 3, 7, true, ErrUnorderedSiblings},
+		{"valid tree. Query: start < 0", validTree, -1, 1, true, ErrInvalidRange},
+		{"valid tree. Query: start > end", validTree, 3, 1, true, ErrInvalidRange},
+		{"valid tree. Query: end > total number of leaves", validTree, 3, len(validTree.leaves) + 1, true, ErrInvalidRange},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1078,14 +1070,15 @@ func Test_computeRoot_Error(t *testing.T) {
 // Test_MinMaxNamespace_Err tests that the MinNamespace and MaxNamespace methods return an error when the underlying tree is in an invalid state, such as when the leaves are not ordered by namespace ID or when a leaf is corrupt.
 func Test_MinMaxNamespace_Err(t *testing.T) {
 	// create an NMT with 8 sequentially namespaced leaves, numbered from 1 to 8.
-	treeWithCorruptLeaf := exampleTreeWithEightLeaves()
-	// corrupt a leaf
-	treeWithCorruptLeaf.leaves[4] = treeWithCorruptLeaf.leaves[4][:treeWithCorruptLeaf.NamespaceSize()-1]
+	treeWithCorruptLeafHash := exampleNMT(2, true, 1, 2, 3, 4, 5, 6, 7, 8)
+	// corrupt a leaf hash
+	treeWithCorruptLeafHash.leafHashes[4] = treeWithCorruptLeafHash.leafHashes[4][:treeWithCorruptLeafHash.NamespaceSize()-1]
 
 	// create an NMT with 8 sequentially namespaced leaves, numbered from 1 to 8.
-	treeWithUnorderedLeaves := exampleTreeWithEightLeaves()
+	treeWithUnorderedLeaves := exampleNMT(2, true, 1, 2, 3, 4, 5, 6, 7, 8)
 	// swap the positions of the 4th and 5th leaves
 	swap(treeWithUnorderedLeaves.leaves, 4, 5)
+	swap(treeWithUnorderedLeaves.leafHashes, 4, 5)
 
 	tests := []struct {
 		name    string
@@ -1093,7 +1086,7 @@ func Test_MinMaxNamespace_Err(t *testing.T) {
 		wantErr bool
 		errType error
 	}{
-		{"corrupt leaf", treeWithCorruptLeaf, true, ErrInvalidLeafLen},
+		{"corrupt leaf hash", treeWithCorruptLeafHash, true, ErrInvalidNodeLen},
 		{"unordered leaves", treeWithUnorderedLeaves, true, ErrUnorderedSiblings},
 	}
 	for _, tt := range tests {
@@ -1113,28 +1106,52 @@ func Test_MinMaxNamespace_Err(t *testing.T) {
 	}
 }
 
-// Test_computeLeafHashesIfNecessary_err tests that the computeLeafHashesIfNecessary method returns an error when the underlying tree is in an invalid state, such as when a leaf is corrupt.
-func Test_computeLeafHashesIfNecessary_err(t *testing.T) {
-	// create an NMT with 8 sequentially namespaced leaves, numbered from 1 to 8.
-	treeWithCorruptLeaf := exampleTreeWithEightLeaves()
-	// corrupt a leaf
-	treeWithCorruptLeaf.leaves[4] = treeWithCorruptLeaf.leaves[4][:treeWithCorruptLeaf.NamespaceSize()-1]
-
+// TestProveNamespace_MaxNamespace checks the output of the ProveNamespace method when queried for the maximum namespace ID.
+func TestProveNamespace_MaxNamespace(t *testing.T) {
+	nidSize := 1
+	MaxNS := byte(math.MaxUint8)
 	tests := []struct {
-		name    string
-		tree    *NamespacedMerkleTree
-		wantErr bool
-		errType error
+		name         string
+		nIDList      []byte
+		isEmptyProof bool
 	}{
-		{"corrupt leaf", treeWithCorruptLeaf, true, ErrInvalidLeafLen},
+		{"tree with no leaf", []byte{}, true},
+		{"tree with one leaf with MaxNS", []byte{MaxNS}, false},
+		{"tree with two leaves, the right leaf has MaxNS", []byte{1, MaxNS}, true},
+		{"tree with four leaves, the right half has MaxNS", []byte{1, 2, MaxNS, MaxNS}, true},
+		{"tree with 8 leaves, the right half has MaxNS", []byte{1, 2, 3, 4, MaxNS, MaxNS, MaxNS, MaxNS}, true},
 	}
 	for _, tt := range tests {
+		tree := exampleNMT(nidSize, true, tt.nIDList...)
 		t.Run(tt.name, func(t *testing.T) {
-			err := tt.tree.computeLeafHashesIfNecessary()
-			assert.Equal(t, tt.wantErr, err != nil)
-			if tt.wantErr {
-				assert.True(t, errors.Is(err, tt.errType))
-			}
+			proof, err := tree.ProveNamespace(namespace.ID{MaxNS})
+			assert.NoError(t, err)
+			assert.Equal(t, tt.isEmptyProof, proof.IsEmptyProof())
 		})
 	}
+}
+
+// TestEmptyRoot_NMT tests that the empty root of a tree is the same as the empty root of a hasher with the same configuration.
+func TestEmptyRoot_NMT(t *testing.T) {
+	nIDSzie := 1
+	ignoreMaxNS := true
+	nIDList := []byte{1, 2, 3, 4}
+
+	// create a nmt using the above configs
+	tree := New(sha256.New(), NamespaceIDSize(nIDSzie), IgnoreMaxNamespace(ignoreMaxNS))
+	for i, nid := range nIDList {
+		namespace := bytes.Repeat([]byte{nid}, nIDSzie)
+		d := append(namespace, []byte(fmt.Sprintf("leaf_%d", i))...)
+		if err := tree.Push(d); err != nil {
+			panic(fmt.Sprintf("unexpected error: %v", err))
+		}
+	}
+	// calculate the empty root by accessing the `Hasher` field of the tree
+	expectedEmptyRoot := tree.treeHasher.EmptyRoot()
+
+	// create  a hasher identical to the one used for the tree
+	hasher := NewNmtHasher(sha256.New(), namespace.IDSize(nIDSzie), ignoreMaxNS)
+	gotEmptyRoot := hasher.EmptyRoot()
+
+	assert.True(t, bytes.Equal(gotEmptyRoot, expectedEmptyRoot))
 }
