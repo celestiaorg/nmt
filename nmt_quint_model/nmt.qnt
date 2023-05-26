@@ -768,7 +768,7 @@ module nmtTest {
                     proof_v.supporting_hashes.length() > 1,
                     namespace_v' = namespace_v,
                     // We use the original set of indices and then take a subset of it as a corrupted one.
-                    // We do so by selecting `oneOf` from the set of all subsets of existing indices (`powerse`), 
+                    // We do so by selecting `oneOf` from the set of all subsets of existing indices (`powerset`), 
                     // provided that it is not the empty set and not the full set of indices. (`filter`).
                     // Note that this is non-deterministic value (`nondet`) because of the function `oneOf`.
                     nondet new_supporting_hashes_indices = oneOf(
