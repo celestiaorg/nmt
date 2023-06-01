@@ -52,62 +52,45 @@ func newNamespaceDataPairRaw(nidSize int, data []byte) namespaceDataPair {
 	}
 }
 
-func ExampleNamespacedMerkleTree() {
-	// the tree will use this namespace size
-	nidSize := 1
-	// the leaves that will be pushed
+func TestExampleNamespacedMerkleTree(t *testing.T) {
 	data := [][]byte{
 		append(namespace.ID{0}, []byte("leaf_0")...),
 		append(namespace.ID{0}, []byte("leaf_1")...),
 		append(namespace.ID{1}, []byte("leaf_2")...),
 		append(namespace.ID{1}, []byte("leaf_3")...),
 	}
-	// Init a tree with the namespace size as well as
-	// the underlying hash function:
+	nidSize := 1
 	tree := New(sha256.New(), NamespaceIDSize(nidSize))
+
 	for _, d := range data {
-		if err := tree.Push(d); err != nil {
-			panic(fmt.Sprintf("unexpected error: %v", err))
-		}
+		err := tree.Push(d)
+		assert.NoError(t, err)
 	}
-	// compute the root
+
 	root, err := tree.Root()
-	if err != nil {
-		panic("unexpected error")
-	}
+	assert.NoError(t, err)
+
 	// the root's min/max namespace is the min and max namespace of all leaves:
 	minNS := MinNamespace(root, tree.NamespaceSize())
 	maxNS := MaxNamespace(root, tree.NamespaceSize())
-	if bytes.Equal(minNS, namespace.ID{0}) {
-		fmt.Printf("Min namespace: %x\n", minNS)
-	}
-	if bytes.Equal(maxNS, namespace.ID{1}) {
-		fmt.Printf("Max namespace: %x\n", maxNS)
-	}
+	assert.Equal(t, minNS, []byte(namespace.ID{0}))
+	assert.Equal(t, maxNS, []byte(namespace.ID{1}))
 
-	// compute proof for namespace 0:
+	// compute proof for namespace 0
 	proof, err := tree.ProveNamespace(namespace.ID{0})
-	if err != nil {
-		panic("unexpected error")
-	}
+	assert.NoError(t, err)
 
-	// verify proof using the root and the leaves of namespace 0:
+	// verify proof using the root and the leaves of namespace 0
 	leafs := [][]byte{
 		append(namespace.ID{0}, []byte("leaf_0")...),
 		append(namespace.ID{0}, []byte("leaf_1")...),
 	}
 
-	if proof.VerifyNamespace(sha256.New(), namespace.ID{0}, leafs, root) {
-		fmt.Printf("Successfully verified namespace: %x\n", namespace.ID{0})
-	}
+	got := proof.VerifyNamespace(sha256.New(), namespace.ID{0}, leafs, root)
+	assert.True(t, got)
 
-	if proof.VerifyNamespace(sha256.New(), namespace.ID{2}, leafs, root) {
-		panic(fmt.Sprintf("Proof for namespace %x, passed for namespace: %x\n", namespace.ID{0}, namespace.ID{2}))
-	}
-	// Output:
-	// Min namespace: 00
-	// Max namespace: 01
-	// Successfully verified namespace: 00
+	got = proof.VerifyNamespace(sha256.New(), namespace.ID{2}, leafs, root)
+	assert.False(t, got) // namespace 2 is not in the tree, so the proof should fail to verify
 }
 
 func TestNamespacedMerkleTree_Push(t *testing.T) {
