@@ -28,7 +28,7 @@ func (nid ID) Size() IDSize {
 }
 
 // String returns the hexadecimal encoding of the nid. The output of
-// nid.String() is not equivalant to string(nid).
+// nid.String() is not equivalent to string(nid).
 func (nid ID) String() string {
 	return hex.EncodeToString(nid)
 }
