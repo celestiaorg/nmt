@@ -229,6 +229,18 @@ func (proof Proof) VerifyNamespace(h hash.Hash, nID namespace.ID, leaves [][]byt
 // tree represented by the root parameter that matches the namespace ID nID
 // but is not present in the leafHashes list.
 func (proof Proof) VerifyLeafHashes(nth *Hasher, verifyCompleteness bool, nID namespace.ID, leafHashes [][]byte, root []byte) (bool, error) {
+	// check the namespace of all the leaf hashes to be the same as the queried namespace
+	for _, leafHash := range leafHashes {
+		minNsID := MinNamespace(leafHash, nth.NamespaceSize())
+		maxNsID := MaxNamespace(leafHash, nth.NamespaceSize())
+		if !nID.Equal(minNsID) || !nID.Equal(maxNsID) {
+			return false, fmt.Errorf("leaf hash %x does not belong to namespace %x", leafHash, nID)
+		}
+	}
+	return proof.VerifySubtreeRootHashes(nth, verifyCompleteness, nID, leafHashes, root)
+}
+
+func (proof Proof) VerifySubtreeRootHashes(nth *Hasher, verifyCompleteness bool, nID namespace.ID, subtreeRootHashes [][]byte, root []byte) (bool, error) {
 	// check that the proof range is valid
 	if proof.Start() < 0 || proof.Start() >= proof.End() {
 		return false, fmt.Errorf("proof range [proof.start=%d, proof.end=%d) is not valid: %w", proof.Start(), proof.End(), ErrInvalidRange)
@@ -249,8 +261,8 @@ func (proof Proof) VerifyLeafHashes(nth *Hasher, verifyCompleteness bool, nID na
 		}
 	}
 	// check that all the proof.nodes are valid w.r.t the NMT hasher
-	for _, leaf := range leafHashes {
-		if err := nth.ValidateNodeFormat(leaf); err != nil {
+	for _, leafHash := range subtreeRootHashes {
+		if err := nth.ValidateNodeFormat(leafHash); err != nil {
 			return false, fmt.Errorf("leaf hash does not match the NMT hasher's hash format: %w", err)
 		}
 	}
@@ -293,9 +305,9 @@ func (proof Proof) VerifyLeafHashes(nth *Hasher, verifyCompleteness bool, nID na
 			// if the leaf index falls within the proof range, pop and return a
 			// leaf
 			if proof.Start() <= start && start < proof.End() {
-				leafHash := leafHashes[0]
+				leafHash := subtreeRootHashes[0]
 				// advance leafHashes
-				leafHashes = leafHashes[1:]
+				subtreeRootHashes = subtreeRootHashes[1:]
 				return leafHash, nil
 			}
 
