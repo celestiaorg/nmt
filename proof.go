@@ -229,12 +229,14 @@ func (proof Proof) VerifyNamespace(h hash.Hash, nID namespace.ID, leaves [][]byt
 // tree represented by the root parameter that matches the namespace ID nID
 // but is not present in the leafHashes list.
 func (proof Proof) VerifyLeafHashes(nth *Hasher, verifyCompleteness bool, nID namespace.ID, leafHashes [][]byte, root []byte) (bool, error) {
-	// check the namespace of all the leaf hashes to be the same as the queried namespace
-	for _, leafHash := range leafHashes {
-		minNsID := MinNamespace(leafHash, nth.NamespaceSize())
-		maxNsID := MaxNamespace(leafHash, nth.NamespaceSize())
-		if !nID.Equal(minNsID) || !nID.Equal(maxNsID) {
-			return false, fmt.Errorf("leaf hash %x does not belong to namespace %x", leafHash, nID)
+	if !proof.IsOfAbsence() { //in ase of absence proof, the leafHash is the hash of a leaf next to the queried namespace, hence its namespace ID is not the same as the queried namespace ID
+		// check the namespace of all the leaf hashes to be the same as the queried namespace
+		for _, leafHash := range leafHashes {
+			minNsID := MinNamespace(leafHash, nth.NamespaceSize())
+			maxNsID := MaxNamespace(leafHash, nth.NamespaceSize())
+			if !nID.Equal(minNsID) || !nID.Equal(maxNsID) {
+				return false, fmt.Errorf("leaf hash %x does not belong to namespace %x", leafHash, nID)
+			}
 		}
 	}
 	return proof.VerifySubtreeRootHashes(nth, verifyCompleteness, nID, leafHashes, root)
