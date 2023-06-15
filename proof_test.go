@@ -522,7 +522,7 @@ func TestVerifyNamespace_False(t *testing.T) {
 }
 
 func TestVerifyLeafHashes_False(t *testing.T) {
-	nIDs := []byte{1, 2, 3, 4, 5, 6, 7, 8}
+	nIDs := []byte{1, 2, 3, 4, 6, 7, 8, 9}
 
 	// create a sample tree with namespace ID size of 1
 	nmt1 := exampleNMT(1, true, nIDs...)
@@ -532,6 +532,21 @@ func TestVerifyLeafHashes_False(t *testing.T) {
 	proof4_1, err := nmt1.ProveNamespace(nid4_1) // leaf at index 3 has namespace ID 4
 	require.NoError(t, err)
 
+	leafHash1 := nmt1.leafHashes[3]
+
+	// corrupt the namespace of the leafHash
+	leafHash1_corrupted := make([]byte, len(leafHash1))
+	copy(leafHash1_corrupted, leafHash1)
+	leafHash1_corrupted[0] = 0 // change the min namespace
+	leafHash1_corrupted[1] = 0 // change the max namespace
+
+	// create an absence proof with namespace ID size of 1
+	nid5_1 := namespace.ID{5}
+	absenceProof5_1, err := nmt1.ProveNamespace(nid5_1)
+	require.NoError(t, err)
+	leafHash6_1 := nmt1.leafHashes[4]
+	assert.Equal(t, leafHash6_1, absenceProof5_1.leafHash)
+
 	// create a sample tree with namespace ID size of 2
 	nmt2 := exampleNMT(2, true, nIDs...)
 	root2, err := nmt2.Root()
@@ -540,7 +555,6 @@ func TestVerifyLeafHashes_False(t *testing.T) {
 	proof4_2, err := nmt2.ProveNamespace(nid4_2) // leaf at index 3 has namespace ID 4
 	require.NoError(t, err)
 
-	leafHash1 := nmt1.leafHashes[3]
 	leafHash2 := nmt2.leafHashes[3]
 
 	type args struct {
@@ -563,6 +577,8 @@ func TestVerifyLeafHashes_False(t *testing.T) {
 		{"size of queried nID < nID size of VerifyLeafHashes' nmt hasher", proof4_2, args{2, nid4_1, [][]byte{leafHash2}, root2}, false},
 		{"nID size of leafHash < nID size of VerifyLeafHashes' nmt hasher", proof4_2, args{2, nid4_2, [][]byte{leafHash1}, root2}, false},
 		{"nID size of leafHash > nID size of VerifyLeafHashes' nmt hasher", proof4_1, args{1, nid4_1, [][]byte{leafHash2}, root1}, false},
+		{"nID of leafHashes do not match the queried nID", proof4_1, args{1, nid4_1, [][]byte{leafHash1_corrupted}, root1}, false},
+		{"absence proof: nID of leafHashes do not match the queried nID, which is a valid case", absenceProof5_1, args{1, nid5_1, [][]byte{leafHash6_1}, root1}, true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
