@@ -535,10 +535,10 @@ func TestVerifyLeafHashes_False(t *testing.T) {
 	leafHash1 := nmt1.leafHashes[3]
 
 	// corrupt the namespace of the leafHash
-	leafHash1_corrupted := make([]byte, len(leafHash1))
-	copy(leafHash1_corrupted, leafHash1)
-	leafHash1_corrupted[0] = 0 // change the min namespace
-	leafHash1_corrupted[1] = 0 // change the max namespace
+	leafHash1Corrupted := make([]byte, len(leafHash1))
+	copy(leafHash1Corrupted, leafHash1)
+	leafHash1Corrupted[0] = 0 // change the min namespace
+	leafHash1Corrupted[1] = 0 // change the max namespace
 
 	// create an absence proof with namespace ID size of 1
 	nid5_1 := namespace.ID{5}
@@ -577,7 +577,7 @@ func TestVerifyLeafHashes_False(t *testing.T) {
 		{"size of queried nID < nID size of VerifyLeafHashes' nmt hasher", proof4_2, args{2, nid4_1, [][]byte{leafHash2}, root2}, false},
 		{"nID size of leafHash < nID size of VerifyLeafHashes' nmt hasher", proof4_2, args{2, nid4_2, [][]byte{leafHash1}, root2}, false},
 		{"nID size of leafHash > nID size of VerifyLeafHashes' nmt hasher", proof4_1, args{1, nid4_1, [][]byte{leafHash2}, root1}, false},
-		{"nID of leafHashes do not match the queried nID", proof4_1, args{1, nid4_1, [][]byte{leafHash1_corrupted}, root1}, false},
+		{"nID of leafHashes do not match the queried nID", proof4_1, args{1, nid4_1, [][]byte{leafHash1Corrupted}, root1}, false},
 		{"absence proof: nID of leafHashes do not match the queried nID, which is a valid case", absenceProof5_1, args{1, nid5_1, [][]byte{leafHash6_1}, root1}, true},
 	}
 	for _, tt := range tests {
