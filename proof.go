@@ -248,7 +248,7 @@ func (proof Proof) VerifyLeafHashes(nth *Hasher, verifyCompleteness bool, nID na
 			return false, fmt.Errorf("proof nodes do not match the NMT hasher's hash format: %w", err)
 		}
 	}
-	// check that all the proof.nodes are valid w.r.t the NMT hasher
+	// check that all the leafHashes are valid w.r.t the NMT hasher
 	for _, leafHash := range leafHashes {
 		if err := nth.ValidateNodeFormat(leafHash); err != nil {
 			return false, fmt.Errorf("leaf hash does not match the NMT hasher's hash format: %w", err)
