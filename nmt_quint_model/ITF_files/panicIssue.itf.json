@@ -1,0 +1,2297 @@
+{"states": 
+[
+    {
+            "proof_v": {
+                "start": 0,
+                "end": 0,
+                "supporting_hashes": [
+                    {
+                        "minNS": 2,
+                        "maxNS": 2,
+                        "hash": [
+                            {
+                                "#tup": [
+                                    "data",
+                                    2
+                                ]
+                            },
+                            {
+                                "#tup": [
+                                    "data",
+                                    3
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "minNS": 2,
+                        "maxNS": 6,
+                        "hash": [
+                            {
+                                "#tup": [
+                                    "data",
+                                    4
+                                ]
+                            },
+                            {
+                                "#tup": [
+                                    "data",
+                                    5
+                                ]
+                            },
+                            {
+                                "#tup": [
+                                    "data",
+                                    6
+                                ]
+                            },
+                            {
+                                "#tup": [
+                                    "data",
+                                    7
+                                ]
+                            }
+                        ]
+                    }
+                ]
+            },
+            "tree_v": {
+                "leaves": {
+                    "#map": [
+                        [
+                            10,
+                            {
+                                "value": {
+                                    "#tup": [
+                                        "data",
+                                        2
+                                    ]
+                                },
+                                "namespaceId": 2
+                            }
+                        ],
+                        [
+                            11,
+                            {
+                                "value": {
+                                    "#tup": [
+                                        "data",
+                                        3
+                                    ]
+                                },
+                                "namespaceId": 2
+                            }
+                        ],
+                        [
+                            12,
+                            {
+                                "value": {
+                                    "#tup": [
+                                        "data",
+                                        4
+                                    ]
+                                },
+                                "namespaceId": 2
+                            }
+                        ],
+                        [
+                            13,
+                            {
+                                "value": {
+                                    "#tup": [
+                                        "data",
+                                        5
+                                    ]
+                                },
+                                "namespaceId": 4
+                            }
+                        ],
+                        [
+                            14,
+                            {
+                                "value": {
+                                    "#tup": [
+                                        "data",
+                                        6
+                                    ]
+                                },
+                                "namespaceId": 6
+                            }
+                        ],
+                        [
+                            15,
+                            {
+                                "value": {
+                                    "#tup": [
+                                        "data",
+                                        7
+                                    ]
+                                },
+                                "namespaceId": 6
+                            }
+                        ],
+                        [
+                            8,
+                            {
+                                "value": {
+                                    "#tup": [
+                                        "data",
+                                        0
+                                    ]
+                                },
+                                "namespaceId": 0
+                            }
+                        ],
+                        [
+                            9,
+                            {
+                                "value": {
+                                    "#tup": [
+                                        "data",
+                                        1
+                                    ]
+                                },
+                                "namespaceId": 0
+                            }
+                        ]
+                    ]
+                },
+                "hashes": {
+                    "#map": [
+                        [
+                            1,
+                            {
+                                "minNS": 0,
+                                "maxNS": 6,
+                                "hash": [
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            0
+                                        ]
+                                    },
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            1
+                                        ]
+                                    },
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            2
+                                        ]
+                                    },
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            3
+                                        ]
+                                    },
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            4
+                                        ]
+                                    },
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            5
+                                        ]
+                                    },
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            6
+                                        ]
+                                    },
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            7
+                                        ]
+                                    }
+                                ]
+                            }
+                        ],
+                        [
+                            10,
+                            {
+                                "minNS": 2,
+                                "maxNS": 2,
+                                "hash": [
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            2
+                                        ]
+                                    }
+                                ]
+                            }
+                        ],
+                        [
+                            11,
+                            {
+                                "minNS": 2,
+                                "maxNS": 2,
+                                "hash": [
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            3
+                                        ]
+                                    }
+                                ]
+                            }
+                        ],
+                        [
+                            12,
+                            {
+                                "minNS": 2,
+                                "maxNS": 2,
+                                "hash": [
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            4
+                                        ]
+                                    }
+                                ]
+                            }
+                        ],
+                        [
+                            13,
+                            {
+                                "minNS": 4,
+                                "maxNS": 4,
+                                "hash": [
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            5
+                                        ]
+                                    }
+                                ]
+                            }
+                        ],
+                        [
+                            14,
+                            {
+                                "minNS": 6,
+                                "maxNS": 6,
+                                "hash": [
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            6
+                                        ]
+                                    }
+                                ]
+                            }
+                        ],
+                        [
+                            15,
+                            {
+                                "minNS": 6,
+                                "maxNS": 6,
+                                "hash": [
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            7
+                                        ]
+                                    }
+                                ]
+                            }
+                        ],
+                        [
+                            2,
+                            {
+                                "minNS": 0,
+                                "maxNS": 2,
+                                "hash": [
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            0
+                                        ]
+                                    },
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            1
+                                        ]
+                                    },
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            2
+                                        ]
+                                    },
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            3
+                                        ]
+                                    }
+                                ]
+                            }
+                        ],
+                        [
+                            3,
+                            {
+                                "minNS": 2,
+                                "maxNS": 6,
+                                "hash": [
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            4
+                                        ]
+                                    },
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            5
+                                        ]
+                                    },
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            6
+                                        ]
+                                    },
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            7
+                                        ]
+                                    }
+                                ]
+                            }
+                        ],
+                        [
+                            4,
+                            {
+                                "minNS": 0,
+                                "maxNS": 0,
+                                "hash": [
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            0
+                                        ]
+                                    },
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            1
+                                        ]
+                                    }
+                                ]
+                            }
+                        ],
+                        [
+                            5,
+                            {
+                                "minNS": 2,
+                                "maxNS": 2,
+                                "hash": [
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            2
+                                        ]
+                                    },
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            3
+                                        ]
+                                    }
+                                ]
+                            }
+                        ],
+                        [
+                            6,
+                            {
+                                "minNS": 2,
+                                "maxNS": 4,
+                                "hash": [
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            4
+                                        ]
+                                    },
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            5
+                                        ]
+                                    }
+                                ]
+                            }
+                        ],
+                        [
+                            7,
+                            {
+                                "minNS": 6,
+                                "maxNS": 6,
+                                "hash": [
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            6
+                                        ]
+                                    },
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            7
+                                        ]
+                                    }
+                                ]
+                            }
+                        ],
+                        [
+                            8,
+                            {
+                                "minNS": 0,
+                                "maxNS": 0,
+                                "hash": [
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            0
+                                        ]
+                                    }
+                                ]
+                            }
+                        ],
+                        [
+                            9,
+                            {
+                                "minNS": 0,
+                                "maxNS": 0,
+                                "hash": [
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            1
+                                        ]
+                                    }
+                                ]
+                            }
+                        ]
+                    ]
+                }
+            },
+            "namespace_v": 0,
+            "state_v": "final",
+            "leaves_v": [
+                {
+                    "value": {
+                        "#tup": [
+                            "data",
+                            0
+                        ]
+                    },
+                    "namespaceId": 0
+                },
+                {
+                    "value": {
+                        "#tup": [
+                            "data",
+                            1
+                        ]
+                    },
+                    "namespaceId": 0
+                },
+                {
+                    "value": {
+                        "#tup": [
+                            "data",
+                            2
+                        ]
+                    },
+                    "namespaceId": 2
+                },
+                {
+                    "value": {
+                        "#tup": [
+                            "data",
+                            3
+                        ]
+                    },
+                    "namespaceId": 2
+                },
+                {
+                    "value": {
+                        "#tup": [
+                            "data",
+                            4
+                        ]
+                    },
+                    "namespaceId": 2
+                },
+                {
+                    "value": {
+                        "#tup": [
+                            "data",
+                            5
+                        ]
+                    },
+                    "namespaceId": 4
+                },
+                {
+                    "value": {
+                        "#tup": [
+                            "data",
+                            6
+                        ]
+                    },
+                    "namespaceId": 6
+                },
+                {
+                    "value": {
+                        "#tup": [
+                            "data",
+                            7
+                        ]
+                    },
+                    "namespaceId": 6
+                }
+            ],
+            "corrupted": true,
+            "corruption_type": "end",
+            "corruption_diff": {
+                "changed_start": -1,
+                "changed_end": 0,
+                "changed_namespace": -1,
+                "changed_indices": []
+            }
+        },
+
+        {
+        "proof_v": {
+            "start": 0,
+            "end": 0,
+            "supporting_hashes": [
+                {
+                    "minNS": 2,
+                    "maxNS": 4,
+                    "hash": [
+                        {
+                            "#tup": [
+                                "data",
+                                2
+                            ]
+                        },
+                        {
+                            "#tup": [
+                                "data",
+                                3
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "minNS": 6,
+                    "maxNS": 8,
+                    "hash": [
+                        {
+                            "#tup": [
+                                "data",
+                                4
+                            ]
+                        },
+                        {
+                            "#tup": [
+                                "data",
+                                5
+                            ]
+                        },
+                        {
+                            "#tup": [
+                                "data",
+                                6
+                            ]
+                        },
+                        {
+                            "#tup": [
+                                "data",
+                                7
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
+        "tree_v": {
+            "leaves": {
+                "#map": [
+                    [
+                        10,
+                        {
+                            "value": {
+                                "#tup": [
+                                    "data",
+                                    2
+                                ]
+                            },
+                            "namespaceId": 2
+                        }
+                    ],
+                    [
+                        11,
+                        {
+                            "value": {
+                                "#tup": [
+                                    "data",
+                                    3
+                                ]
+                            },
+                            "namespaceId": 4
+                        }
+                    ],
+                    [
+                        12,
+                        {
+                            "value": {
+                                "#tup": [
+                                    "data",
+                                    4
+                                ]
+                            },
+                            "namespaceId": 6
+                        }
+                    ],
+                    [
+                        13,
+                        {
+                            "value": {
+                                "#tup": [
+                                    "data",
+                                    5
+                                ]
+                            },
+                            "namespaceId": 6
+                        }
+                    ],
+                    [
+                        14,
+                        {
+                            "value": {
+                                "#tup": [
+                                    "data",
+                                    6
+                                ]
+                            },
+                            "namespaceId": 8
+                        }
+                    ],
+                    [
+                        15,
+                        {
+                            "value": {
+                                "#tup": [
+                                    "data",
+                                    7
+                                ]
+                            },
+                            "namespaceId": 8
+                        }
+                    ],
+                    [
+                        8,
+                        {
+                            "value": {
+                                "#tup": [
+                                    "data",
+                                    0
+                                ]
+                            },
+                            "namespaceId": 0
+                        }
+                    ],
+                    [
+                        9,
+                        {
+                            "value": {
+                                "#tup": [
+                                    "data",
+                                    1
+                                ]
+                            },
+                            "namespaceId": 0
+                        }
+                    ]
+                ]
+            },
+            "hashes": {
+                "#map": [
+                    [
+                        1,
+                        {
+                            "minNS": 0,
+                            "maxNS": 8,
+                            "hash": [
+                                {
+                                    "#tup": [
+                                        "data",
+                                        0
+                                    ]
+                                },
+                                {
+                                    "#tup": [
+                                        "data",
+                                        1
+                                    ]
+                                },
+                                {
+                                    "#tup": [
+                                        "data",
+                                        2
+                                    ]
+                                },
+                                {
+                                    "#tup": [
+                                        "data",
+                                        3
+                                    ]
+                                },
+                                {
+                                    "#tup": [
+                                        "data",
+                                        4
+                                    ]
+                                },
+                                {
+                                    "#tup": [
+                                        "data",
+                                        5
+                                    ]
+                                },
+                                {
+                                    "#tup": [
+                                        "data",
+                                        6
+                                    ]
+                                },
+                                {
+                                    "#tup": [
+                                        "data",
+                                        7
+                                    ]
+                                }
+                            ]
+                        }
+                    ],
+                    [
+                        10,
+                        {
+                            "minNS": 2,
+                            "maxNS": 2,
+                            "hash": [
+                                {
+                                    "#tup": [
+                                        "data",
+                                        2
+                                    ]
+                                }
+                            ]
+                        }
+                    ],
+                    [
+                        11,
+                        {
+                            "minNS": 4,
+                            "maxNS": 4,
+                            "hash": [
+                                {
+                                    "#tup": [
+                                        "data",
+                                        3
+                                    ]
+                                }
+                            ]
+                        }
+                    ],
+                    [
+                        12,
+                        {
+                            "minNS": 6,
+                            "maxNS": 6,
+                            "hash": [
+                                {
+                                    "#tup": [
+                                        "data",
+                                        4
+                                    ]
+                                }
+                            ]
+                        }
+                    ],
+                    [
+                        13,
+                        {
+                            "minNS": 6,
+                            "maxNS": 6,
+                            "hash": [
+                                {
+                                    "#tup": [
+                                        "data",
+                                        5
+                                    ]
+                                }
+                            ]
+                        }
+                    ],
+                    [
+                        14,
+                        {
+                            "minNS": 8,
+                            "maxNS": 8,
+                            "hash": [
+                                {
+                                    "#tup": [
+                                        "data",
+                                        6
+                                    ]
+                                }
+                            ]
+                        }
+                    ],
+                    [
+                        15,
+                        {
+                            "minNS": 8,
+                            "maxNS": 8,
+                            "hash": [
+                                {
+                                    "#tup": [
+                                        "data",
+                                        7
+                                    ]
+                                }
+                            ]
+                        }
+                    ],
+                    [
+                        2,
+                        {
+                            "minNS": 0,
+                            "maxNS": 4,
+                            "hash": [
+                                {
+                                    "#tup": [
+                                        "data",
+                                        0
+                                    ]
+                                },
+                                {
+                                    "#tup": [
+                                        "data",
+                                        1
+                                    ]
+                                },
+                                {
+                                    "#tup": [
+                                        "data",
+                                        2
+                                    ]
+                                },
+                                {
+                                    "#tup": [
+                                        "data",
+                                        3
+                                    ]
+                                }
+                            ]
+                        }
+                    ],
+                    [
+                        3,
+                        {
+                            "minNS": 6,
+                            "maxNS": 8,
+                            "hash": [
+                                {
+                                    "#tup": [
+                                        "data",
+                                        4
+                                    ]
+                                },
+                                {
+                                    "#tup": [
+                                        "data",
+                                        5
+                                    ]
+                                },
+                                {
+                                    "#tup": [
+                                        "data",
+                                        6
+                                    ]
+                                },
+                                {
+                                    "#tup": [
+                                        "data",
+                                        7
+                                    ]
+                                }
+                            ]
+                        }
+                    ],
+                    [
+                        4,
+                        {
+                            "minNS": 0,
+                            "maxNS": 0,
+                            "hash": [
+                                {
+                                    "#tup": [
+                                        "data",
+                                        0
+                                    ]
+                                },
+                                {
+                                    "#tup": [
+                                        "data",
+                                        1
+                                    ]
+                                }
+                            ]
+                        }
+                    ],
+                    [
+                        5,
+                        {
+                            "minNS": 2,
+                            "maxNS": 4,
+                            "hash": [
+                                {
+                                    "#tup": [
+                                        "data",
+                                        2
+                                    ]
+                                },
+                                {
+                                    "#tup": [
+                                        "data",
+                                        3
+                                    ]
+                                }
+                            ]
+                        }
+                    ],
+                    [
+                        6,
+                        {
+                            "minNS": 6,
+                            "maxNS": 6,
+                            "hash": [
+                                {
+                                    "#tup": [
+                                        "data",
+                                        4
+                                    ]
+                                },
+                                {
+                                    "#tup": [
+                                        "data",
+                                        5
+                                    ]
+                                }
+                            ]
+                        }
+                    ],
+                    [
+                        7,
+                        {
+                            "minNS": 8,
+                            "maxNS": 8,
+                            "hash": [
+                                {
+                                    "#tup": [
+                                        "data",
+                                        6
+                                    ]
+                                },
+                                {
+                                    "#tup": [
+                                        "data",
+                                        7
+                                    ]
+                                }
+                            ]
+                        }
+                    ],
+                    [
+                        8,
+                        {
+                            "minNS": 0,
+                            "maxNS": 0,
+                            "hash": [
+                                {
+                                    "#tup": [
+                                        "data",
+                                        0
+                                    ]
+                                }
+                            ]
+                        }
+                    ],
+                    [
+                        9,
+                        {
+                            "minNS": 0,
+                            "maxNS": 0,
+                            "hash": [
+                                {
+                                    "#tup": [
+                                        "data",
+                                        1
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                ]
+            }
+        },
+        "namespace_v": 0,
+        "state_v": "final",
+        "leaves_v": [
+            {
+                "value": {
+                    "#tup": [
+                        "data",
+                        0
+                    ]
+                },
+                "namespaceId": 0
+            },
+            {
+                "value": {
+                    "#tup": [
+                        "data",
+                        1
+                    ]
+                },
+                "namespaceId": 0
+            },
+            {
+                "value": {
+                    "#tup": [
+                        "data",
+                        2
+                    ]
+                },
+                "namespaceId": 2
+            },
+            {
+                "value": {
+                    "#tup": [
+                        "data",
+                        3
+                    ]
+                },
+                "namespaceId": 4
+            },
+            {
+                "value": {
+                    "#tup": [
+                        "data",
+                        4
+                    ]
+                },
+                "namespaceId": 6
+            },
+            {
+                "value": {
+                    "#tup": [
+                        "data",
+                        5
+                    ]
+                },
+                "namespaceId": 6
+            },
+            {
+                "value": {
+                    "#tup": [
+                        "data",
+                        6
+                    ]
+                },
+                "namespaceId": 8
+            },
+            {
+                "value": {
+                    "#tup": [
+                        "data",
+                        7
+                    ]
+                },
+                "namespaceId": 8
+            }
+        ],
+        "corrupted": true,
+        "corruption_type": "end",
+        "corruption_diff": {
+            "changed_start": -1,
+            "changed_end": 0,
+            "changed_namespace": -1,
+            "changed_indices": []
+        }
+    },
+{
+            "proof_v": {
+                "start": 0,
+                "end": 0,
+                "supporting_hashes": [
+                    {
+                        "minNS": 2,
+                        "maxNS": 4,
+                        "hash": [
+                            {
+                                "#tup": [
+                                    "data",
+                                    2
+                                ]
+                            },
+                            {
+                                "#tup": [
+                                    "data",
+                                    3
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "minNS": 4,
+                        "maxNS": 4,
+                        "hash": [
+                            {
+                                "#tup": [
+                                    "data",
+                                    4
+                                ]
+                            },
+                            {
+                                "#tup": [
+                                    "data",
+                                    5
+                                ]
+                            },
+                            {
+                                "#tup": [
+                                    "data",
+                                    6
+                                ]
+                            },
+                            {
+                                "#tup": [
+                                    "data",
+                                    7
+                                ]
+                            }
+                        ]
+                    }
+                ]
+            },
+            "tree_v": {
+                "leaves": {
+                    "#map": [
+                        [
+                            10,
+                            {
+                                "value": {
+                                    "#tup": [
+                                        "data",
+                                        2
+                                    ]
+                                },
+                                "namespaceId": 2
+                            }
+                        ],
+                        [
+                            11,
+                            {
+                                "value": {
+                                    "#tup": [
+                                        "data",
+                                        3
+                                    ]
+                                },
+                                "namespaceId": 4
+                            }
+                        ],
+                        [
+                            12,
+                            {
+                                "value": {
+                                    "#tup": [
+                                        "data",
+                                        4
+                                    ]
+                                },
+                                "namespaceId": 4
+                            }
+                        ],
+                        [
+                            13,
+                            {
+                                "value": {
+                                    "#tup": [
+                                        "data",
+                                        5
+                                    ]
+                                },
+                                "namespaceId": 4
+                            }
+                        ],
+                        [
+                            14,
+                            {
+                                "value": {
+                                    "#tup": [
+                                        "data",
+                                        6
+                                    ]
+                                },
+                                "namespaceId": 4
+                            }
+                        ],
+                        [
+                            15,
+                            {
+                                "value": {
+                                    "#tup": [
+                                        "data",
+                                        7
+                                    ]
+                                },
+                                "namespaceId": 4
+                            }
+                        ],
+                        [
+                            8,
+                            {
+                                "value": {
+                                    "#tup": [
+                                        "data",
+                                        0
+                                    ]
+                                },
+                                "namespaceId": 0
+                            }
+                        ],
+                        [
+                            9,
+                            {
+                                "value": {
+                                    "#tup": [
+                                        "data",
+                                        1
+                                    ]
+                                },
+                                "namespaceId": 0
+                            }
+                        ]
+                    ]
+                },
+                "hashes": {
+                    "#map": [
+                        [
+                            1,
+                            {
+                                "minNS": 0,
+                                "maxNS": 4,
+                                "hash": [
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            0
+                                        ]
+                                    },
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            1
+                                        ]
+                                    },
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            2
+                                        ]
+                                    },
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            3
+                                        ]
+                                    },
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            4
+                                        ]
+                                    },
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            5
+                                        ]
+                                    },
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            6
+                                        ]
+                                    },
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            7
+                                        ]
+                                    }
+                                ]
+                            }
+                        ],
+                        [
+                            10,
+                            {
+                                "minNS": 2,
+                                "maxNS": 2,
+                                "hash": [
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            2
+                                        ]
+                                    }
+                                ]
+                            }
+                        ],
+                        [
+                            11,
+                            {
+                                "minNS": 4,
+                                "maxNS": 4,
+                                "hash": [
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            3
+                                        ]
+                                    }
+                                ]
+                            }
+                        ],
+                        [
+                            12,
+                            {
+                                "minNS": 4,
+                                "maxNS": 4,
+                                "hash": [
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            4
+                                        ]
+                                    }
+                                ]
+                            }
+                        ],
+                        [
+                            13,
+                            {
+                                "minNS": 4,
+                                "maxNS": 4,
+                                "hash": [
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            5
+                                        ]
+                                    }
+                                ]
+                            }
+                        ],
+                        [
+                            14,
+                            {
+                                "minNS": 4,
+                                "maxNS": 4,
+                                "hash": [
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            6
+                                        ]
+                                    }
+                                ]
+                            }
+                        ],
+                        [
+                            15,
+                            {
+                                "minNS": 4,
+                                "maxNS": 4,
+                                "hash": [
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            7
+                                        ]
+                                    }
+                                ]
+                            }
+                        ],
+                        [
+                            2,
+                            {
+                                "minNS": 0,
+                                "maxNS": 4,
+                                "hash": [
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            0
+                                        ]
+                                    },
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            1
+                                        ]
+                                    },
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            2
+                                        ]
+                                    },
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            3
+                                        ]
+                                    }
+                                ]
+                            }
+                        ],
+                        [
+                            3,
+                            {
+                                "minNS": 4,
+                                "maxNS": 4,
+                                "hash": [
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            4
+                                        ]
+                                    },
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            5
+                                        ]
+                                    },
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            6
+                                        ]
+                                    },
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            7
+                                        ]
+                                    }
+                                ]
+                            }
+                        ],
+                        [
+                            4,
+                            {
+                                "minNS": 0,
+                                "maxNS": 0,
+                                "hash": [
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            0
+                                        ]
+                                    },
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            1
+                                        ]
+                                    }
+                                ]
+                            }
+                        ],
+                        [
+                            5,
+                            {
+                                "minNS": 2,
+                                "maxNS": 4,
+                                "hash": [
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            2
+                                        ]
+                                    },
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            3
+                                        ]
+                                    }
+                                ]
+                            }
+                        ],
+                        [
+                            6,
+                            {
+                                "minNS": 4,
+                                "maxNS": 4,
+                                "hash": [
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            4
+                                        ]
+                                    },
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            5
+                                        ]
+                                    }
+                                ]
+                            }
+                        ],
+                        [
+                            7,
+                            {
+                                "minNS": 4,
+                                "maxNS": 4,
+                                "hash": [
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            6
+                                        ]
+                                    },
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            7
+                                        ]
+                                    }
+                                ]
+                            }
+                        ],
+                        [
+                            8,
+                            {
+                                "minNS": 0,
+                                "maxNS": 0,
+                                "hash": [
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            0
+                                        ]
+                                    }
+                                ]
+                            }
+                        ],
+                        [
+                            9,
+                            {
+                                "minNS": 0,
+                                "maxNS": 0,
+                                "hash": [
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            1
+                                        ]
+                                    }
+                                ]
+                            }
+                        ]
+                    ]
+                }
+            },
+            "namespace_v": 0,
+            "state_v": "final",
+            "leaves_v": [
+                {
+                    "value": {
+                        "#tup": [
+                            "data",
+                            0
+                        ]
+                    },
+                    "namespaceId": 0
+                },
+                {
+                    "value": {
+                        "#tup": [
+                            "data",
+                            1
+                        ]
+                    },
+                    "namespaceId": 0
+                },
+                {
+                    "value": {
+                        "#tup": [
+                            "data",
+                            2
+                        ]
+                    },
+                    "namespaceId": 2
+                },
+                {
+                    "value": {
+                        "#tup": [
+                            "data",
+                            3
+                        ]
+                    },
+                    "namespaceId": 4
+                },
+                {
+                    "value": {
+                        "#tup": [
+                            "data",
+                            4
+                        ]
+                    },
+                    "namespaceId": 4
+                },
+                {
+                    "value": {
+                        "#tup": [
+                            "data",
+                            5
+                        ]
+                    },
+                    "namespaceId": 4
+                },
+                {
+                    "value": {
+                        "#tup": [
+                            "data",
+                            6
+                        ]
+                    },
+                    "namespaceId": 4
+                },
+                {
+                    "value": {
+                        "#tup": [
+                            "data",
+                            7
+                        ]
+                    },
+                    "namespaceId": 4
+                }
+            ],
+            "corrupted": true,
+            "corruption_type": "end",
+            "corruption_diff": {
+                "changed_start": -1,
+                "changed_end": 0,
+                "changed_namespace": -1,
+                "changed_indices": []
+            }
+        },
+        {
+            "proof_v": {
+                "start": 0,
+                "end": 0,
+                "supporting_hashes": [
+                    {
+                        "minNS": 2,
+                        "maxNS": 2,
+                        "hash": [
+                            {
+                                "#tup": [
+                                    "data",
+                                    2
+                                ]
+                            },
+                            {
+                                "#tup": [
+                                    "data",
+                                    3
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "minNS": 2,
+                        "maxNS": 4,
+                        "hash": [
+                            {
+                                "#tup": [
+                                    "data",
+                                    4
+                                ]
+                            },
+                            {
+                                "#tup": [
+                                    "data",
+                                    5
+                                ]
+                            },
+                            {
+                                "#tup": [
+                                    "data",
+                                    6
+                                ]
+                            },
+                            {
+                                "#tup": [
+                                    "data",
+                                    7
+                                ]
+                            }
+                        ]
+                    }
+                ]
+            },
+            "tree_v": {
+                "leaves": {
+                    "#map": [
+                        [
+                            10,
+                            {
+                                "value": {
+                                    "#tup": [
+                                        "data",
+                                        2
+                                    ]
+                                },
+                                "namespaceId": 2
+                            }
+                        ],
+                        [
+                            11,
+                            {
+                                "value": {
+                                    "#tup": [
+                                        "data",
+                                        3
+                                    ]
+                                },
+                                "namespaceId": 2
+                            }
+                        ],
+                        [
+                            12,
+                            {
+                                "value": {
+                                    "#tup": [
+                                        "data",
+                                        4
+                                    ]
+                                },
+                                "namespaceId": 2
+                            }
+                        ],
+                        [
+                            13,
+                            {
+                                "value": {
+                                    "#tup": [
+                                        "data",
+                                        5
+                                    ]
+                                },
+                                "namespaceId": 4
+                            }
+                        ],
+                        [
+                            14,
+                            {
+                                "value": {
+                                    "#tup": [
+                                        "data",
+                                        6
+                                    ]
+                                },
+                                "namespaceId": 4
+                            }
+                        ],
+                        [
+                            15,
+                            {
+                                "value": {
+                                    "#tup": [
+                                        "data",
+                                        7
+                                    ]
+                                },
+                                "namespaceId": 4
+                            }
+                        ],
+                        [
+                            8,
+                            {
+                                "value": {
+                                    "#tup": [
+                                        "data",
+                                        0
+                                    ]
+                                },
+                                "namespaceId": 0
+                            }
+                        ],
+                        [
+                            9,
+                            {
+                                "value": {
+                                    "#tup": [
+                                        "data",
+                                        1
+                                    ]
+                                },
+                                "namespaceId": 0
+                            }
+                        ]
+                    ]
+                },
+                "hashes": {
+                    "#map": [
+                        [
+                            1,
+                            {
+                                "minNS": 0,
+                                "maxNS": 4,
+                                "hash": [
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            0
+                                        ]
+                                    },
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            1
+                                        ]
+                                    },
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            2
+                                        ]
+                                    },
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            3
+                                        ]
+                                    },
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            4
+                                        ]
+                                    },
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            5
+                                        ]
+                                    },
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            6
+                                        ]
+                                    },
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            7
+                                        ]
+                                    }
+                                ]
+                            }
+                        ],
+                        [
+                            10,
+                            {
+                                "minNS": 2,
+                                "maxNS": 2,
+                                "hash": [
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            2
+                                        ]
+                                    }
+                                ]
+                            }
+                        ],
+                        [
+                            11,
+                            {
+                                "minNS": 2,
+                                "maxNS": 2,
+                                "hash": [
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            3
+                                        ]
+                                    }
+                                ]
+                            }
+                        ],
+                        [
+                            12,
+                            {
+                                "minNS": 2,
+                                "maxNS": 2,
+                                "hash": [
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            4
+                                        ]
+                                    }
+                                ]
+                            }
+                        ],
+                        [
+                            13,
+                            {
+                                "minNS": 4,
+                                "maxNS": 4,
+                                "hash": [
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            5
+                                        ]
+                                    }
+                                ]
+                            }
+                        ],
+                        [
+                            14,
+                            {
+                                "minNS": 4,
+                                "maxNS": 4,
+                                "hash": [
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            6
+                                        ]
+                                    }
+                                ]
+                            }
+                        ],
+                        [
+                            15,
+                            {
+                                "minNS": 4,
+                                "maxNS": 4,
+                                "hash": [
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            7
+                                        ]
+                                    }
+                                ]
+                            }
+                        ],
+                        [
+                            2,
+                            {
+                                "minNS": 0,
+                                "maxNS": 2,
+                                "hash": [
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            0
+                                        ]
+                                    },
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            1
+                                        ]
+                                    },
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            2
+                                        ]
+                                    },
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            3
+                                        ]
+                                    }
+                                ]
+                            }
+                        ],
+                        [
+                            3,
+                            {
+                                "minNS": 2,
+                                "maxNS": 4,
+                                "hash": [
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            4
+                                        ]
+                                    },
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            5
+                                        ]
+                                    },
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            6
+                                        ]
+                                    },
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            7
+                                        ]
+                                    }
+                                ]
+                            }
+                        ],
+                        [
+                            4,
+                            {
+                                "minNS": 0,
+                                "maxNS": 0,
+                                "hash": [
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            0
+                                        ]
+                                    },
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            1
+                                        ]
+                                    }
+                                ]
+                            }
+                        ],
+                        [
+                            5,
+                            {
+                                "minNS": 2,
+                                "maxNS": 2,
+                                "hash": [
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            2
+                                        ]
+                                    },
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            3
+                                        ]
+                                    }
+                                ]
+                            }
+                        ],
+                        [
+                            6,
+                            {
+                                "minNS": 2,
+                                "maxNS": 4,
+                                "hash": [
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            4
+                                        ]
+                                    },
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            5
+                                        ]
+                                    }
+                                ]
+                            }
+                        ],
+                        [
+                            7,
+                            {
+                                "minNS": 4,
+                                "maxNS": 4,
+                                "hash": [
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            6
+                                        ]
+                                    },
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            7
+                                        ]
+                                    }
+                                ]
+                            }
+                        ],
+                        [
+                            8,
+                            {
+                                "minNS": 0,
+                                "maxNS": 0,
+                                "hash": [
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            0
+                                        ]
+                                    }
+                                ]
+                            }
+                        ],
+                        [
+                            9,
+                            {
+                                "minNS": 0,
+                                "maxNS": 0,
+                                "hash": [
+                                    {
+                                        "#tup": [
+                                            "data",
+                                            1
+                                        ]
+                                    }
+                                ]
+                            }
+                        ]
+                    ]
+                }
+            },
+            "namespace_v": 0,
+            "state_v": "final",
+            "leaves_v": [
+                {
+                    "value": {
+                        "#tup": [
+                            "data",
+                            0
+                        ]
+                    },
+                    "namespaceId": 0
+                },
+                {
+                    "value": {
+                        "#tup": [
+                            "data",
+                            1
+                        ]
+                    },
+                    "namespaceId": 0
+                },
+                {
+                    "value": {
+                        "#tup": [
+                            "data",
+                            2
+                        ]
+                    },
+                    "namespaceId": 2
+                },
+                {
+                    "value": {
+                        "#tup": [
+                            "data",
+                            3
+                        ]
+                    },
+                    "namespaceId": 2
+                },
+                {
+                    "value": {
+                        "#tup": [
+                            "data",
+                            4
+                        ]
+                    },
+                    "namespaceId": 2
+                },
+                {
+                    "value": {
+                        "#tup": [
+                            "data",
+                            5
+                        ]
+                    },
+                    "namespaceId": 4
+                },
+                {
+                    "value": {
+                        "#tup": [
+                            "data",
+                            6
+                        ]
+                    },
+                    "namespaceId": 4
+                },
+                {
+                    "value": {
+                        "#tup": [
+                            "data",
+                            7
+                        ]
+                    },
+                    "namespaceId": 4
+                }
+            ],
+            "corrupted": true,
+            "corruption_type": "end",
+            "corruption_diff": {
+                "changed_start": -1,
+                "changed_end": 0,
+                "changed_namespace": -1,
+                "changed_indices": []
+            }
+        },
+]
+}
