@@ -60,11 +60,11 @@ For the sake of brevity, we have only included the first 7 hex digits of SHA256 
               /            \                    /               \
             NsH()          NsH()              NsH()             NsH()
             /                \                /                   \
-    00 00 5fa0c9c       00 00 52385a0    01 01 71ca46a       03 03 b4a2792    Leaf Nodes
+    00 00 5fa0c9c       00 00 52385a0    01 01 71ca46a       03 03 b4a2792    Leaf Hashes
         |                   |                 |                   |
       NsH()               NsH()              NsH()               NsH()
         |                   |                 |                   |
-00 6c6561665f30      00 6c6561665f31    01 6c6561665f32      03 6c6561665f33  Namespaced Data Items
+00 6c6561665f30      00 6c6561665f31    01 6c6561665f32      03 6c6561665f33  Leaves with namespace IDs
 
         0                   1                  2                  3           Leaf Indices
 ```
@@ -178,22 +178,76 @@ The `proof` can be verified by taking the following steps:
 If the computed root `T'` is equal to the expected root `T` of the tree, then the `proof` is valid.
 To compute the tree root `T'`, the [namespaced hash function](#namespaced-hash) should be utilized.
 
+### Short Namespace Absence Proof
 
-### Short Namespace Absence Proof 
-Short namespace absence proof is a more efficient and short version of the regular namespace absence proof.
-A partial absence proof deviates from the original NMT absence proof definition in a specific manner.
-Instead of returning the inclusion proof of the `leafHash` to the root (as `proof.nodes`), a partial absence proof returns the Merkle inclusion proof of one of the predecessors of the `LeafHahs` (found along the branch connecting the leaf to the root). 
-This predecessor’s namespace range does not overlap with the queried namespace (which is not present in the tree).
-More formally, the short NMT absence proof comprises:
+The short namespace absence proof is a more efficient and concise variant of the regular namespace absence proof.
+It differs from the original NMT absence proof definition  where instead of providing the inclusion proof of the `LeafHash` to the root (as `proof.nodes`),
+a short absence proof supplies the Merkle inclusion proof of one of the predecessors of the `LeafHash`.
+This predecessor is located along the branch connecting the `LeafHash` to the root.
+Importantly, the namespace range of this predecessor does not overlap with the queried namespace ID i.e., the absent namespace ID.
+At present, the NMT library does not support the generation of short namespace absence proofs.
+However, it is capable of correctly verifying such proofs.
 
-1) A `SubtreeHash`: to compute `SubtreeHash`, we find the index of a leaf of the tree that
-   1) its namespace ID is the smallest namespace ID larger than `nID` and
-   2) the namespace ID of the leaf to the left of it is smaller than `nID`.
-Then we climb up the branch connecting that leaf to the root and find one of the parents/grandparents of that leaf whose namespace range has no overlap with the queried namespace (which is not present in the tree). 
+#### Short Namespace Absence Proof Generation
+
+More formally, the short namespace absence proof consists of the following components:
+
+1) `SubtreeHash`: To compute the `SubtreeHash`, the following steps should be followed:
+   1) Find the index of a leaf in the tree that meets two conditions:
+      1) Its namespace ID is the smallest ID greater than `nID`.
+      1) The namespace ID of the leaf to its left is smaller than `nID`.
+   1) Traverse up the branch connecting that leaf to the root and locate one of the parents/grandparents of that leaf whose namespace range does not overlap with the queried namespace. 
    The `SubtreeHash` is the hash of that node.
-1) A range `start` and `end` representing the index of the `SubtreeHash` in its respective level (where nodes at each level are indexed from left to right and are zero-indexed).
-1) A set of `nodes` that constitute the Merkle index-based inclusion proof of  the `SubtreeHash` to the tree root `T`.
+1) `start` and `end` range: These represent the indices of the `SubtreeHash` within its respective level. 
+Nodes at each level are indexed from left to right starting at index 0.
+1) `nodes`: This set comprises the index-based  Merkle inclusion proof of the `SubtreeHash` to the tree root `T`.
 
+Illustrating the short namespace absence proof for namespace ID `nID = 02` in an 8-leaf tree:
+The namespace ID `03` is the smallest namespace larger than `02`. 
+By traversing the branch from the leaf with namespace ID `03` to the root, we find a node with hash `03 04 52c7c03` whose namespace range doesn't overlap with `02`. 
+This node is the highest such node along the branch.
+The `SubtreeHash` is the hash of that node, which is `03 04 52c7c03`.
+The `start` and `end` indices indicate its position in the respective level. 
+In this case, `start = 1` and `end = 2`. 
+Note that node indices start at `0` from left to right at each level.
+The `nodes` form the index-based Merkle inclusion proof of the `SubtreeHash` to the tree root `T`. 
+The `nodes` set includes `00 00 ead8d25`, the left sibling of `03 04 52c7c03`.
+
+In summary, the short namespace absence proof for `nID = 02` in this tree consists of `SubtreeHash = 03 04 52c7c03`, `start = 1`, `end = 2`, and the `nodes` set containing `00 00 ead8d25`.
+
+```markdown
+                                 00 04 b1c2cc5                                Tree Root
+                           /                       \
+                          /                         \
+                        NsH()                       NsH()
+                        /                             \
+                       /                               \
+                      /                           -------------
+               00 00 ead8d25                     |03 04 52c7c03|              Non-Leaf Nodes
+                /         \                       -------------
+              /            \                    /               \
+            NsH()          NsH()              NsH()             NsH()
+            /                \                /                   \
+    00 00 5fa0c9c       00 00 52385a0    03 03 71ca46a       04 04 b4a2792    Leaf Hashes
+        |                   |                 |                   |
+      NsH()               NsH()              NsH()               NsH()
+        |                   |                 |                   |
+00 6c6561665f30      00 6c6561665f31    03 6c6561665f32      04 6c6561665f33  Leaves with namespace IDs
+
+        0                   1                  2                  3           Leaf Indices
+```
+
+#### Short Namespace Absence Proof Verification
+
+An NMT short absence proof is deemed valid if it meets the following:
+
+1) The minimum namespace ID of the `SubtreeHash` in the `proof` is greater than the queried `nID`.
+Note that there can be multiple candidates for the `SubtreeHash` satisfying this requirement, belonging to different levels of the tree.
+All such candidates are deemed valid from the verification perspective.
+2) The verification of Merkle inclusion proof of the returned `SubtreeHash` is valid.
+3) It satisfies the proof completeness as explained in the [Verification of NMT Inclusion Proof](#verification-of-nmt-inclusion-proof).
+That is, all nodes on the left side of the branch connecting `SubtreeHash` to the root `T` have a maximum namespace ID less than the queried `nID`.
+Conversely, all nodes on the right side are expected to have a minimum namespace larger than `nID`.
 
 ## Resources
 
