@@ -180,8 +180,8 @@ To compute the tree root `T'`, the [namespaced hash function](#namespaced-hash) 
 
 ### Short Namespace Absence Proof
 
-The short namespace absence proof is a more efficient and concise variant of the regular namespace absence proof.
-It differs from the original NMT absence proof definition  where instead of providing the inclusion proof of the `LeafHash` to the root (as `proof.nodes`),
+The short namespace absence proof is a more efficient variant of the regular namespace absence proof.
+It differs from the original namespace absence proof definition  where instead of providing the inclusion proof of the `LeafHash` to the root (as `proof.nodes`),
 a short absence proof supplies the Merkle inclusion proof of one of the predecessors of the `LeafHash`.
 This predecessor is located along the branch connecting the `LeafHash` to the root.
 Importantly, the namespace range of this predecessor does not overlap with the queried namespace i.e., the absent namespace.
