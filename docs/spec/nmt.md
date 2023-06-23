@@ -185,7 +185,9 @@ It differs from the original NMT absence proof definition  where instead of prov
 a short absence proof supplies the Merkle inclusion proof of one of the predecessors of the `LeafHash`.
 This predecessor is located along the branch connecting the `LeafHash` to the root.
 Importantly, the namespace range of this predecessor does not overlap with the queried namespace ID i.e., the absent namespace ID.
-At present, the NMT library does not support the generation of short namespace absence proofs.
+As this predecessor is located closer to the root compare to the `LeafHash`, it will have shorter Merkle inclusion proof i.e., lower number of  elements in the  `proof.nodes`.
+
+t present, the NMT library does not support the generation of short namespace absence proofs.
 However, it is capable of correctly verifying such proofs.
 
 #### Short Namespace Absence Proof Generation
