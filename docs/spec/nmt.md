@@ -100,6 +100,7 @@ The absence proof consists of:
    1) its namespace ID is the smallest namespace ID larger than `nID` and
    2) the namespace ID of the leaf to the left of it is smaller than `nID`.
 2) A regular Merkle inclusion proof for the said leaf to the tree root `T`.
+3) The hash of the said leaf denoted by `LeafHash`.
 
 Note that the proof only requires the hash of the leaf, not its underlying message.
 This is because the aim of the proof is to demonstrate the absence of `nID`.
@@ -176,6 +177,23 @@ The `proof` can be verified by taking the following steps:
 - Compute the tree root `T'` using the leaves and the `proof.nodes`.
 If the computed root `T'` is equal to the expected root `T` of the tree, then the `proof` is valid.
 To compute the tree root `T'`, the [namespaced hash function](#namespaced-hash) should be utilized.
+
+
+### Short Namespace Absence Proof 
+Short namespace absence proof is a more efficient and short version of the regular namespace absence proof.
+A partial absence proof deviates from the original NMT absence proof definition in a specific manner.
+Instead of returning the inclusion proof of the `leafHash` to the root (as `proof.nodes`), a partial absence proof returns the Merkle inclusion proof of one of the predecessors of the `LeafHahs` (found along the branch connecting the leaf to the root). 
+This predecessor’s namespace range does not overlap with the queried namespace (which is not present in the tree).
+More formally, the short NMT absence proof comprises:
+
+1) A `SubtreeHash`: to compute `SubtreeHash`, we find the index of a leaf of the tree that
+   1) its namespace ID is the smallest namespace ID larger than `nID` and
+   2) the namespace ID of the leaf to the left of it is smaller than `nID`.
+Then we climb up the branch connecting that leaf to the root and find one of the parents/grandparents of that leaf whose namespace range has no overlap with the queried namespace (which is not present in the tree). 
+   The `SubtreeHash` is the hash of that node.
+1) A range `start` and `end` representing the index of the `SubtreeHash` in its respective level (where nodes at each level are indexed from left to right and are zero-indexed).
+1) A set of `nodes` that constitute the Merkle index-based inclusion proof of  the `SubtreeHash` to the tree root `T`.
+
 
 ## Resources
 
