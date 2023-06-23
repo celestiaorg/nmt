@@ -227,7 +227,7 @@ func (proof Proof) VerifyNamespace(h hash.Hash, nID namespace.ID, leaves [][]byt
 // If the verifyCompleteness parameter is set to true, the function also checks
 // the completeness of the proof by verifying that there is no leaf in the
 // tree represented by the root parameter that matches the namespace ID nID
-// but is not present in the leafHashes list.
+// outside the leafHashes list.
 func (proof Proof) VerifyLeafHashes(nth *Hasher, verifyCompleteness bool, nID namespace.ID, leafHashes [][]byte, root []byte) (bool, error) {
 	// check that the proof range is valid
 	if proof.Start() < 0 || proof.Start() >= proof.End() {
@@ -248,10 +248,22 @@ func (proof Proof) VerifyLeafHashes(nth *Hasher, verifyCompleteness bool, nID na
 			return false, fmt.Errorf("proof nodes do not match the NMT hasher's hash format: %w", err)
 		}
 	}
-	// check that all the proof.nodes are valid w.r.t the NMT hasher
-	for _, leaf := range leafHashes {
-		if err := nth.ValidateNodeFormat(leaf); err != nil {
+	// check that all the leafHashes are valid w.r.t the NMT hasher
+	for _, leafHash := range leafHashes {
+		if err := nth.ValidateNodeFormat(leafHash); err != nil {
 			return false, fmt.Errorf("leaf hash does not match the NMT hasher's hash format: %w", err)
+		}
+	}
+
+	// check that the namespace of leafHashes is the same as the queried namespace, except for the case of absence proof
+	if !proof.IsOfAbsence() { // in case of absence proof, the leafHash is the hash of a leaf next to the queried namespace, hence its namespace ID is not the same as the queried namespace ID
+		// check the namespace of all the leaf hashes to be the same as the queried namespace
+		for _, leafHash := range leafHashes {
+			minNsID := MinNamespace(leafHash, nth.NamespaceSize())
+			maxNsID := MaxNamespace(leafHash, nth.NamespaceSize())
+			if !nID.Equal(minNsID) || !nID.Equal(maxNsID) {
+				return false, fmt.Errorf("leaf hash %x does not belong to namespace %x", leafHash, nID)
+			}
 		}
 	}
 
