@@ -506,10 +506,6 @@ func (n *NamespacedMerkleTree) MaxNamespace() (namespace.ID, error) {
 // create out of order trees. The default hasher will fail for trees that are
 // out of order.
 func (n *NamespacedMerkleTree) ForceAddLeaf(leaf namespace.PrefixedData) error {
-	nidSize := int(n.NamespaceSize())
-	if len(leaf) < nidSize {
-		return fmt.Errorf("%w: got: %v, want >= %v", ErrInvalidLeafLen, len(leaf), nidSize)
-	}
 	nID := namespace.ID(leaf[:n.NamespaceSize()])
 	// compute the leaf hash
 	res, err := n.treeHasher.HashLeaf(leaf)
