@@ -39,6 +39,7 @@ type Options struct {
 	// in the "Hasher.
 	IgnoreMaxNamespace bool
 	NodeVisitor        NodeVisitorFn
+	Hasher             NmtHasher
 }
 
 type Option func(*Options)
@@ -83,7 +84,7 @@ func NodeVisitor(nodeVisitorFn NodeVisitorFn) Option {
 }
 
 type NamespacedMerkleTree struct {
-	treeHasher *Hasher
+	treeHasher NmtHasher
 	visit      NodeVisitorFn
 
 	// just cache stuff until we pass in a store and keep all nodes in there
@@ -128,9 +129,18 @@ func New(h hash.Hash, setters ...Option) *NamespacedMerkleTree {
 	for _, setter := range setters {
 		setter(opts)
 	}
-	treeHasher := NewNmtHasher(h, opts.NamespaceIDSize, opts.IgnoreMaxNamespace)
+
+	// first create the default hasher using the updated options
+	hasher := NewNmtHasher(h, opts.NamespaceIDSize, opts.IgnoreMaxNamespace)
+	opts.Hasher = hasher
+
+	// set the options a second time to replace the hasher if needed
+	for _, setter := range setters {
+		setter(opts)
+	}
+
 	return &NamespacedMerkleTree{
-		treeHasher:      treeHasher,
+		treeHasher:      opts.Hasher,
 		visit:           opts.NodeVisitor,
 		leaves:          make([][]byte, 0, opts.InitialCapacity),
 		leafHashes:      make([][]byte, 0, opts.InitialCapacity),

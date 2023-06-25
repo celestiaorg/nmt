@@ -23,6 +23,17 @@ var (
 	ErrInvalidNodeNamespaceOrder = errors.New("invalid NMT node namespace order")
 )
 
+// NmtHasher describes the interface nmts use to hash leafs and nodes.
+type NmtHasher interface {
+	IsMaxNamespaceIDIgnored() bool
+	NamespaceSize() namespace.IDSize
+	HashLeaf(data []byte) ([]byte, error)
+	HashNode(leftChild, rightChild []byte) ([]byte, error)
+	EmptyRoot() []byte
+}
+
+var _ NmtHasher = &Hasher{}
+
 type Hasher struct {
 	baseHasher   hash.Hash
 	NamespaceLen namespace.IDSize
