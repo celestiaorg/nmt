@@ -39,7 +39,7 @@ type Options struct {
 	// in the "Hasher.
 	IgnoreMaxNamespace bool
 	NodeVisitor        NodeVisitorFn
-	Hasher             NmtHasher
+	Hasher             Hasher
 }
 
 type Option func(*Options)
@@ -84,7 +84,7 @@ func NodeVisitor(nodeVisitorFn NodeVisitorFn) Option {
 }
 
 type NamespacedMerkleTree struct {
-	treeHasher NmtHasher
+	treeHasher Hasher
 	visit      NodeVisitorFn
 
 	// just cache stuff until we pass in a store and keep all nodes in there
