@@ -1138,3 +1138,19 @@ func TestEmptyRoot_NMT(t *testing.T) {
 
 	assert.True(t, bytes.Equal(gotEmptyRoot, expectedEmptyRoot))
 }
+
+func TestForcedOutOfOrderNamespacedMerkleTree(t *testing.T) {
+	data := [][]byte{
+		append(namespace.ID{0}, []byte("leaf_0")...),
+		append(namespace.ID{2}, []byte("leaf_1")...),
+		append(namespace.ID{1}, []byte("leaf_2")...),
+		append(namespace.ID{1}, []byte("leaf_3")...),
+	}
+	nidSize := 1
+	tree := New(sha256.New(), NamespaceIDSize(nidSize))
+
+	for _, d := range data {
+		err := tree.ForceAddLeaf(d)
+		assert.NoError(t, err)
+	}
+}

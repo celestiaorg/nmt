@@ -501,6 +501,31 @@ func (n *NamespacedMerkleTree) MaxNamespace() (namespace.ID, error) {
 	return MaxNamespace(r, n.NamespaceSize()), nil
 }
 
+// ForceAddLeaf adds a namespaced data to the tree without validating its
+// namespace ID. This method should only be used by tests that are attempting to
+// create out of order trees. The default hasher will fail for trees that are
+// out of order.
+func (n *NamespacedMerkleTree) ForceAddLeaf(leaf namespace.PrefixedData) error {
+	nidSize := int(n.NamespaceSize())
+	if len(leaf) < nidSize {
+		return fmt.Errorf("%w: got: %v, want >= %v", ErrInvalidLeafLen, len(leaf), nidSize)
+	}
+	nID := namespace.ID(leaf[:n.NamespaceSize()])
+	// compute the leaf hash
+	res, err := n.treeHasher.HashLeaf(leaf)
+	if err != nil {
+		return err
+	}
+
+	// update relevant "caches":
+	n.leaves = append(n.leaves, leaf)
+	n.leafHashes = append(n.leafHashes, res)
+	n.updateNamespaceRanges()
+	n.updateMinMaxID(nID)
+	n.rawRoot = nil
+	return nil
+}
+
 // computeRoot calculates the namespace Merkle root for a tree/sub-tree that
 // encompasses the leaves within the range of [start, end).
 // Any errors returned by this method are irrecoverable and indicate an illegal state of the tree (n).
