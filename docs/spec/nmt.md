@@ -3,9 +3,9 @@
 ## Abstract
 
 Namespaced Merkle Tree (NMT) is one of the core components of the Celestia blockchain.
-Transactions in Celestia are associated with a namespace ID which signifies the application they belong to.
-Nodes interested in a specific application only need to download transactions of a certain namespace ID.
-The Namespaced  Merkle Tree (NMT) was introduced in the [LazyLedger article](https://arxiv.org/abs/1905.09274) to organize transactions in Celestia blocks based on their namespace IDs.
+Transactions in Celestia are associated with a namespace which signifies the application they belong to.
+Nodes interested in a specific application only need to download transactions of a certain namespace.
+The Namespaced  Merkle Tree (NMT) was introduced in the [LazyLedger article](https://arxiv.org/abs/1905.09274) to organize transactions in Celestia blocks based on their namespaces.
 The NMT allows for efficient and verifiable queries of application-specific transactions by accessing based on the block header which contains the NMT root.
 This specification explains the NMT data structure and provides an overview of its current implementation in this repository.
 The NMT library, which is the implementaion of NMT data structure, is explained in the [NMT Library](./../nmt-lib.md) document.
@@ -13,12 +13,12 @@ The NMT library, which is the implementaion of NMT data structure, is explained 
 ## NMT Data Structure
 
 Namespaced Merkle Tree, at its core, is a normal Merkle tree that employs a modified hash function, namely a [namespaced hash](#namespaced-hash) to ensure each node in the tree encompasses the range of namespaces of its descendants' messages.
-Messages stored in the NMT leaves are all namespace-prefixed with the format `<NsID>||<Message Data>` and arranged in ascending order based on their namespace IDs.
+Messages stored in the NMT leaves are all namespace-prefixed with the format `<NsID>||<Message Data>` and arranged in ascending order based on their namespaces.
 All namespace identifiers have a fixed and known size.
 
 ### Namespaced Hash
 
-NMT utilizes a namespaced hash function i.e., `NsH()`, which in addition to the normal digest calculation, it returns the range of namespace IDs covered by a node's children. The hash output is formatted as  `minNs||maxNs||h(.)`, where `minNs` is the lowest namespace identifier among all the node's descendants, `maxNs` is the highest, and `h(.)` represents the hash digest of `.` (e.g., `SHA256(.)`).
+NMT utilizes a namespaced hash function i.e., `NsH()`, which in addition to the normal digest calculation, it returns the range of namespaces covered by a node's children. The hash output is formatted as  `minNs||maxNs||h(.)`, where `minNs` is the lowest namespace among all the node's descendants, `maxNs` is the highest, and `h(.)` represents the hash digest of `.` (e.g., `SHA256(.)`).
 
 **Leaf Nodes**: Each leaf in the tree represents the namespaced hash of a namespaced message `d = <NsID>||<Message Data>`.
 The hash is computed as follows:
@@ -43,9 +43,9 @@ NsH(n) = min(l.minNs, r.minNs) || max(l.maxNs, r.maxNs) || h(0x01, l, r)
 
 The inclusion of the `0x01` value in the hash calculation serves as a non-leaf prefix and is done to conform to [RFC 6962](https://www.rfc-editor.org/rfc/rfc6962#section-2.1).
 
-In an NMT data structure, the `minNs` and `maxNs` values of the root node denote the minimum and maximum namespace IDs, respectively, of all messages within the tree.
+In an NMT data structure, the `minNs` and `maxNs` values of the root node denote the minimum and maximum namespaces, respectively, of all messages within the tree.
 
-An example of an NMT is shown in the figure below which utilizes SHA256 as the underlying hash function and namespace ID size of `1` byte.
+An example of an NMT is shown in the figure below which utilizes SHA256 as the underlying hash function and namespace size of `1` byte.
 The code snippets necessary to create this tree are provided in [NMT Library](./../nmt-lib.md) documentation, and the data items and tree nodes are represented as hex strings.
 For the sake of brevity, we have only included the first 7 hex digits of SHA256 for each namespace hash.
 
@@ -64,7 +64,7 @@ For the sake of brevity, we have only included the first 7 hex digits of SHA256 
         |                   |                 |                   |
       NsH()               NsH()              NsH()               NsH()
         |                   |                 |                   |
-00 6c6561665f30      00 6c6561665f31    01 6c6561665f32      03 6c6561665f33  Leaves with namespace IDs
+00 6c6561665f30      00 6c6561665f31    01 6c6561665f32      03 6c6561665f33  Leaves with namespaces
 
         0                   1                  2                  3           Leaf Indices
 ```
@@ -73,12 +73,12 @@ Figure 1.
 
 ### Namespace Proof
 
-NMT supports standard Merkle tree functionalities, including inclusion and range proofs, and offers namespace ID querying and proof generation.
-The following enumerated cases explain potential outcomes when querying an NMT for a namespace ID.
+NMT supports standard Merkle tree functionalities, including inclusion and range proofs, and offers namespace querying and proof generation.
+The following enumerated cases explain potential outcomes when querying an NMT for a namespace.
 
 #### Namespace Inclusion Proof
 
-When the queried namespace ID `NS` has corresponding items in the tree with root `T`, the query is resolved by a
+When the queried namespace `NS` has corresponding items in the tree with root `T`, the query is resolved by a
 namespace inclusion proof which consists of:
 
 1) The starting index `start` and the ending index `end` of the leaves that match `NS`.
@@ -181,7 +181,7 @@ To compute the tree root `T'`, the [namespaced hash function](#namespaced-hash) 
 ### Short Namespace Absence Proof
 
 The short namespace absence proof is a more efficient variant of the regular namespace absence proof.
-It differs from the original namespace absence proof definition  where instead of providing the inclusion proof of the `LeafHash` to the root (as `proof.nodes`),
+It differs from the original namespace absence proof definition where instead of providing the inclusion proof of the `LeafHash` to the root (as `proof.nodes`),
 a short absence proof supplies the Merkle inclusion proof of one of the predecessors of the `LeafHash`.
 This predecessor is located along the branch connecting the `LeafHash` to the root.
 Importantly, the namespace range of this predecessor does not overlap with the queried namespace i.e., the absent namespace.
@@ -196,7 +196,7 @@ More formally, the short namespace absence proof consists of the following compo
 
 1) `SubtreeHash`: To compute the `SubtreeHash`, the following steps should be followed:
    1) Find the index of a leaf in the tree that meets two conditions:
-      1) Its namespace is the smallest ID greater than `NS`.
+      1) Its namespace is the smallest namespace greater than `NS`.
       1) The namespace of the leaf to its left is smaller than `NS`.
    1) Traverse up the branch connecting that leaf to the root and locate one of the parents/grandparents of that leaf whose namespace range does not overlap with the queried namespace. 
    The `SubtreeHash` is the hash of that node.
