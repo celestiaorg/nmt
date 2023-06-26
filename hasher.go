@@ -23,7 +23,11 @@ var (
 	ErrInvalidNodeNamespaceOrder = errors.New("invalid NMT node namespace order")
 )
 
-// NmtHasher describes the interface nmts use to hash leafs and nodes.
+// Hasher describes the interface nmts use to hash leafs and nodes.
+//
+// Note: it is not advised to create alternative hashers if following the
+// specification is desired. The main reason this exists is to not follow the
+// specification for testing purposes.
 type Hasher interface {
 	IsMaxNamespaceIDIgnored() bool
 	NamespaceSize() namespace.IDSize
@@ -34,6 +38,8 @@ type Hasher interface {
 
 var _ Hasher = &NmtHasher{}
 
+// NmtHasher is the default hasher. It follows the description of the original
+// hashing function described in the LazyLedger white paper.
 type NmtHasher struct { //nolint:revive
 	baseHasher   hash.Hash
 	NamespaceLen namespace.IDSize
