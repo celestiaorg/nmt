@@ -83,6 +83,13 @@ func NodeVisitor(nodeVisitorFn NodeVisitorFn) Option {
 	}
 }
 
+// CustomHasher replaces the default hasher.
+func CustomHasher(h Hasher) Option {
+	return func(o *Options) {
+		o.Hasher = h
+	}
+}
+
 type NamespacedMerkleTree struct {
 	treeHasher Hasher
 	visit      NodeVisitorFn

@@ -553,6 +553,19 @@ func TestNodeVisitor(t *testing.T) {
 	}
 }
 
+func TestCustomHasher(t *testing.T) {
+	type customHasher struct {
+		*NmtHasher
+	}
+
+	h := customHasher{NewNmtHasher(sha256.New(), namespace.IDSize(8), true)}
+
+	tree := New(sha256.New(), NamespaceIDSize(8), IgnoreMaxNamespace(true), CustomHasher(h))
+
+	_, ok := tree.treeHasher.(customHasher)
+	require.True(t, ok)
+}
+
 func TestNamespacedMerkleTree_ProveErrors(t *testing.T) {
 	tests := []struct {
 		name     string
