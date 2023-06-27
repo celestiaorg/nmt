@@ -276,7 +276,8 @@ func TestVerifyLeafHashes_Err(t *testing.T) {
 	// create a sample tree
 	nameIDSize := 2
 	nmt := exampleNMT(nameIDSize, true, 1, 2, 3, 4, 5, 6, 7, 8)
-	hasher := nmt.treeHasher
+	nmthasher := nmt.treeHasher
+	hasher := nmthasher.(*NmtHasher)
 	root, err := nmt.Root()
 	require.NoError(t, err)
 
@@ -330,7 +331,7 @@ func TestVerifyLeafHashes_Err(t *testing.T) {
 	tests := []struct {
 		name               string
 		proof              Proof
-		Hasher             *Hasher
+		Hasher             *NmtHasher
 		verifyCompleteness bool
 		nID                namespace.ID
 		leafHashes         [][]byte
