@@ -67,22 +67,22 @@ func (n *NamespacedMerkleTree) Push(namespacedData namespace.PrefixedData) error
 E.g.,
 
 ```go
-d := append(namespace.ID{0}, []byte("leaf_0")...) // the first `tree.NamespaceSize()` bytes of each data item is treated as its namespace ID.
+d := namespace.PrefixedData(append(namespace.ID{0}, []byte("leaf_0")...)) // the first `tree.NamespaceSize()` bytes of each data item is treated as its namespace ID.
 if err := tree.Push(d); err != nil {
-	// something went wrong
+// something went wrong
 }
 // add a few more data items
-d1 := append(namespace.ID{0}, []byte("leaf_1")...)
+d1 := namespace.PrefixedData(append(namespace.ID{0}, []byte("leaf_1")...))
 if err := tree.Push(d1); err != nil {
-    // something went wrong
+// something went wrong
 }
-d2 := append(namespace.ID{1}, []byte("leaf_2")...)
+d2 := namespace.PrefixedData(append(namespace.ID{1}, []byte("leaf_2")...))
 if err := tree.Push(d2); err != nil {
-    // something went wrong
+// something went wrong
 }
-d3 := append(namespace.ID{3}, []byte("leaf_3")...)
+d3 := namespace.PrefixedData(append(namespace.ID{3}, []byte("leaf_3")...)) 
 if err := tree.Push(d3); err != nil {
-    // something went wrong
+// something went wrong
 }
 ```
 
@@ -116,16 +116,17 @@ Figure 1.
 ## Get Root
 
 The `Root()` method calculates the NMT root based on the data that has been added through the use of the `Push` method.
+The root value is valid if the method does not return an error.
 
 ```go
-func (n *NamespacedMerkleTree) Root() []byte
+func (n *NamespacedMerkleTree) Root() ([]byte, error)
 ```
 
 For example:
 
 ```go
 // compute the root
-root := tree.Root()
+root, err := tree.Root()
 ```
 
 In the provided code example, the root would be `00 03 b1c2cc5` (as also illustrated in Figure 1).
