@@ -13,6 +13,29 @@ import (
 	"github.com/celestiaorg/nmt/namespace"
 )
 
+func TestJsonMarshal_Proof(t *testing.T) {
+	// create a tree with 4 leaves
+	nIDSize := 1
+	tree := exampleNMT(nIDSize, true, 1, 2, 3, 4)
+
+	// build a proof for an NID that is within the namespace range of the tree
+	nID := []byte{1}
+	proof, err := tree.ProveNamespace(nID)
+	require.NoError(t, err)
+
+	// marshal the proof to JSON
+	jsonProof, err := proof.MarshalJSON()
+	require.NoError(t, err)
+
+	// unmarshal the proof from JSON
+	var unmarshalledProof Proof
+	err = unmarshalledProof.UnmarshalJSON(jsonProof)
+	require.NoError(t, err)
+
+	// verify that the unmarshalled proof is equal to the original proof
+	assert.Equal(t, proof, unmarshalledProof)
+}
+
 // TestVerifyNamespace_EmptyProof tests the correct behaviour of VerifyNamespace for valid and invalid empty proofs.
 func TestVerifyNamespace_EmptyProof(t *testing.T) {
 	// create a tree with 4 leaves
