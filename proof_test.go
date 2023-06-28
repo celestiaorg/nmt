@@ -716,6 +716,17 @@ func Test_ShortAbsenceProof(t *testing.T) {
 	root, err := tree.Root()
 	assert.NoError(t, err)
 
+	//                                     N_0_8                                   Tree Root
+	//                           /                       \
+	//                       /                               \
+	//                   N_0_4                              N_4_8                  Non-Leaf Nodes
+	//              /            \                    /               \
+	//            /                \                /                   \
+	//       N_0_2               N_2_4            N_4_4               N_6_8        Non-Leaf Nodes
+	//    /        \            /     \          /    \              /     \
+	//	N_0_1      N_1_2     N_2_3    N_3_4   N_4_5   N_5_6      N_6_7    N_7_8    Leaf Hashes
+	//  1		    2          3        4       6       7          8        9      Leaf namespaces
+
 	// create full absence proof
 	proof_full, err := tree.ProveNamespace(qNID)
 	assert.NoError(t, err)
