@@ -67,7 +67,7 @@ func (n *NamespacedMerkleTree) Push(namespacedData namespace.PrefixedData) error
 E.g.,
 
 ```go
-d := namespace.PrefixedData(append(namespace.ID{0}, []byte("leaf_0")...)) // the first `tree.NamespaceSize()` bytes of each data item is treated as its namespace ID.
+d := namespace.PrefixedData(append(namespace.ID{0}, []byte("leaf_0")...)) // the first `tree.NamespaceSize()` bytes of each data item is treated as its namespace.
 if err := tree.Push(d); err != nil {
 // something went wrong
 }
