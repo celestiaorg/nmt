@@ -716,20 +716,70 @@ func Test_ShortAbsenceProof(t *testing.T) {
 	root, err := tree.Root()
 	assert.NoError(t, err)
 
-	subtreeHash_4_9, err := tree.computeRoot(4, 8)
+	// create full absence proof
+	proof_full, err := tree.ProveNamespace(qNID)
+	assert.NoError(t, err)
+	leafHash := tree.leafHashes[proof_full.start]
+
+	// prepare supporting data for short absence proof for one level higher than the leafHash
+	subtreeHash_4_6, err := tree.computeRoot(4, 6)
+	assert.NoError(t, err)
+	subtreeHash_6_8, err := tree.computeRoot(6, 8)
 	assert.NoError(t, err)
 	subtreeHash_0_4, err := tree.computeRoot(0, 4)
-	nodes := [][]byte{subtreeHash_0_4}
+	assert.NoError(t, err)
 
-	proof := Proof{
-		leafHash: subtreeHash_4_9,
-		nodes:    nodes,
-		start:    1,
-		end:      2,
+	// supporting data for the short absence proof two levels higher than the leafHash
+	subtreeHash_4_8, err := tree.computeRoot(4, 8)
+	assert.NoError(t, err)
+
+	tests := []struct {
+		name     string
+		qNID     []byte
+		leafHash []byte
+		nodes    [][]byte
+		start    int
+		end      int
+	}{
+		{
+			name:     "valid full absence proof",
+			qNID:     qNID,
+			leafHash: leafHash,
+			nodes:    proof_full.nodes,
+			start:    proof_full.start,
+			end:      proof_full.end,
+		},
+		{
+			name:     "valid short absence proof: one level higher",
+			qNID:     qNID,
+			leafHash: subtreeHash_4_6,
+			nodes:    [][]byte{subtreeHash_0_4, subtreeHash_6_8},
+			start:    2,
+			end:      3,
+		},
+		{
+			name:     "valid short absence proof: two levels higher",
+			qNID:     qNID,
+			leafHash: subtreeHash_4_8,
+			nodes:    [][]byte{subtreeHash_0_4},
+			start:    1,
+			end:      2,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			proof := Proof{
+				leafHash: tt.leafHash,
+				nodes:    tt.nodes,
+				start:    tt.start,
+				end:      tt.end,
+			}
+
+			res := proof.VerifyNamespace(sha256.New(), qNID, nil, root)
+			assert.True(t, res)
+		})
 	}
 
-	res := proof.VerifyNamespace(sha256.New(), qNID, nil, root)
-	assert.True(t, res)
 }
 
 func Test_ShortAbsenceProof2(t *testing.T) {
