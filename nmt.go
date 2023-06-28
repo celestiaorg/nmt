@@ -39,6 +39,7 @@ type Options struct {
 	// in the "Hasher.
 	IgnoreMaxNamespace bool
 	NodeVisitor        NodeVisitorFn
+	Hasher             Hasher
 }
 
 type Option func(*Options)
@@ -82,8 +83,15 @@ func NodeVisitor(nodeVisitorFn NodeVisitorFn) Option {
 	}
 }
 
+// CustomHasher replaces the default hasher.
+func CustomHasher(h Hasher) Option {
+	return func(o *Options) {
+		o.Hasher = h
+	}
+}
+
 type NamespacedMerkleTree struct {
-	treeHasher *Hasher
+	treeHasher Hasher
 	visit      NodeVisitorFn
 
 	// just cache stuff until we pass in a store and keep all nodes in there
@@ -128,9 +136,18 @@ func New(h hash.Hash, setters ...Option) *NamespacedMerkleTree {
 	for _, setter := range setters {
 		setter(opts)
 	}
-	treeHasher := NewNmtHasher(h, opts.NamespaceIDSize, opts.IgnoreMaxNamespace)
+
+	// first create the default hasher using the updated options
+	hasher := NewNmtHasher(h, opts.NamespaceIDSize, opts.IgnoreMaxNamespace)
+	opts.Hasher = hasher
+
+	// set the options a second time to replace the hasher if needed
+	for _, setter := range setters {
+		setter(opts)
+	}
+
 	return &NamespacedMerkleTree{
-		treeHasher:      treeHasher,
+		treeHasher:      opts.Hasher,
 		visit:           opts.NodeVisitor,
 		leaves:          make([][]byte, 0, opts.InitialCapacity),
 		leafHashes:      make([][]byte, 0, opts.InitialCapacity),
@@ -489,6 +506,27 @@ func (n *NamespacedMerkleTree) MaxNamespace() (namespace.ID, error) {
 		return nil, err
 	}
 	return MaxNamespace(r, n.NamespaceSize()), nil
+}
+
+// ForceAddLeaf adds a namespaced data to the tree without validating its
+// namespace ID. This method should only be used by tests that are attempting to
+// create out of order trees. The default hasher will fail for trees that are
+// out of order.
+func (n *NamespacedMerkleTree) ForceAddLeaf(leaf namespace.PrefixedData) error {
+	nID := namespace.ID(leaf[:n.NamespaceSize()])
+	// compute the leaf hash
+	res, err := n.treeHasher.HashLeaf(leaf)
+	if err != nil {
+		return err
+	}
+
+	// update relevant "caches":
+	n.leaves = append(n.leaves, leaf)
+	n.leafHashes = append(n.leafHashes, res)
+	n.updateNamespaceRanges()
+	n.updateMinMaxID(nID)
+	n.rawRoot = nil
+	return nil
 }
 
 // computeRoot calculates the namespace Merkle root for a tree/sub-tree that

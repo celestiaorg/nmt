@@ -600,7 +600,7 @@ func TestWrite_Err(t *testing.T) {
 
 	tests := []struct {
 		name    string
-		hasher  *Hasher
+		hasher  *NmtHasher
 		data    []byte
 		wantErr bool
 		errType error
@@ -639,7 +639,7 @@ func TestSum_Err(t *testing.T) {
 
 	tests := []struct {
 		name         string
-		hasher       *Hasher
+		hasher       *NmtHasher
 		data         []byte
 		nodeType     byte
 		wantWriteErr bool

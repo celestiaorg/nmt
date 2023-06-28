@@ -2,6 +2,7 @@ package nmt
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"hash"
@@ -45,6 +46,39 @@ type Proof struct {
 	// omitted if feasible. For a more in-depth understanding of this field,
 	// refer to the "HashNode" method in the "Hasher.
 	isMaxNamespaceIDIgnored bool
+}
+
+type jsonProof struct {
+	Start                   int      `json:"start"`
+	End                     int      `json:"end"`
+	Nodes                   [][]byte `json:"nodes"`
+	LeafHash                []byte   `json:"leaf_hash"`
+	IsMaxNamespaceIDIgnored bool     `json:"is_max_namespace_id_ignored"`
+}
+
+func (proof Proof) MarshalJSON() ([]byte, error) {
+	jsonProofObj := jsonProof{
+		Start:                   proof.start,
+		End:                     proof.end,
+		Nodes:                   proof.nodes,
+		LeafHash:                proof.leafHash,
+		IsMaxNamespaceIDIgnored: proof.isMaxNamespaceIDIgnored,
+	}
+	return json.Marshal(jsonProofObj)
+}
+
+func (proof *Proof) UnmarshalJSON(data []byte) error {
+	var jsonProofObj jsonProof
+	err := json.Unmarshal(data, &jsonProofObj)
+	if err != nil {
+		return err
+	}
+	proof.start = jsonProofObj.Start
+	proof.end = jsonProofObj.End
+	proof.nodes = jsonProofObj.Nodes
+	proof.leafHash = jsonProofObj.LeafHash
+	proof.isMaxNamespaceIDIgnored = jsonProofObj.IsMaxNamespaceIDIgnored
+	return nil
 }
 
 // Start index of this proof.
@@ -228,7 +262,7 @@ func (proof Proof) VerifyNamespace(h hash.Hash, nID namespace.ID, leaves [][]byt
 // the completeness of the proof by verifying that there is no leaf in the
 // tree represented by the root parameter that matches the namespace ID nID
 // outside the leafHashes list.
-func (proof Proof) VerifyLeafHashes(nth *Hasher, verifyCompleteness bool, nID namespace.ID, leafHashes [][]byte, root []byte) (bool, error) {
+func (proof Proof) VerifyLeafHashes(nth *NmtHasher, verifyCompleteness bool, nID namespace.ID, leafHashes [][]byte, root []byte) (bool, error) {
 	// check that the proof range is valid
 	if proof.Start() < 0 || proof.Start() >= proof.End() {
 		return false, fmt.Errorf("proof range [proof.start=%d, proof.end=%d) is not valid: %w", proof.Start(), proof.End(), ErrInvalidRange)

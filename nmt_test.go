@@ -553,6 +553,19 @@ func TestNodeVisitor(t *testing.T) {
 	}
 }
 
+func TestCustomHasher(t *testing.T) {
+	type customHasher struct {
+		*NmtHasher
+	}
+
+	h := customHasher{NewNmtHasher(sha256.New(), namespace.IDSize(8), true)}
+
+	tree := New(sha256.New(), NamespaceIDSize(8), IgnoreMaxNamespace(true), CustomHasher(h))
+
+	_, ok := tree.treeHasher.(customHasher)
+	require.True(t, ok)
+}
+
 func TestNamespacedMerkleTree_ProveErrors(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -1137,4 +1150,20 @@ func TestEmptyRoot_NMT(t *testing.T) {
 	gotEmptyRoot := hasher.EmptyRoot()
 
 	assert.True(t, bytes.Equal(gotEmptyRoot, expectedEmptyRoot))
+}
+
+func TestForcedOutOfOrderNamespacedMerkleTree(t *testing.T) {
+	data := [][]byte{
+		append(namespace.ID{0}, []byte("leaf_0")...),
+		append(namespace.ID{2}, []byte("leaf_1")...),
+		append(namespace.ID{1}, []byte("leaf_2")...),
+		append(namespace.ID{1}, []byte("leaf_3")...),
+	}
+	nidSize := 1
+	tree := New(sha256.New(), NamespaceIDSize(nidSize))
+
+	for _, d := range data {
+		err := tree.ForceAddLeaf(d)
+		assert.NoError(t, err)
+	}
 }
