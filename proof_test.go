@@ -726,7 +726,7 @@ func TestVerifyNamespace_ShortAbsenceProof_Valid(t *testing.T) {
 	//      Node_0_2            Node_2_4         Node_4_6              Node_6_8        Non-Leaf Node
 	//      /      \            /     \           /    \               /     \
 	// Node_0_1  Node_1_2  Node_2_3 Node_3_4  Node_4_5  Node_5_6  Node_6_7 Node_7_8    Leaf Hash
-	//     1         2          3        4       6       7           8        9        Leaf index
+	//     1         2          3        4       6       7           8        9        Leaf namespace
 	//     0         1          2        3       4       5           6        7        Leaf index
 
 	// nodes needed for the full absence proof of qNS
