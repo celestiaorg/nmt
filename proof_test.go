@@ -719,29 +719,29 @@ func TestVerifyNamespace_ShortAbsenceProof_Valid(t *testing.T) {
 	//                                       Node_0_8                                  Tree Root
 	//                            /                            \
 	//                        /                                 \
-	//                  Node_0_4                             Node_4_8                  Non-Leaf Node
+	//                  Node0_4                             Node4_8                  Non-Leaf Node
 	//               /            \                     /                \
 	//             /                \                 /                    \
-	//      Node_0_2            Node_2_4         Node_4_6              Node_6_8        Non-Leaf Node
+	//      Node_0_2            Node_2_4         Node4_6              Node6_8        Non-Leaf Node
 	//      /      \            /     \           /    \               /     \
-	// Node_0_1  Node_1_2  Node_2_3 Node_3_4  Node_4_5  Node_5_6  Node_6_7 Node_7_8    Leaf Hash
+	// Node_0_1  Node_1_2  Node_2_3 Node_3_4  Node4_5  Node5_6  Node_6_7 Node_7_8    Leaf Hash
 	//     1         2          3        4       6       7           8        9        Leaf namespace
 	//     0         1          2        3       4       5           6        7        Leaf index
 
 	// nodes needed for the full absence proof of qNS
-	Node_4_5 := tree.leafHashes[4]
-	Node_5_6 := tree.leafHashes[5]
-	Node_6_8, err := tree.computeRoot(6, 8)
+	Node4_5 := tree.leafHashes[4]
+	Node5_6 := tree.leafHashes[5]
+	Node6_8, err := tree.computeRoot(6, 8)
 	assert.NoError(t, err)
-	Node_0_4, err := tree.computeRoot(0, 4)
-	assert.NoError(t, err)
-
-	// nodes needed for the short absence proof of qNS; the proof of inclusion of the parent of Node_4_5
-	Node_4_6, err := tree.computeRoot(4, 6)
+	Node0_4, err := tree.computeRoot(0, 4)
 	assert.NoError(t, err)
 
-	// nodes needed for another short absence parent of qNS; the proof of inclusion of the grandparent of Node_4_5
-	Node_4_8, err := tree.computeRoot(4, 8)
+	// nodes needed for the short absence proof of qNS; the proof of inclusion of the parent of Node4_5
+	Node4_6, err := tree.computeRoot(4, 6)
+	assert.NoError(t, err)
+
+	// nodes needed for another short absence parent of qNS; the proof of inclusion of the grandparent of Node4_5
+	Node4_8, err := tree.computeRoot(4, 8)
 	assert.NoError(t, err)
 
 	tests := []struct {
@@ -755,24 +755,24 @@ func TestVerifyNamespace_ShortAbsenceProof_Valid(t *testing.T) {
 		{
 			name:     "valid full absence proof",
 			qNID:     qNS,
-			leafHash: Node_4_5,
-			nodes:    [][]byte{Node_0_4, Node_5_6, Node_6_8},
+			leafHash: Node4_5,
+			nodes:    [][]byte{Node0_4, Node5_6, Node6_8},
 			start:    4, // the index position of leafHash at its respective level
 			end:      5,
 		},
 		{
 			name:     "valid short absence proof: one level higher",
 			qNID:     qNS,
-			leafHash: Node_4_6,
-			nodes:    [][]byte{Node_0_4, Node_6_8},
+			leafHash: Node4_6,
+			nodes:    [][]byte{Node0_4, Node6_8},
 			start:    2, // the index position of leafHash at its respective level
 			end:      3,
 		},
 		{
 			name:     "valid short absence proof: two levels higher",
 			qNID:     qNS,
-			leafHash: Node_4_8,
-			nodes:    [][]byte{Node_0_4},
+			leafHash: Node4_8,
+			nodes:    [][]byte{Node0_4},
 			start:    1, // the index position of leafHash at its respective level
 			end:      2,
 		},
@@ -790,7 +790,6 @@ func TestVerifyNamespace_ShortAbsenceProof_Valid(t *testing.T) {
 			assert.True(t, res)
 		})
 	}
-
 }
 
 // TestVerifyNamespace_ShortAbsenceProof_Invalid checks whether VerifyNamespace rejects invalid short absence proofs.
@@ -804,31 +803,31 @@ func TestVerifyNamespace_ShortAbsenceProof_Invalid(t *testing.T) {
 	//                                       Node_0_8                                  Tree Root
 	//                            /                            \
 	//                        /                                 \
-	//                  Node_0_4                             Node_4_8                  Non-Leaf Node
+	//                  Node0_4                             Node4_8                  Non-Leaf Node
 	//               /            \                     /                \
 	//             /                \                 /                    \
-	//      Node_0_2            Node_2_4         Node_4_6              Node_6_8        Non-Leaf Node
+	//      Node_0_2            Node_2_4         Node4_6              Node6_8        Non-Leaf Node
 	//      /      \            /     \           /    \               /     \
-	// Node_0_1  Node_1_2  Node_2_3 Node_3_4  Node_4_5  Node_5_6  Node_6_7 Node_7_8    Leaf Hash
+	// Node_0_1  Node_1_2  Node_2_3 Node_3_4  Node4_5  Node5_6  Node_6_7 Node_7_8    Leaf Hash
 	//     1         2          3        4       6       8           8        8        Leaf namespace
 	//     0         1          2        3       4       5           6        7        Leaf index
 
 	// nodes needed for the full absence proof of qNS
-	Node_5_6 := tree.leafHashes[5]
-	Node_4_5 := tree.leafHashes[4]
-	Node_6_8, err := tree.computeRoot(6, 8)
+	Node5_6 := tree.leafHashes[5]
+	Node4_5 := tree.leafHashes[4]
+	Node6_8, err := tree.computeRoot(6, 8)
 	assert.NoError(t, err)
-	Node_0_4, err := tree.computeRoot(0, 4)
-	assert.NoError(t, err)
-
-	// nodes needed for the short absence proof of qNS; the proof of inclusion of the parent of Node_5_6;
-	// the verification should fail since the namespace range o Node_4_6, the parent, has overlap with the qNS i.e., 7
-	Node_4_6, err := tree.computeRoot(4, 6)
+	Node0_4, err := tree.computeRoot(0, 4)
 	assert.NoError(t, err)
 
-	// nodes needed for another short absence parent of qNS; the proof of inclusion of the grandparent of Node_5_6
-	// the verification should fail since the namespace range of Node_4_8, the grandparent, has overlap with the qNS i.e., 7
-	Node_4_8, err := tree.computeRoot(4, 8)
+	// nodes needed for the short absence proof of qNS; the proof of inclusion of the parent of Node5_6;
+	// the verification should fail since the namespace range o Node4_6, the parent, has overlap with the qNS i.e., 7
+	Node4_6, err := tree.computeRoot(4, 6)
+	assert.NoError(t, err)
+
+	// nodes needed for another short absence parent of qNS; the proof of inclusion of the grandparent of Node5_6
+	// the verification should fail since the namespace range of Node4_8, the grandparent, has overlap with the qNS i.e., 7
+	Node4_8, err := tree.computeRoot(4, 8)
 	assert.NoError(t, err)
 
 	tests := []struct {
@@ -843,8 +842,8 @@ func TestVerifyNamespace_ShortAbsenceProof_Invalid(t *testing.T) {
 		{
 			name:     "valid full absence proof",
 			qNID:     qNS,
-			leafHash: Node_5_6,
-			nodes:    [][]byte{Node_0_4, Node_4_5, Node_6_8},
+			leafHash: Node5_6,
+			nodes:    [][]byte{Node0_4, Node4_5, Node6_8},
 			start:    5, // the index position of leafHash at its respective level
 			end:      6,
 			want:     true,
@@ -852,8 +851,8 @@ func TestVerifyNamespace_ShortAbsenceProof_Invalid(t *testing.T) {
 		{
 			name:     "invalid short absence proof: one level higher",
 			qNID:     qNS,
-			leafHash: Node_4_6,
-			nodes:    [][]byte{Node_0_4, Node_6_8},
+			leafHash: Node4_6,
+			nodes:    [][]byte{Node0_4, Node6_8},
 			start:    2, // the index position of leafHash at its respective level
 			end:      3,
 			want:     false,
@@ -861,8 +860,8 @@ func TestVerifyNamespace_ShortAbsenceProof_Invalid(t *testing.T) {
 		{
 			name:     "invalid short absence proof: two levels higher",
 			qNID:     qNS,
-			leafHash: Node_4_8,
-			nodes:    [][]byte{Node_0_4},
+			leafHash: Node4_8,
+			nodes:    [][]byte{Node0_4},
 			start:    1, // the index position of leafHash at its respective level
 			end:      2,
 			want:     false,
@@ -881,5 +880,4 @@ func TestVerifyNamespace_ShortAbsenceProof_Invalid(t *testing.T) {
 			assert.Equal(t, tt.want, res)
 		})
 	}
-
 }
