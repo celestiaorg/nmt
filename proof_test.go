@@ -708,7 +708,8 @@ func TestIsEmptyProofOverlapAbsenceProof(t *testing.T) {
 	}
 }
 
-// TestVerifyNamespace_ShortAbsenceProof_Valid checks whether VerifyNamespace can correctly verify short namespace absence proofs
+// TestVerifyNamespace_ShortAbsenceProof_Valid checks whether VerifyNamespace
+// can correctly verify short namespace absence proofs
 func TestVerifyNamespace_ShortAbsenceProof_Valid(t *testing.T) {
 	// create a Merkle tree with 8 leaves
 	tree := exampleNMT(1, true, 1, 2, 3, 4, 6, 7, 8, 9)
@@ -736,11 +737,14 @@ func TestVerifyNamespace_ShortAbsenceProof_Valid(t *testing.T) {
 	Node0_4, err := tree.computeRoot(0, 4)
 	assert.NoError(t, err)
 
-	// nodes needed for the short absence proof of qNS; the proof of inclusion of the parent of Node4_5
+	// nodes needed for the short absence proof of qNS; the proof of inclusion
+	// of the parent of Node4_5
+
 	Node4_6, err := tree.computeRoot(4, 6)
 	assert.NoError(t, err)
 
-	// nodes needed for another short absence parent of qNS; the proof of inclusion of the grandparent of Node4_5
+	// nodes needed for another short absence parent of qNS; the proof of
+	// inclusion of the grandparent of Node4_5
 	Node4_8, err := tree.computeRoot(4, 8)
 	assert.NoError(t, err)
 
