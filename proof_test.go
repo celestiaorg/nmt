@@ -793,7 +793,7 @@ func TestVerifyNamespace_ShortAbsenceProof_Valid(t *testing.T) {
 
 }
 
-// TestVerifyNamespace_ShortAbsenceProof_Valid checks whether VerifyNamespace rejects invalid short absence proofs.
+// TestVerifyNamespace_ShortAbsenceProof_Invalid checks whether VerifyNamespace rejects invalid short absence proofs.
 func TestVerifyNamespace_ShortAbsenceProof_Invalid(t *testing.T) {
 	// create a Merkle tree with 8 leaves
 	tree := exampleNMT(1, true, 1, 2, 3, 4, 6, 8, 8, 8)
