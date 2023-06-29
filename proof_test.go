@@ -821,13 +821,13 @@ func TestVerifyNamespace_ShortAbsenceProof_Invalid(t *testing.T) {
 	Node_0_4, err := tree.computeRoot(0, 4)
 	assert.NoError(t, err)
 
-	// nodes needed for the short absence proof of qNS; the proof of inclusion of the parent of Node_4_5;
-	// this case should not work since the namespace range o Node_4_6, the parent, has overlap with the qNS i.e., 7
+	// nodes needed for the short absence proof of qNS; the proof of inclusion of the parent of Node_5_6;
+	// the verification should fail since the namespace range o Node_4_6, the parent, has overlap with the qNS i.e., 7
 	Node_4_6, err := tree.computeRoot(4, 6)
 	assert.NoError(t, err)
 
-	// nodes needed for another short absence parent of qNS; the proof of inclusion of the grandparent of Node_4_5
-	// this case should not work since the namespace range of Node_4_8, the grandparent, has overlap with the qNS i.e., 7
+	// nodes needed for another short absence parent of qNS; the proof of inclusion of the grandparent of Node_5_6
+	// the verification should fail since the namespace range of Node_4_8, the grandparent, has overlap with the qNS i.e., 7
 	Node_4_8, err := tree.computeRoot(4, 8)
 	assert.NoError(t, err)
 
