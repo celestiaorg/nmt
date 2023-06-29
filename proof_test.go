@@ -3,7 +3,6 @@ package nmt
 import (
 	"bytes"
 	"crypto/sha256"
-	"fmt"
 	"hash"
 	"testing"
 
@@ -792,46 +791,4 @@ func TestVerifyNamespace_ShortAbsenceProof_Valid(t *testing.T) {
 		})
 	}
 
-}
-
-func Test_ShortAbsenceProof2(t *testing.T) {
-	nID := namespace.ID{1}
-	// create a tree with 4 leaves, variables names match the figure above
-	n := New(sha256.New(), NamespaceIDSize(1))
-	d0 := append([]byte{0}, []byte("data0")...)
-	d1 := append([]byte{2}, []byte("data1")...)
-	d2 := append([]byte{3}, []byte("data2")...)
-	d3 := append([]byte{4}, []byte("data3")...)
-
-	n.Push(d0)
-	n.Push(d1)
-	n.Push(d2)
-	n.Push(d3)
-
-	root, err := n.Root()
-	assert.NoError(t, err)
-
-	hash1, err := n.computeRoot(0, 2)
-	assert.NoError(t, err)
-	hash2, err := n.computeRoot(2, 4)
-	assert.NoError(t, err)
-	leaf0 := n.leafHashes[0]
-	leaf1 := n.leafHashes[1]
-
-	// attack scenario: create a partial proof from hash1 to the root instead of leaf1 to the root
-	partialProof := Proof{start: 0, end: 1, leafHash: hash1, nodes: [][]byte{hash2}, isMaxNamespaceIDIgnored: true}
-	// run VerifyNamespace for the fabricated absence proof and see if it can pass
-	if partialProof.VerifyNamespace(sha256.New(), nID, nil, root) {
-		fmt.Println("partial proof is successfully verified") // this will be executed
-	} else {
-		fmt.Println("verification of the partial proof failed")
-	}
-
-	// correct scenario: create a full proof from leaf1 to the root
-	fullProof := Proof{start: 1, end: 2, leafHash: leaf1, nodes: [][]byte{leaf0, hash2}}
-	if fullProof.VerifyNamespace(sha256.New(), nID, nil, root) {
-		fmt.Println("full proof is successfully verified") // this will be executed
-	} else {
-		fmt.Println("verification of the full proof failed")
-	}
 }
