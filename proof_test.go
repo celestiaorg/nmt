@@ -712,7 +712,7 @@ func TestIsEmptyProofOverlapAbsenceProof(t *testing.T) {
 func Test_ShortAbsenceProof(t *testing.T) {
 	// create a Merkle tree with 8 leaves
 	tree := exampleNMT(1, true, 1, 2, 3, 4, 6, 7, 8, 9)
-	qNID := []byte{5}
+	qNS := []byte{5} // does not belong to the tree
 	root, err := tree.Root()
 	assert.NoError(t, err)
 
@@ -722,26 +722,26 @@ func Test_ShortAbsenceProof(t *testing.T) {
 	//                   N_0_4                              N_4_8                  Non-Leaf Nodes
 	//              /            \                    /               \
 	//            /                \                /                   \
-	//       N_0_2               N_2_4            N_4_4               N_6_8        Non-Leaf Nodes
+	//       N_0_2               N_2_4            N_4_6               N_6_8        Non-Leaf Nodes
 	//    /        \            /     \          /    \              /     \
 	//	N_0_1      N_1_2     N_2_3    N_3_4   N_4_5   N_5_6      N_6_7    N_7_8    Leaf Hashes
 	//  1		    2          3        4       6       7          8        9      Leaf namespaces
+	//  0           1          2        3       4       5          6        7      Leaf indexes
 
-	// create full absence proof
-	proof_full, err := tree.ProveNamespace(qNID)
+	// nodes needed for the full absence proof of qNS
+	N_4_5 := tree.leafHashes[4]
+	N_5_6 := tree.leafHashes[5]
+	N_6_8, err := tree.computeRoot(6, 8)
 	assert.NoError(t, err)
-	leafHash := tree.leafHashes[proof_full.start]
-
-	// prepare supporting data for short absence proof for one level higher than the leafHash
-	subtreeHash_4_6, err := tree.computeRoot(4, 6)
-	assert.NoError(t, err)
-	subtreeHash_6_8, err := tree.computeRoot(6, 8)
-	assert.NoError(t, err)
-	subtreeHash_0_4, err := tree.computeRoot(0, 4)
+	N_0_4, err := tree.computeRoot(0, 4)
 	assert.NoError(t, err)
 
-	// supporting data for the short absence proof two levels higher than the leafHash
-	subtreeHash_4_8, err := tree.computeRoot(4, 8)
+	// nodes needed for the short absence proof of qNS; the proof of inclusion of the parent of N_4_5
+	N_4_6, err := tree.computeRoot(4, 6)
+	assert.NoError(t, err)
+
+	// nodes needed for another short absence parent of qNS; the proof of inclusion of the grandparent of N_4_5
+	N_4_8, err := tree.computeRoot(4, 8)
 	assert.NoError(t, err)
 
 	tests := []struct {
@@ -754,26 +754,26 @@ func Test_ShortAbsenceProof(t *testing.T) {
 	}{
 		{
 			name:     "valid full absence proof",
-			qNID:     qNID,
-			leafHash: leafHash,
-			nodes:    proof_full.nodes,
-			start:    proof_full.start,
-			end:      proof_full.end,
+			qNID:     qNS,
+			leafHash: N_4_5,
+			nodes:    [][]byte{N_0_4, N_5_6, N_6_8},
+			start:    4, // N_4_5 is at index position 4 (from left to right) at its respective level
+			end:      5,
 		},
 		{
 			name:     "valid short absence proof: one level higher",
-			qNID:     qNID,
-			leafHash: subtreeHash_4_6,
-			nodes:    [][]byte{subtreeHash_0_4, subtreeHash_6_8},
-			start:    2,
+			qNID:     qNS,
+			leafHash: N_4_6,
+			nodes:    [][]byte{N_0_4, N_6_8},
+			start:    2, // N_4_6 is at index position 2 (from left to right) at its respective level
 			end:      3,
 		},
 		{
 			name:     "valid short absence proof: two levels higher",
-			qNID:     qNID,
-			leafHash: subtreeHash_4_8,
-			nodes:    [][]byte{subtreeHash_0_4},
-			start:    1,
+			qNID:     qNS,
+			leafHash: N_4_8,
+			nodes:    [][]byte{N_0_4},
+			start:    1, // N_4_8 is at index position 1 (from left to right) at its respective level
 			end:      2,
 		},
 	}
@@ -786,7 +786,7 @@ func Test_ShortAbsenceProof(t *testing.T) {
 				end:      tt.end,
 			}
 
-			res := proof.VerifyNamespace(sha256.New(), qNID, nil, root)
+			res := proof.VerifyNamespace(sha256.New(), qNS, nil, root)
 			assert.True(t, res)
 		})
 	}
