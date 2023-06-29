@@ -149,9 +149,9 @@ func (proof Proof) IsEmptyProof() bool {
 // the provided `leaves` in the tree (or the proof.leafHash in case of
 // full/short absence proof) 2) it verifies that the namespace is complete
 // i.e., the data items matching the namespace ID `nID`  are within the range
-// [`proof.start`, `proof.end`) and no data of that namespace was left out. VerifyNamespace
-// deems an empty `proof` valid if the queried `nID` falls outside the namespace
-// range of the supplied `root` or if the `root` is empty
+// [`proof.start`, `proof.end`) and no data of that namespace was left out.
+// VerifyNamespace deems an empty `proof` valid if the queried `nID` falls
+// outside the namespace  range of the supplied `root` or if the `root` is empty
 //
 // `h` MUST be the same as the underlying hash function used to generate the
 // proof. Otherwise, the verification will fail. `nID` is the namespace ID for
@@ -160,9 +160,8 @@ func (proof Proof) IsEmptyProof() bool {
 // For an absence `proof`, the `leaves` is empty.
 // `leaves` items MUST be ordered according to their index in the tree,
 // with `data[0]` corresponding to the namespaced leaf at index `start`,
-//
-//	and the last element in `leaves` corresponding to the leaf at index
-//	`end-1` of the tree.
+// and the last element in `leaves` corresponding to the leaf at index `end-1`
+// of the tree.
 //
 // `root` is the root of the NMT against which the `proof` is verified.
 func (proof Proof) VerifyNamespace(h hash.Hash, nID namespace.ID, leaves [][]byte, root []byte) bool {
