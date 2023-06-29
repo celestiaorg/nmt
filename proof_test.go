@@ -757,7 +757,7 @@ func TestVerifyNamespace_ShortAbsenceProof_Valid(t *testing.T) {
 			qNID:     qNS,
 			leafHash: Node_4_5,
 			nodes:    [][]byte{Node_0_4, Node_5_6, Node_6_8},
-			start:    4, // Node_4_5 is at index position 4 (from left to right) at its respective level
+			start:    4, // the index position of leafHash at its respective level
 			end:      5,
 		},
 		{
@@ -765,7 +765,7 @@ func TestVerifyNamespace_ShortAbsenceProof_Valid(t *testing.T) {
 			qNID:     qNS,
 			leafHash: Node_4_6,
 			nodes:    [][]byte{Node_0_4, Node_6_8},
-			start:    2, // Node_4_6 is at index position 2 (from left to right) at its respective level
+			start:    2, // the index position of leafHash at its respective level
 			end:      3,
 		},
 		{
@@ -773,7 +773,7 @@ func TestVerifyNamespace_ShortAbsenceProof_Valid(t *testing.T) {
 			qNID:     qNS,
 			leafHash: Node_4_8,
 			nodes:    [][]byte{Node_0_4},
-			start:    1, // Node_4_8 is at index position 1 (from left to right) at its respective level
+			start:    1, // the index position of leafHash at its respective level
 			end:      2,
 		},
 	}
@@ -788,6 +788,97 @@ func TestVerifyNamespace_ShortAbsenceProof_Valid(t *testing.T) {
 
 			res := proof.VerifyNamespace(sha256.New(), qNS, nil, root)
 			assert.True(t, res)
+		})
+	}
+
+}
+
+// TestVerifyNamespace_ShortAbsenceProof_Valid checks whether VerifyNamespace can correctly verify short namespace absence proofs
+func TestVerifyNamespace_ShortAbsenceProof_Invalid(t *testing.T) {
+	// create a Merkle tree with 8 leaves
+	tree := exampleNMT(1, true, 1, 2, 3, 4, 6, 8, 8, 8)
+	qNS := []byte{7} // does not belong to the tree
+	root, err := tree.Root()
+	assert.NoError(t, err)
+
+	//                                       Node_0_8                                  Tree Root
+	//                            /                            \
+	//                        /                                 \
+	//                  Node_0_4                             Node_4_8                  Non-Leaf Node
+	//               /            \                     /                \
+	//             /                \                 /                    \
+	//      Node_0_2            Node_2_4         Node_4_6              Node_6_8        Non-Leaf Node
+	//      /      \            /     \           /    \               /     \
+	// Node_0_1  Node_1_2  Node_2_3 Node_3_4  Node_4_5  Node_5_6  Node_6_7 Node_7_8    Leaf Hash
+	//     1         2          3        4       6       8           8        8        Leaf namespace
+	//     0         1          2        3       4       5           6        7        Leaf index
+
+	// nodes needed for the full absence proof of qNS
+	Node_5_6 := tree.leafHashes[5]
+	Node_4_5 := tree.leafHashes[4]
+	Node_6_8, err := tree.computeRoot(6, 8)
+	assert.NoError(t, err)
+	Node_0_4, err := tree.computeRoot(0, 4)
+	assert.NoError(t, err)
+
+	// nodes needed for the short absence proof of qNS; the proof of inclusion of the parent of Node_4_5;
+	// this case should not work since the namespace range o Node_4_6, the parent, has overlap with the qNS i.e., 7
+	Node_4_6, err := tree.computeRoot(4, 6)
+	assert.NoError(t, err)
+
+	// nodes needed for another short absence parent of qNS; the proof of inclusion of the grandparent of Node_4_5
+	// this case should not work since the namespace range of Node_4_8, the grandparent, has overlap with the qNS i.e., 7
+	Node_4_8, err := tree.computeRoot(4, 8)
+	assert.NoError(t, err)
+
+	tests := []struct {
+		name     string
+		qNID     []byte
+		leafHash []byte
+		nodes    [][]byte
+		start    int
+		end      int
+		want     bool
+	}{
+		{
+			name:     "valid full absence proof",
+			qNID:     qNS,
+			leafHash: Node_5_6,
+			nodes:    [][]byte{Node_0_4, Node_4_5, Node_6_8},
+			start:    5, // the index position of leafHash at its respective level
+			end:      6,
+			want:     true,
+		},
+		{
+			name:     "invalid short absence proof: one level higher",
+			qNID:     qNS,
+			leafHash: Node_4_6,
+			nodes:    [][]byte{Node_0_4, Node_6_8},
+			start:    2, // the index position of leafHash at its respective level
+			end:      3,
+			want:     false,
+		},
+		{
+			name:     "invalid short absence proof: two levels higher",
+			qNID:     qNS,
+			leafHash: Node_4_8,
+			nodes:    [][]byte{Node_0_4},
+			start:    1, // the index position of leafHash at its respective level
+			end:      2,
+			want:     false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			proof := Proof{
+				leafHash: tt.leafHash,
+				nodes:    tt.nodes,
+				start:    tt.start,
+				end:      tt.end,
+			}
+
+			res := proof.VerifyNamespace(sha256.New(), qNS, nil, root)
+			assert.Equal(t, tt.want, res)
 		})
 	}
 
