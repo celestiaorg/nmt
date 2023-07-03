@@ -721,13 +721,13 @@ func TestVerifyNamespace_ShortAbsenceProof_Valid(t *testing.T) {
 	// For example, Node3_4 denotes a node that covers the 3rd leaf (excluding the 4th leaf),
 	// while Node4_6 represents the node that covers the 4th and 5th leaves.
 	//
-	//                                       Node_0_8                                  Tree Root
+	//                                        Node0_8                                  Tree Root
 	//                            /                            \
 	//                        /                                 \
 	//                  Node0_4                             Node4_8                    Non-Leaf Node
 	//               /            \                     /                \
 	//             /                \                 /                    \
-	//      Node_0_2            Node_2_4         Node4_6              Node6_8          Non-Leaf Node
+	//       Node0_2             Node2_4         Node4_6              Node6_8          Non-Leaf Node
 	//      /      \            /     \           /    \               /     \
 	// Node0_1   Node1_2   Node2_3  Node3_4   Node4_5  Node5_6  Node6_7   Node7_8      Leaf Hash
 	//     1         2          3        4       6       7           8        9        Leaf namespace
@@ -812,7 +812,7 @@ func TestVerifyNamespace_ShortAbsenceProof_Invalid(t *testing.T) {
 	// For example, Node3_4 denotes a node that covers the 3rd leaf (excluding the 4th leaf),
 	// while Node4_6 represents the node that covers the 4th and 5th leaves.
 	//
-	//                                       Node_0_8                                  Tree Root
+	//                                       Node0_8                                  Tree Root
 	//                            /                            \
 	//                        /                                 \
 	//                  Node0_4                              Node4_8                   Non-Leaf Node
@@ -820,7 +820,7 @@ func TestVerifyNamespace_ShortAbsenceProof_Invalid(t *testing.T) {
 	//             /                \                 /                    \
 	//      Node0_2            Node2_4           Node4_6                Node6_8        Non-Leaf Node
 	//      /      \            /     \           /    \               /     \
-	// Node0_1   Node1_2    Node2_3 Node_3_4  Node4_5  Node5_6     Node6_7 Node7_8     Leaf Hash
+	// Node0_1   Node1_2    Node2_3  Node3_4  Node4_5  Node5_6     Node6_7 Node7_8     Leaf Hash
 	//     1         2          3        4       6       8           8        8        Leaf namespace
 	//     0         1          2        3       4       5           6        7        Leaf index
 
