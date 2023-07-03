@@ -148,7 +148,7 @@ func (proof Proof) IsEmptyProof() bool {
 // VerifyNamespace verifies a whole namespace, i.e. 1) it verifies inclusion of
 // the provided `leaves` in the tree (or the proof.leafHash in case of
 // full/short absence proof) 2) it verifies that the namespace is complete
-// i.e., the data items matching the namespace ID `nID`  are within the range
+// i.e., the data items matching the namespace `nID`  are within the range
 // [`proof.start`, `proof.end`) and no data of that namespace was left out.
 // VerifyNamespace deems an empty `proof` valid if the queried `nID` falls
 // outside the namespace  range of the supplied `root` or if the `root` is empty
