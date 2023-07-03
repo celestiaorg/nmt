@@ -159,7 +159,7 @@ func (proof Proof) IsEmptyProof() bool {
 // leaves of the tree in the range of [`proof.start`, `proof.end`).
 // For an absence `proof`, the `leaves` is empty.
 // `leaves` items MUST be ordered according to their index in the tree,
-// with `data[0]` corresponding to the namespaced leaf at index `start`,
+// with `leaves[0]` corresponding to the namespaced leaf at index `start`,
 // and the last element in `leaves` corresponding to the leaf at index `end-1`
 // of the tree.
 //
