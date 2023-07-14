@@ -23,11 +23,20 @@ var _ = math.Inf
 const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
 
 type Proof struct {
-	Start                   int64    `protobuf:"varint,1,opt,name=start,proto3" json:"start,omitempty"`
-	End                     int64    `protobuf:"varint,2,opt,name=end,proto3" json:"end,omitempty"`
-	Nodes                   [][]byte `protobuf:"bytes,3,rep,name=nodes,proto3" json:"nodes,omitempty"`
-	LeafHash                []byte   `protobuf:"bytes,4,opt,name=leafHash,proto3" json:"leafHash,omitempty"`
-	IsMaxNamespaceIDIgnored bool     `protobuf:"varint,5,opt,name=isMaxNamespaceIDIgnored,proto3" json:"isMaxNamespaceIDIgnored,omitempty"`
+	// Start index of the leaves that match the queried namespace.ID.
+	Start int64 `protobuf:"varint,1,opt,name=start,proto3" json:"start,omitempty"`
+	// End index (non-inclusive) of the leaves that match the queried
+	// namespace.ID.
+	End int64 `protobuf:"varint,2,opt,name=end,proto3" json:"end,omitempty"`
+	// Nodes hold the tree nodes necessary for the Merkle range proof.
+	Nodes [][]byte `protobuf:"bytes,3,rep,name=nodes,proto3" json:"nodes,omitempty"`
+	// LeafHash contains the namespace.ID if NMT does not have it and
+	// it should be proven. leafHash is necessary to prove the Absence Proof.
+	// This field will be empty in case of Inclusion Proof.
+	LeafHash []byte `protobuf:"bytes,4,opt,name=leafHash,proto3" json:"leafHash,omitempty"`
+	// The IsMaxNamespaceIDIgnored flag influences the calculation of the
+	// namespace ID range for intermediate nodes in the tree
+	IsMaxNamespaceIDIgnored bool `protobuf:"varint,5,opt,name=isMaxNamespaceIDIgnored,proto3" json:"isMaxNamespaceIDIgnored,omitempty"`
 }
 
 func (m *Proof) Reset()         { *m = Proof{} }
