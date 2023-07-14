@@ -9,6 +9,7 @@ import (
 	"math/bits"
 
 	"github.com/celestiaorg/nmt/namespace"
+	pb "github.com/celestiaorg/nmt/pb"
 )
 
 // ErrFailedCompletenessCheck indicates that the verification of a namespace proof failed due to the lack of completeness property.
@@ -451,6 +452,30 @@ func (proof Proof) VerifyInclusion(h hash.Hash, nid namespace.ID, leavesWithoutN
 		return false
 	}
 	return res
+}
+
+// ProtoToProof creates a proof from its proto representation.
+func ProtoToProof(protoProof pb.Proof) Proof {
+	if protoProof.Start == 0 && protoProof.End == 0 {
+		return NewEmptyRangeProof(protoProof.IsMaxNamespaceIDIgnored)
+	}
+
+	if len(protoProof.LeafHash) > 0 {
+		return NewAbsenceProof(
+			int(protoProof.Start),
+			int(protoProof.End),
+			protoProof.Nodes,
+			protoProof.LeafHash,
+			protoProof.IsMaxNamespaceIDIgnored,
+		)
+	}
+
+	return NewInclusionProof(
+		int(protoProof.Start),
+		int(protoProof.End),
+		protoProof.Nodes,
+		protoProof.IsMaxNamespaceIDIgnored,
+	)
 }
 
 // nextSubtreeSize returns the number of leaves of the subtree adjacent to start

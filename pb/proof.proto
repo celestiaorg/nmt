@@ -1,0 +1,11 @@
+syntax="proto3";
+
+package proof.pb;
+
+message Proof {
+  int64 start     = 1;
+  int64 end       = 2;
+  repeated bytes nodes = 3;
+  bytes leafHash = 4;
+  bool isMaxNamespaceIDIgnored=5;
+}
