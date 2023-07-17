@@ -934,6 +934,7 @@ func TestProtoToProof_EmptyProof(t *testing.T) {
 	require.Nil(t, proof.LeafHash())
 	require.Equal(t, proof.IsMaxNamespaceIDIgnored(), pbProof.IsMaxNamespaceIgnored)
 }
+
 func compare(t *testing.T, proof Proof, protoProof pb.Proof) {
 	t.Helper()
 
