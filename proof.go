@@ -457,7 +457,7 @@ func (proof Proof) VerifyInclusion(h hash.Hash, nid namespace.ID, leavesWithoutN
 // ProtoToProof creates a proof from its proto representation.
 func ProtoToProof(protoProof pb.Proof) Proof {
 	if protoProof.Start == 0 && protoProof.End == 0 {
-		return NewEmptyRangeProof(protoProof.IsMaxNamespaceIDIgnored)
+		return NewEmptyRangeProof(protoProof.IsMaxNamespaceIgnored)
 	}
 
 	if len(protoProof.LeafHash) > 0 {
@@ -466,7 +466,7 @@ func ProtoToProof(protoProof pb.Proof) Proof {
 			int(protoProof.End),
 			protoProof.Nodes,
 			protoProof.LeafHash,
-			protoProof.IsMaxNamespaceIDIgnored,
+			protoProof.IsMaxNamespaceIgnored,
 		)
 	}
 
@@ -474,7 +474,7 @@ func ProtoToProof(protoProof pb.Proof) Proof {
 		int(protoProof.Start),
 		int(protoProof.End),
 		protoProof.Nodes,
-		protoProof.IsMaxNamespaceIDIgnored,
+		protoProof.IsMaxNamespaceIgnored,
 	)
 }
 
