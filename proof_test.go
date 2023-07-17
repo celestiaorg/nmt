@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/celestiaorg/nmt/namespace"
+	pb "github.com/celestiaorg/nmt/pb"
 )
 
 func TestJsonMarshal_Proof(t *testing.T) {
@@ -892,4 +893,53 @@ func TestVerifyNamespace_ShortAbsenceProof_Invalid(t *testing.T) {
 			assert.Equal(t, tt.want, res)
 		})
 	}
+}
+
+func TestProtoToProof_InclusionProof(t *testing.T) {
+	pbProof := pb.Proof{
+		0,
+		1,
+		[][]byte{bytes.Repeat([]byte{1}, 10)},
+		nil,
+		true,
+	}
+	proof := ProtoToProof(pbProof)
+	compare(t, proof, pbProof)
+}
+
+func TestProtoToProof_AbsenceProof(t *testing.T) {
+	pbProof := pb.Proof{
+		0,
+		1,
+		[][]byte{bytes.Repeat([]byte{1}, 10)},
+		bytes.Repeat([]byte{1}, 10),
+		true,
+	}
+	proof := ProtoToProof(pbProof)
+	compare(t, proof, pbProof)
+}
+
+func TestProtoToProof_EmptyProof(t *testing.T) {
+	pbProof := pb.Proof{
+		0,
+		0,
+		[][]byte{bytes.Repeat([]byte{1}, 10)},
+		nil,
+		true,
+	}
+	proof := ProtoToProof(pbProof)
+	require.Equal(t, proof.Start(), 0)
+	require.Equal(t, proof.End(), 0)
+	require.Nil(t, proof.Nodes())
+	require.Nil(t, proof.LeafHash())
+	require.Equal(t, proof.IsMaxNamespaceIDIgnored(), pbProof.IsMaxNamespaceIgnored)
+}
+func compare(t *testing.T, proof Proof, protoProof pb.Proof) {
+	t.Helper()
+
+	require.Equal(t, int64(proof.Start()), protoProof.Start)
+	require.Equal(t, int64(proof.End()), protoProof.End)
+	require.Equal(t, proof.Nodes(), protoProof.Nodes)
+	require.Equal(t, proof.LeafHash(), protoProof.LeafHash)
+	require.Equal(t, proof.IsMaxNamespaceIDIgnored(), protoProof.IsMaxNamespaceIgnored)
 }
