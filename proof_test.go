@@ -897,11 +897,11 @@ func TestVerifyNamespace_ShortAbsenceProof_Invalid(t *testing.T) {
 
 func TestProtoToProof_InclusionProof(t *testing.T) {
 	pbProof := pb.Proof{
-		0,
-		1,
-		[][]byte{bytes.Repeat([]byte{1}, 10)},
-		nil,
-		true,
+		Start:                 0,
+		End:                   1,
+		Nodes:                 [][]byte{bytes.Repeat([]byte{1}, 10)},
+		LeafHash:              nil,
+		IsMaxNamespaceIgnored: true,
 	}
 	proof := ProtoToProof(pbProof)
 	compare(t, proof, pbProof)
@@ -909,11 +909,11 @@ func TestProtoToProof_InclusionProof(t *testing.T) {
 
 func TestProtoToProof_AbsenceProof(t *testing.T) {
 	pbProof := pb.Proof{
-		0,
-		1,
-		[][]byte{bytes.Repeat([]byte{1}, 10)},
-		bytes.Repeat([]byte{1}, 10),
-		true,
+		Start:                 0,
+		End:                   1,
+		Nodes:                 [][]byte{bytes.Repeat([]byte{1}, 10)},
+		LeafHash:              bytes.Repeat([]byte{1}, 10),
+		IsMaxNamespaceIgnored: true,
 	}
 	proof := ProtoToProof(pbProof)
 	compare(t, proof, pbProof)
@@ -921,11 +921,11 @@ func TestProtoToProof_AbsenceProof(t *testing.T) {
 
 func TestProtoToProof_EmptyProof(t *testing.T) {
 	pbProof := pb.Proof{
-		0,
-		0,
-		[][]byte{bytes.Repeat([]byte{1}, 10)},
-		nil,
-		true,
+		Start:                 0,
+		End:                   0,
+		Nodes:                 [][]byte{bytes.Repeat([]byte{1}, 10)},
+		LeafHash:              nil,
+		IsMaxNamespaceIgnored: true,
 	}
 	proof := ProtoToProof(pbProof)
 	require.Equal(t, proof.Start(), 0)
