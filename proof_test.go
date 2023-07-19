@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/celestiaorg/nmt/namespace"
+	pb "github.com/celestiaorg/nmt/pb"
 )
 
 func TestJsonMarshal_Proof(t *testing.T) {
@@ -890,6 +891,69 @@ func TestVerifyNamespace_ShortAbsenceProof_Invalid(t *testing.T) {
 
 			res := proof.VerifyNamespace(sha256.New(), qNS, nil, root)
 			assert.Equal(t, tt.want, res)
+		})
+	}
+}
+
+func Test_ProtoToProof(t *testing.T) {
+	verifier := func(t *testing.T, proof Proof, protoProof pb.Proof) {
+		require.Equal(t, int64(proof.Start()), protoProof.Start)
+		require.Equal(t, int64(proof.End()), protoProof.End)
+		require.Equal(t, proof.Nodes(), protoProof.Nodes)
+		require.Equal(t, proof.LeafHash(), protoProof.LeafHash)
+		require.Equal(t, proof.IsMaxNamespaceIDIgnored(), protoProof.IsMaxNamespaceIgnored)
+	}
+
+	tests := []struct {
+		name       string
+		protoProof pb.Proof
+		verifyFn   func(t *testing.T, proof Proof, protoProof pb.Proof)
+	}{
+		{
+			name: "Inclusion proof",
+			protoProof: pb.Proof{
+				Start:                 0,
+				End:                   1,
+				Nodes:                 [][]byte{bytes.Repeat([]byte{1}, 10)},
+				LeafHash:              nil,
+				IsMaxNamespaceIgnored: true,
+			},
+			verifyFn: verifier,
+		},
+		{
+			name: "Absence Proof",
+			protoProof: pb.Proof{
+				Start:                 0,
+				End:                   1,
+				Nodes:                 [][]byte{bytes.Repeat([]byte{1}, 10)},
+				LeafHash:              bytes.Repeat([]byte{1}, 10),
+				IsMaxNamespaceIgnored: true,
+			},
+			verifyFn: verifier,
+		},
+		{
+			name: "Empty Proof",
+			protoProof: pb.Proof{
+				Start:                 0,
+				End:                   0,
+				Nodes:                 [][]byte{bytes.Repeat([]byte{1}, 10)},
+				LeafHash:              nil,
+				IsMaxNamespaceIgnored: true,
+			},
+			verifyFn: func(t *testing.T, proof Proof, protoProof pb.Proof) {
+				require.Equal(t, proof.Start(), 0)
+				require.Equal(t, proof.End(), 0)
+				require.Nil(t, proof.Nodes())
+				require.Nil(t, proof.LeafHash())
+				require.Equal(t, proof.IsMaxNamespaceIDIgnored(), protoProof.IsMaxNamespaceIgnored)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			proof := ProtoToProof(tt.protoProof)
+			tt.verifyFn(t, proof, tt.protoProof)
 		})
 	}
 }
