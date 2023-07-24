@@ -2,6 +2,8 @@ syntax="proto3";
 
 package proof.pb;
 
+option go_package = "github.com/celestiaorg/nmt/pb";
+
 message Proof {
   // Start index of the leaves that match the queried namespace.ID.
   int64 start     = 1;
