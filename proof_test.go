@@ -11,7 +11,31 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/celestiaorg/nmt/namespace"
+	pb "github.com/celestiaorg/nmt/pb"
 )
+
+func TestJsonMarshal_Proof(t *testing.T) {
+	// create a tree with 4 leaves
+	nIDSize := 1
+	tree := exampleNMT(nIDSize, true, 1, 2, 3, 4)
+
+	// build a proof for an NID that is within the namespace range of the tree
+	nID := []byte{1}
+	proof, err := tree.ProveNamespace(nID)
+	require.NoError(t, err)
+
+	// marshal the proof to JSON
+	jsonProof, err := proof.MarshalJSON()
+	require.NoError(t, err)
+
+	// unmarshal the proof from JSON
+	var unmarshalledProof Proof
+	err = unmarshalledProof.UnmarshalJSON(jsonProof)
+	require.NoError(t, err)
+
+	// verify that the unmarshalled proof is equal to the original proof
+	assert.Equal(t, proof, unmarshalledProof)
+}
 
 // TestVerifyNamespace_EmptyProof tests the correct behaviour of VerifyNamespace for valid and invalid empty proofs.
 func TestVerifyNamespace_EmptyProof(t *testing.T) {
@@ -276,7 +300,8 @@ func TestVerifyLeafHashes_Err(t *testing.T) {
 	// create a sample tree
 	nameIDSize := 2
 	nmt := exampleNMT(nameIDSize, true, 1, 2, 3, 4, 5, 6, 7, 8)
-	hasher := nmt.treeHasher
+	nmthasher := nmt.treeHasher
+	hasher := nmthasher.(*NmtHasher)
 	root, err := nmt.Root()
 	require.NoError(t, err)
 
@@ -330,7 +355,7 @@ func TestVerifyLeafHashes_Err(t *testing.T) {
 	tests := []struct {
 		name               string
 		proof              Proof
-		Hasher             *Hasher
+		Hasher             *NmtHasher
 		verifyCompleteness bool
 		nID                namespace.ID
 		leafHashes         [][]byte
@@ -680,6 +705,255 @@ func TestIsEmptyProofOverlapAbsenceProof(t *testing.T) {
 			if absenceResult {
 				assert.False(t, result)
 			}
+		})
+	}
+}
+
+// TestVerifyNamespace_ShortAbsenceProof_Valid checks whether VerifyNamespace
+// can correctly verify short namespace absence proofs
+func TestVerifyNamespace_ShortAbsenceProof_Valid(t *testing.T) {
+	// create a Merkle tree with 8 leaves
+	tree := exampleNMT(1, true, 1, 2, 3, 4, 6, 7, 8, 9)
+	qNS := []byte{5} // does not belong to the tree
+	root, err := tree.Root()
+	assert.NoError(t, err)
+	// In the following illustration, nodes are suffixed with the range
+	// of leaves they cover, with the upper bound being non-inclusive.
+	// For example, Node3_4 denotes a node that covers the 3rd leaf (excluding the 4th leaf),
+	// while Node4_6 represents the node that covers the 4th and 5th leaves.
+	//
+	//                                        Node0_8                                  Tree Root
+	//                            /                            \
+	//                        /                                 \
+	//                  Node0_4                             Node4_8                    Non-Leaf Node
+	//               /            \                     /                \
+	//             /                \                 /                    \
+	//       Node0_2             Node2_4         Node4_6              Node6_8          Non-Leaf Node
+	//      /      \            /     \           /    \               /     \
+	// Node0_1   Node1_2   Node2_3  Node3_4   Node4_5  Node5_6  Node6_7   Node7_8      Leaf Hash
+	//     1         2          3        4       6       7           8        9        Leaf namespace
+	//     0         1          2        3       4       5           6        7        Leaf index
+
+	// nodes needed for the full absence proof of qNS
+	Node4_5 := tree.leafHashes[4]
+	Node5_6 := tree.leafHashes[5]
+	Node6_8, err := tree.computeRoot(6, 8)
+	assert.NoError(t, err)
+	Node0_4, err := tree.computeRoot(0, 4)
+	assert.NoError(t, err)
+
+	// nodes needed for the short absence proof of qNS; the proof of inclusion
+	// of the parent of Node4_5
+
+	Node4_6, err := tree.computeRoot(4, 6)
+	assert.NoError(t, err)
+
+	// nodes needed for another short absence parent of qNS; the proof of
+	// inclusion of the grandparent of Node4_5
+	Node4_8, err := tree.computeRoot(4, 8)
+	assert.NoError(t, err)
+
+	tests := []struct {
+		name     string
+		qNID     []byte
+		leafHash []byte
+		nodes    [][]byte
+		start    int
+		end      int
+	}{
+		{
+			name:     "valid full absence proof",
+			qNID:     qNS,
+			leafHash: Node4_5,
+			nodes:    [][]byte{Node0_4, Node5_6, Node6_8},
+			start:    4, // the index position of leafHash at its respective level
+			end:      5,
+		},
+		{
+			name:     "valid short absence proof: one level higher",
+			qNID:     qNS,
+			leafHash: Node4_6,
+			nodes:    [][]byte{Node0_4, Node6_8},
+			start:    2, // the index position of leafHash at its respective level
+			end:      3,
+		},
+		{
+			name:     "valid short absence proof: two levels higher",
+			qNID:     qNS,
+			leafHash: Node4_8,
+			nodes:    [][]byte{Node0_4},
+			start:    1, // the index position of leafHash at its respective level
+			end:      2,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			proof := Proof{
+				leafHash: tt.leafHash,
+				nodes:    tt.nodes,
+				start:    tt.start,
+				end:      tt.end,
+			}
+
+			res := proof.VerifyNamespace(sha256.New(), qNS, nil, root)
+			assert.True(t, res)
+		})
+	}
+}
+
+// TestVerifyNamespace_ShortAbsenceProof_Invalid checks whether VerifyNamespace rejects invalid short absence proofs.
+func TestVerifyNamespace_ShortAbsenceProof_Invalid(t *testing.T) {
+	// create a Merkle tree with 8 leaves
+	tree := exampleNMT(1, true, 1, 2, 3, 4, 6, 8, 8, 8)
+	qNS := []byte{7} // does not belong to the tree
+	root, err := tree.Root()
+	assert.NoError(t, err)
+	// In the following illustration, nodes are suffixed with the range
+	// of leaves they cover, with the upper bound being non-inclusive.
+	// For example, Node3_4 denotes a node that covers the 3rd leaf (excluding the 4th leaf),
+	// while Node4_6 represents the node that covers the 4th and 5th leaves.
+	//
+	//                                       Node0_8                                  Tree Root
+	//                            /                            \
+	//                        /                                 \
+	//                  Node0_4                              Node4_8                   Non-Leaf Node
+	//               /            \                     /                \
+	//             /                \                 /                    \
+	//      Node0_2            Node2_4           Node4_6                Node6_8        Non-Leaf Node
+	//      /      \            /     \           /    \               /     \
+	// Node0_1   Node1_2    Node2_3  Node3_4  Node4_5  Node5_6     Node6_7 Node7_8     Leaf Hash
+	//     1         2          3        4       6       8           8        8        Leaf namespace
+	//     0         1          2        3       4       5           6        7        Leaf index
+
+	// nodes needed for the full absence proof of qNS
+	Node5_6 := tree.leafHashes[5]
+	Node4_5 := tree.leafHashes[4]
+	Node6_8, err := tree.computeRoot(6, 8)
+	assert.NoError(t, err)
+	Node0_4, err := tree.computeRoot(0, 4)
+	assert.NoError(t, err)
+
+	// nodes needed for the short absence proof of qNS; the proof of inclusion of the parent of Node5_6;
+	// the verification should fail since the namespace range o Node4_6, the parent, has overlap with the qNS i.e., 7
+	Node4_6, err := tree.computeRoot(4, 6)
+	assert.NoError(t, err)
+
+	// nodes needed for another short absence parent of qNS; the proof of inclusion of the grandparent of Node5_6
+	// the verification should fail since the namespace range of Node4_8, the grandparent, has overlap with the qNS i.e., 7
+	Node4_8, err := tree.computeRoot(4, 8)
+	assert.NoError(t, err)
+
+	tests := []struct {
+		name     string
+		qNID     []byte
+		leafHash []byte
+		nodes    [][]byte
+		start    int
+		end      int
+		want     bool
+	}{
+		{
+			name:     "valid full absence proof",
+			qNID:     qNS,
+			leafHash: Node5_6,
+			nodes:    [][]byte{Node0_4, Node4_5, Node6_8},
+			start:    5, // the index position of leafHash at its respective level
+			end:      6,
+			want:     true,
+		},
+		{
+			name:     "invalid short absence proof: one level higher",
+			qNID:     qNS,
+			leafHash: Node4_6,
+			nodes:    [][]byte{Node0_4, Node6_8},
+			start:    2, // the index position of leafHash at its respective level
+			end:      3,
+			want:     false,
+		},
+		{
+			name:     "invalid short absence proof: two levels higher",
+			qNID:     qNS,
+			leafHash: Node4_8,
+			nodes:    [][]byte{Node0_4},
+			start:    1, // the index position of leafHash at its respective level
+			end:      2,
+			want:     false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			proof := Proof{
+				leafHash: tt.leafHash,
+				nodes:    tt.nodes,
+				start:    tt.start,
+				end:      tt.end,
+			}
+
+			res := proof.VerifyNamespace(sha256.New(), qNS, nil, root)
+			assert.Equal(t, tt.want, res)
+		})
+	}
+}
+
+func Test_ProtoToProof(t *testing.T) {
+	verifier := func(t *testing.T, proof Proof, protoProof pb.Proof) {
+		require.Equal(t, int64(proof.Start()), protoProof.Start)
+		require.Equal(t, int64(proof.End()), protoProof.End)
+		require.Equal(t, proof.Nodes(), protoProof.Nodes)
+		require.Equal(t, proof.LeafHash(), protoProof.LeafHash)
+		require.Equal(t, proof.IsMaxNamespaceIDIgnored(), protoProof.IsMaxNamespaceIgnored)
+	}
+
+	tests := []struct {
+		name       string
+		protoProof pb.Proof
+		verifyFn   func(t *testing.T, proof Proof, protoProof pb.Proof)
+	}{
+		{
+			name: "Inclusion proof",
+			protoProof: pb.Proof{
+				Start:                 0,
+				End:                   1,
+				Nodes:                 [][]byte{bytes.Repeat([]byte{1}, 10)},
+				LeafHash:              nil,
+				IsMaxNamespaceIgnored: true,
+			},
+			verifyFn: verifier,
+		},
+		{
+			name: "Absence Proof",
+			protoProof: pb.Proof{
+				Start:                 0,
+				End:                   1,
+				Nodes:                 [][]byte{bytes.Repeat([]byte{1}, 10)},
+				LeafHash:              bytes.Repeat([]byte{1}, 10),
+				IsMaxNamespaceIgnored: true,
+			},
+			verifyFn: verifier,
+		},
+		{
+			name: "Empty Proof",
+			protoProof: pb.Proof{
+				Start:                 0,
+				End:                   0,
+				Nodes:                 [][]byte{bytes.Repeat([]byte{1}, 10)},
+				LeafHash:              nil,
+				IsMaxNamespaceIgnored: true,
+			},
+			verifyFn: func(t *testing.T, proof Proof, protoProof pb.Proof) {
+				require.Equal(t, proof.Start(), 0)
+				require.Equal(t, proof.End(), 0)
+				require.Nil(t, proof.Nodes())
+				require.Nil(t, proof.LeafHash())
+				require.Equal(t, proof.IsMaxNamespaceIDIgnored(), protoProof.IsMaxNamespaceIgnored)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			proof := ProtoToProof(tt.protoProof)
+			tt.verifyFn(t, proof, tt.protoProof)
 		})
 	}
 }

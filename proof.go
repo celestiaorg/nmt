@@ -2,12 +2,14 @@ package nmt
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"hash"
 	"math/bits"
 
 	"github.com/celestiaorg/nmt/namespace"
+	pb "github.com/celestiaorg/nmt/pb"
 )
 
 // ErrFailedCompletenessCheck indicates that the verification of a namespace proof failed due to the lack of completeness property.
@@ -45,6 +47,39 @@ type Proof struct {
 	// omitted if feasible. For a more in-depth understanding of this field,
 	// refer to the "HashNode" method in the "Hasher.
 	isMaxNamespaceIDIgnored bool
+}
+
+type jsonProof struct {
+	Start                   int      `json:"start"`
+	End                     int      `json:"end"`
+	Nodes                   [][]byte `json:"nodes"`
+	LeafHash                []byte   `json:"leaf_hash"`
+	IsMaxNamespaceIDIgnored bool     `json:"is_max_namespace_id_ignored"`
+}
+
+func (proof Proof) MarshalJSON() ([]byte, error) {
+	jsonProofObj := jsonProof{
+		Start:                   proof.start,
+		End:                     proof.end,
+		Nodes:                   proof.nodes,
+		LeafHash:                proof.leafHash,
+		IsMaxNamespaceIDIgnored: proof.isMaxNamespaceIDIgnored,
+	}
+	return json.Marshal(jsonProofObj)
+}
+
+func (proof *Proof) UnmarshalJSON(data []byte) error {
+	var jsonProofObj jsonProof
+	err := json.Unmarshal(data, &jsonProofObj)
+	if err != nil {
+		return err
+	}
+	proof.start = jsonProofObj.Start
+	proof.end = jsonProofObj.End
+	proof.nodes = jsonProofObj.Nodes
+	proof.leafHash = jsonProofObj.LeafHash
+	proof.isMaxNamespaceIDIgnored = jsonProofObj.IsMaxNamespaceIDIgnored
+	return nil
 }
 
 // Start index of this proof.
@@ -112,23 +147,22 @@ func (proof Proof) IsEmptyProof() bool {
 }
 
 // VerifyNamespace verifies a whole namespace, i.e. 1) it verifies inclusion of
-// the provided `data` in the tree (or the proof.leafHash in case of absence
-// proof) 2) it verifies that the namespace is complete i.e., the data items
-// matching the namespace ID `nID`  are within the range [`proof.start`,
-// `proof.end`) and no data of that namespace was left out. VerifyNamespace
-// deems an empty `proof` valid if the queried `nID` falls outside the namespace
-// range of the supplied `root` or if the `root` is empty
+// the provided `leaves` in the tree (or the proof.leafHash in case of
+// full/short absence proof) 2) it verifies that the namespace is complete
+// i.e., the data items matching the namespace `nID`  are within the range
+// [`proof.start`, `proof.end`) and no data of that namespace was left out.
+// VerifyNamespace deems an empty `proof` valid if the queried `nID` falls
+// outside the namespace  range of the supplied `root` or if the `root` is empty
 //
 // `h` MUST be the same as the underlying hash function used to generate the
 // proof. Otherwise, the verification will fail. `nID` is the namespace ID for
-// which the namespace `proof` is generated. `data` contains the namespaced data
-// items (but not namespace hash)  underlying the leaves of the tree in the
-// range of [`proof.start`, `proof.end`). For an absence `proof`, the `data` is
-// empty. `data` items MUST be ordered according to their index in the tree,
-// with `data[0]` corresponding to the namespaced data at index `start`,
-//
-//	and the last element in `data` corresponding to the data item at index
-//	`end-1` of the tree.
+// which the namespace `proof` is generated. `leaves` contains the namespaced
+// leaves of the tree in the range of [`proof.start`, `proof.end`).
+// For an absence `proof`, the `leaves` is empty.
+// `leaves` items MUST be ordered according to their index in the tree,
+// with `leaves[0]` corresponding to the namespaced leaf at index `start`,
+// and the last element in `leaves` corresponding to the leaf at index `end-1`
+// of the tree.
 //
 // `root` is the root of the NMT against which the `proof` is verified.
 func (proof Proof) VerifyNamespace(h hash.Hash, nID namespace.ID, leaves [][]byte, root []byte) bool {
@@ -228,7 +262,7 @@ func (proof Proof) VerifyNamespace(h hash.Hash, nID namespace.ID, leaves [][]byt
 // the completeness of the proof by verifying that there is no leaf in the
 // tree represented by the root parameter that matches the namespace ID nID
 // outside the leafHashes list.
-func (proof Proof) VerifyLeafHashes(nth *Hasher, verifyCompleteness bool, nID namespace.ID, leafHashes [][]byte, root []byte) (bool, error) {
+func (proof Proof) VerifyLeafHashes(nth *NmtHasher, verifyCompleteness bool, nID namespace.ID, leafHashes [][]byte, root []byte) (bool, error) {
 	// check that the proof range is valid
 	if proof.Start() < 0 || proof.Start() >= proof.End() {
 		return false, fmt.Errorf("proof range [proof.start=%d, proof.end=%d) is not valid: %w", proof.Start(), proof.End(), ErrInvalidRange)
@@ -418,6 +452,30 @@ func (proof Proof) VerifyInclusion(h hash.Hash, nid namespace.ID, leavesWithoutN
 		return false
 	}
 	return res
+}
+
+// ProtoToProof creates a proof from its proto representation.
+func ProtoToProof(protoProof pb.Proof) Proof {
+	if protoProof.Start == 0 && protoProof.End == 0 {
+		return NewEmptyRangeProof(protoProof.IsMaxNamespaceIgnored)
+	}
+
+	if len(protoProof.LeafHash) > 0 {
+		return NewAbsenceProof(
+			int(protoProof.Start),
+			int(protoProof.End),
+			protoProof.Nodes,
+			protoProof.LeafHash,
+			protoProof.IsMaxNamespaceIgnored,
+		)
+	}
+
+	return NewInclusionProof(
+		int(protoProof.Start),
+		int(protoProof.End),
+		protoProof.Nodes,
+		protoProof.IsMaxNamespaceIgnored,
+	)
 }
 
 // nextSubtreeSize returns the number of leaves of the subtree adjacent to start

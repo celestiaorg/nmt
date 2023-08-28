@@ -54,7 +54,10 @@ func main() {
       }
     }
     // compute the root
-    root := tree.Root()
+    root, err := tree.Root()
+    if err != nil {
+      panic(fmt.Sprintf("unexpected error: %v", err))
+    }
     // the root's min/max namespace is the min and max namespace of all leaves:
     minNS := nmt.MinNamespace(root, tree.NamespaceSize())
     maxNS := nmt.MaxNamespace(root, tree.NamespaceSize())
