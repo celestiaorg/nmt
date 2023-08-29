@@ -12,11 +12,11 @@ message Proof {
   int64 end       = 2;
   // Nodes hold the tree nodes necessary for the Merkle range proof.
   repeated bytes nodes = 3;
-  // LeafHash contains the namespace.ID if NMT does not have it and
+  // leaf_hash contains the namespace.ID if NMT does not have it and
   // it should be proven. LeafHash is necessary to prove the Absence Proof.
   // This field will be empty in case of Inclusion Proof.
-  bytes leafHash = 4;
-  // The isMaxNamespaceIgnored flag influences the calculation of the
+  bytes leaf_hash = 4;
+  // The is_max_namespace_ignored flag influences the calculation of the
   // namespace ID range for intermediate nodes in the tree.
-  bool isMaxNamespaceIgnored=5;
+  bool is_max_namespace_ignored=5;
 }
