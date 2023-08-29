@@ -3,12 +3,12 @@ package nmt
 import (
 	"bytes"
 	"crypto"
+	"crypto/rand"
 	"crypto/sha256"
 	"encoding/binary"
 	"errors"
 	"fmt"
 	"math"
-	"math/rand"
 	"reflect"
 	"sort"
 	"sync"
@@ -534,7 +534,8 @@ func TestNodeVisitor(t *testing.T) {
 		nodeHashes = append(nodeHashes, hash)
 	}
 
-	data := generateRandNamespacedRawData(numLeaves, nidSize, leafSize)
+	data, err := generateRandNamespacedRawData(numLeaves, nidSize, leafSize)
+	require.NoError(t, err)
 	n := New(sha256.New(), NamespaceIDSize(nidSize), NodeVisitor(collectNodeHashes))
 	for j := 0; j < numLeaves; j++ {
 		if err := n.Push(data[j]); err != nil {
@@ -706,7 +707,8 @@ func BenchmarkComputeRoot(b *testing.B) {
 	}
 
 	for _, tt := range tests {
-		data := generateRandNamespacedRawData(tt.numLeaves, tt.nidSize, tt.dataSize)
+		data, err := generateRandNamespacedRawData(tt.numLeaves, tt.nidSize, tt.dataSize)
+		require.NoError(b, err)
 		b.ResetTimer()
 		b.Run(tt.name, func(b *testing.B) {
 			for i := 0; i < b.N; i++ {
@@ -786,21 +788,27 @@ func repeat(data []namespaceDataPair, num int) []namespaceDataPair {
 	return res
 }
 
-func generateRandNamespacedRawData(total int, nidSize int, leafSize int) [][]byte {
+func generateRandNamespacedRawData(total int, nidSize int, leafSize int) ([][]byte, error) {
 	data := make([][]byte, total)
 	for i := 0; i < total; i++ {
 		nid := make([]byte, nidSize)
-		rand.Read(nid)
+		_, err := rand.Read(nid)
+		if err != nil {
+			return nil, err
+		}
 		data[i] = nid
 	}
 	sortByteArrays(data)
 	for i := 0; i < total; i++ {
 		d := make([]byte, leafSize)
-		rand.Read(d)
+		_, err := rand.Read(d)
+		if err != nil {
+			return nil, err
+		}
 		data[i] = append(data[i], d...)
 	}
 
-	return data
+	return data, nil
 }
 
 func sortByteArrays(src [][]byte) {
