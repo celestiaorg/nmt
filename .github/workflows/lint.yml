@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 4
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - uses: technote-space/get-diff-action@v4
         with:
           SUFFIX_FILTER: |
@@ -29,5 +29,5 @@ jobs:
   markdown-lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: celestiaorg/.github/.github/actions/markdown-lint@main
