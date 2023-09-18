@@ -13,13 +13,13 @@ jobs:
     steps:
 
       - name: Set up Go 1.21
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@v4
         with:
           go-version: 1.21
         id: go
 
       - name: Check out code into the Go module directory
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Get dependencies
         run: |
@@ -37,6 +37,6 @@ jobs:
           go test -v -coverpkg=./... -covermode=atomic -coverprofile coverage.txt ./...
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v1
+        uses: codecov/codecov-action@v3
         with:
           fail_ci_if_error: true
