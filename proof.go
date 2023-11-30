@@ -49,36 +49,28 @@ type Proof struct {
 	isMaxNamespaceIDIgnored bool
 }
 
-type jsonProof struct {
-	Start                   int      `json:"start"`
-	End                     int      `json:"end"`
-	Nodes                   [][]byte `json:"nodes"`
-	LeafHash                []byte   `json:"leaf_hash"`
-	IsMaxNamespaceIDIgnored bool     `json:"is_max_namespace_id_ignored"`
-}
-
 func (proof Proof) MarshalJSON() ([]byte, error) {
-	jsonProofObj := jsonProof{
-		Start:                   proof.start,
-		End:                     proof.end,
-		Nodes:                   proof.nodes,
-		LeafHash:                proof.leafHash,
-		IsMaxNamespaceIDIgnored: proof.isMaxNamespaceIDIgnored,
+	pbProofObj := pb.Proof{
+		Start:                 int64(proof.start),
+		End:                   int64(proof.end),
+		Nodes:                 proof.nodes,
+		LeafHash:              proof.leafHash,
+		IsMaxNamespaceIgnored: proof.isMaxNamespaceIDIgnored,
 	}
-	return json.Marshal(jsonProofObj)
+	return json.Marshal(pbProofObj)
 }
 
 func (proof *Proof) UnmarshalJSON(data []byte) error {
-	var jsonProofObj jsonProof
-	err := json.Unmarshal(data, &jsonProofObj)
+	var pbProof pb.Proof
+	err := json.Unmarshal(data, &pbProof)
 	if err != nil {
 		return err
 	}
-	proof.start = jsonProofObj.Start
-	proof.end = jsonProofObj.End
-	proof.nodes = jsonProofObj.Nodes
-	proof.leafHash = jsonProofObj.LeafHash
-	proof.isMaxNamespaceIDIgnored = jsonProofObj.IsMaxNamespaceIDIgnored
+	proof.start = int(pbProof.Start)
+	proof.end = int(pbProof.End)
+	proof.nodes = pbProof.Nodes
+	proof.leafHash = pbProof.LeafHash
+	proof.isMaxNamespaceIDIgnored = pbProof.IsMaxNamespaceIgnored
 	return nil
 }
 
