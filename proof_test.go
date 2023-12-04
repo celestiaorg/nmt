@@ -762,7 +762,7 @@ func TestVerifyNamespace_ShortAbsenceProof_Valid(t *testing.T) {
 		end      int
 	}{
 		{
-			name:     "valid full absence proof",
+			name:     " valid full absence proof",
 			qNID:     qNS,
 			leafHash: Node4_5,
 			nodes:    [][]byte{Node0_4, Node5_6, Node6_8},
