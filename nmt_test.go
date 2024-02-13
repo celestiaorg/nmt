@@ -530,7 +530,7 @@ func TestNodeVisitor(t *testing.T) {
 		leafSize  = 6
 	)
 	nodeHashes := make([][]byte, 0)
-	collectNodeHashes := func(hash []byte, _children ...[]byte) {
+	collectNodeHashes := func(hash []byte, _ ...[]byte) {
 		nodeHashes = append(nodeHashes, hash)
 	}
 

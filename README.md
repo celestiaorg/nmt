@@ -1,7 +1,7 @@
 # Namespaced Merkle Tree (NMT)
 
 ![Go version](https://img.shields.io/badge/go-1.21-blue.svg)
-[![API Reference](https://camo.githubusercontent.com/915b7be44ada53c290eb157634330494ebe3e30a/68747470733a2f2f676f646f632e6f72672f6769746875622e636f6d2f676f6c616e672f6764646f3f7374617475732e737667)](https://pkg.go.dev/github.com/celestiaorg/nmt)
+[![Go Reference](https://pkg.go.dev/badge/github.com/celestiaorg/nmt.svg)](https://pkg.go.dev/github.com/celestiaorg/nmt)
 ![golangci-lint](https://github.com/celestiaorg/nmt/workflows/golangci-lint/badge.svg?branch=master)
 ![Go](https://github.com/celestiaorg/nmt/workflows/Go/badge.svg)
 ![codecov.io](https://codecov.io/github/celestiaorg/nmt/coverage.svg?branch=master)

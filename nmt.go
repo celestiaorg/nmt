@@ -20,7 +20,7 @@ const (
 var (
 	ErrInvalidRange     = errors.New("invalid proof range")
 	ErrInvalidPushOrder = errors.New("pushed data has to be lexicographically ordered by namespace IDs")
-	noOp                = func(hash []byte, children ...[]byte) {}
+	noOp                = func(_ []byte, _ ...[]byte) {}
 )
 
 type NodeVisitorFn = func(hash []byte, children ...[]byte)
