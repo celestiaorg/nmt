@@ -144,7 +144,7 @@ func TestNamespacedMerkleTreeRoot(t *testing.T) {
 		wantRoot   []byte
 	}{
 		// default empty root according to base case:
-		// https://github.com/celestiaorg/celestia-specs/blob/master/specs/data_structures.md#namespace-merkle-tree
+		// https://github.com/celestiaorg/celestiaorg-specs/blob/master/specs/data_structures.md#namespace-merkle-tree
 		{"Empty", 3, nil, appendAll(zeroNs, zeroNs, emptyRoot)},
 		{"One leaf", 3, []namespaceDataPair{newNamespaceDataPair(zeroNs, leafData)}, appendAll(zeroNs, zeroNs, sum(crypto.SHA256, []byte{LeafPrefix}, zeroNs, leafData))},
 		{"Two leaves", 3, []namespaceDataPair{newNamespaceDataPair(zeroNs, leafData), newNamespaceDataPair(zeroNs, leafData)}, appendAll(zeroNs, zeroNs, twoZeroLeafsRoot)},
