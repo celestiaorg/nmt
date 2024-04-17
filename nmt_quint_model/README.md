@@ -33,7 +33,7 @@ is necessary.
 translates them to function calls.)
 The generation of the tests happens through simulation.
 In that sense, it is similar to the existing tests
-[fuzz_test.go](https://github.com/celestiaorg/nmt/blob/master/fuzz_test.go),
+[fuzz_test.go](https://github.com/celestiaorg/nmt/blob/main/fuzz_test.go),
 except that it also adds corruption of the data.
 - Having specifications written in Quint makes it possible to change
 tests/specs quickly:
@@ -110,13 +110,13 @@ verifyInclusionProof(proofZero, c_root, 0, [{ value: ("data", 0), namespaceId: 2
 import nmtProofVerification.*
 
 // runs the initialization action
-init 
+init
 
 // runs one step of the model
-step 
+step
 
 // runs another step of the model
-step 
+step
 ```
 
 After getting acquainted with all the operators,

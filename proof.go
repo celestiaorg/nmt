@@ -133,7 +133,7 @@ func NewAbsenceProof(proofStart, proofEnd int, proofNodes [][]byte, leafHash []b
 	return Proof{proofStart, proofEnd, proofNodes, leafHash, ignoreMaxNamespace}
 }
 
-// IsEmptyProof checks whether the proof corresponds to an empty proof as defined in NMT specifications https://github.com/celestiaorg/nmt/blob/master/docs/spec/nmt.md.
+// IsEmptyProof checks whether the proof corresponds to an empty proof as defined in NMT specifications https://github.com/celestiaorg/nmt/blob/main/docs/spec/nmt.md.
 func (proof Proof) IsEmptyProof() bool {
 	return proof.start == proof.end && len(proof.nodes) == 0 && len(proof.leafHash) == 0
 }

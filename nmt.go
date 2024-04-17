@@ -1,5 +1,5 @@
 // Package nmt contains an NMT implementation.
-// The specifications can be found in https://github.com/celestiaorg/nmt/blob/master/docs/spec/nmt.md.
+// The specifications can be found in https://github.com/celestiaorg/nmt/blob/main/docs/spec/nmt.md.
 package nmt
 
 import (
@@ -69,7 +69,7 @@ func NamespaceIDSize(size int) Option {
 // IgnoreMaxNamespace sets whether the largest possible namespace.ID MAX_NID
 // should be 'ignored'. If set to true, this allows for shorter proofs in
 // particular use-cases. E.g., see:
-// https://github.com/celestiaorg/celestiaorg-specs/blob/master/specs/data_structures.md#namespace-merkle-tree
+// https://github.com/celestiaorg/celestiaorg-specs/blob/main/specs/data_structures.md#namespace-merkle-tree
 // Defaults to true.
 func IgnoreMaxNamespace(ignore bool) Option {
 	return func(opts *Options) {
