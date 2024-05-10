@@ -14,6 +14,7 @@ import (
 
 // ErrFailedCompletenessCheck indicates that the verification of a namespace proof failed due to the lack of completeness property.
 var ErrFailedCompletenessCheck = errors.New("failed completeness check")
+var ErrWrongLeafHashesSize = errors.New("wrong leafHashes size")
 
 // Proof represents a namespace proof of a namespace.ID in an NMT. In case this
 // proof proves the absence of a namespace.ID in a tree it also contains the
@@ -260,6 +261,15 @@ func (proof Proof) VerifyLeafHashes(nth *NmtHasher, verifyCompleteness bool, nID
 		return false, fmt.Errorf("proof range [proof.start=%d, proof.end=%d) is not valid: %w", proof.Start(), proof.End(), ErrInvalidRange)
 	}
 
+	// check whether the number of leaves match the proof range i.e., end-start.
+	// If not, make an early return.
+	expectedLeafHashesCount := proof.End() - proof.Start()
+	if len(leafHashes) != expectedLeafHashesCount {
+		return false, fmt.Errorf(
+			"supplied leafHashes size  %d, expected size %d: %w",
+			len(leafHashes), expectedLeafHashesCount, ErrWrongLeafHashesSize)
+	}
+
 	// perform some consistency checks:
 	if nID.Size() != nth.NamespaceSize() {
 		return false, fmt.Errorf("namespace ID size (%d) does not match the namespace size of the NMT hasher (%d)", nID.Size(), nth.NamespaceSize())
@@ -408,6 +418,13 @@ func (proof Proof) VerifyInclusion(h hash.Hash, nid namespace.ID, leavesWithoutN
 			return true
 		}
 		// if the proof range is empty but !proof.IsEmptyProof() || len(leavesWithoutNamespace) != 0, then the verification should fail
+		return false
+	}
+
+	// check whether the number of leavesWithoutNamespace match the proof range i.e., end-start.
+	// If not, make an early return.
+	expectedLeavesCount := proof.End() - proof.Start()
+	if len(leavesWithoutNamespace) != expectedLeavesCount {
 		return false
 	}
 
