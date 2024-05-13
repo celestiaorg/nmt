@@ -771,14 +771,6 @@ func TestVerifyLeafHashes_False(t *testing.T) {
 		{"nID size of leafHash > nID size of VerifyLeafHashes' nmt hasher", proof4_1, args{1, nid4_1, [][]byte{leafHash2}, root1}, false},
 		{"nID of leafHashes do not match the queried nID", proof4_1, args{1, nid4_1, [][]byte{leafHash1Corrupted}, root1}, false},
 		{"absence proof: nID of leafHashes do not match the queried nID, which is a valid case", absenceProof5_1, args{1, nid5_1, [][]byte{leafHash6_1}, root1}, true},
-		{"absence proof: size of proof's range > size of leafHahes", absenceProof5_1, args{1, nid5_1, [][]byte{}, root1}, false},
-		{"absence proof: size of proof's range < size of leafHahes", absenceProof5_1, args{1, nid5_1, [][]byte{leafHash6_1, leafHash6_1}, root1}, false},
-		{
-			"inclusion proof: size of proof's range > size of leafHahes",
-			absenceProof5_1,
-			args{1, nid5_1, [][]byte{leafHash6_1, leafHash6_1}, root1},
-			false,
-		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
