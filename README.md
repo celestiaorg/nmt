@@ -2,7 +2,7 @@
 
 ![Go version](https://img.shields.io/badge/go-1.21-blue.svg)
 [![Go Reference](https://pkg.go.dev/badge/github.com/celestiaorg/nmt.svg)](https://pkg.go.dev/github.com/celestiaorg/nmt)
-![golangci-lint](https://github.com/celestiaorg/nmt/workflows/golangci-lint/badge.svg?branch=main)
+![golangci-lint](https://github.com/celestiaorg/nmt/workflows/lint/badge.svg?branch=main)
 ![Go](https://github.com/celestiaorg/nmt/workflows/Go/badge.svg)
 ![codecov.io](https://codecov.io/github/celestiaorg/nmt/coverage.svg?branch=main)
 
