@@ -13,8 +13,10 @@ import (
 )
 
 // ErrFailedCompletenessCheck indicates that the verification of a namespace proof failed due to the lack of completeness property.
-var ErrFailedCompletenessCheck = errors.New("failed completeness check")
-var ErrWrongLeafHashesSize = errors.New("wrong leafHashes size")
+var (
+	ErrFailedCompletenessCheck = errors.New("failed completeness check")
+	ErrWrongLeafHashesSize     = errors.New("wrong leafHashes size")
+)
 
 // Proof represents a namespace proof of a namespace.ID in an NMT. In case this
 // proof proves the absence of a namespace.ID in a tree it also contains the
