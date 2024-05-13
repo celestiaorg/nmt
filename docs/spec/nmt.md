@@ -198,21 +198,21 @@ More formally, the short namespace absence proof consists of the following compo
    1) Find the index of a leaf in the tree that meets two conditions:
       1) Its namespace is the smallest namespace greater than `NS`.
       1) The namespace of the leaf to its left is smaller than `NS`.
-   1) Traverse up the branch connecting that leaf to the root and locate one of the parents/grandparents of that leaf whose namespace range does not overlap with the queried namespace. 
+   1) Traverse up the branch connecting that leaf to the root and locate one of the parents/grandparents of that leaf whose namespace range does not overlap with the queried namespace.
    The `SubtreeHash` is the hash of that node.
-1) `start` and `end` range: These represent the indices of the `SubtreeHash` within its respective level. 
+1) `start` and `end` range: These represent the indices of the `SubtreeHash` within its respective level.
 Nodes at each level are indexed from left to right starting at index `0`.
 1) `nodes`: This set comprises the index-based  Merkle inclusion proof of the `SubtreeHash` to the tree root `T`.
 
 Below, we illustrate the short namespace absence proof for namespace `NS = 02` in an 8-leaf tree:
-The namespace `03` is the smallest namespace larger than `02`. 
-By traversing the branch from the leaf with namespace `03` to the root, we find a node with hash `03 04 52c7c03` whose namespace range doesn't overlap with `02`. 
+The namespace `03` is the smallest namespace larger than `02`.
+By traversing the branch from the leaf with namespace `03` to the root, we find a node with hash `03 04 52c7c03` whose namespace range doesn't overlap with `02`.
 This node is the highest such node along the branch.
 The `SubtreeHash` is the hash of that node, which is `03 04 52c7c03`.
-The `start` and `end` indices indicate its position in the respective level. 
-In this case, `start = 1` and `end = 2`. 
+The `start` and `end` indices indicate its position in the respective level.
+In this case, `start = 1` and `end = 2`.
 Note that node indices start at `0` from left to right at each level.
-The `nodes` form the index-based Merkle inclusion proof of the `SubtreeHash` to the tree root `T`. 
+The `nodes` form the index-based Merkle inclusion proof of the `SubtreeHash` to the tree root `T`.
 The `nodes` set includes `00 00 ead8d25`, the left sibling of `03 04 52c7c03`.
 
 In summary, the short namespace absence proof for `NS = 02` in this tree consists of `SubtreeHash = 03 04 52c7c03`, `start = 1`, `end = 2`, and the `nodes` set containing `00 00 ead8d25`.
