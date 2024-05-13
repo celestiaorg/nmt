@@ -12,8 +12,8 @@ import (
 	pb "github.com/celestiaorg/nmt/pb"
 )
 
-// ErrFailedCompletenessCheck indicates that the verification of a namespace proof failed due to the lack of completeness property.
 var (
+	// ErrFailedCompletenessCheck indicates that the verification of a namespace proof failed due to the lack of completeness property.
 	ErrFailedCompletenessCheck = errors.New("failed completeness check")
 	ErrWrongLeafHashesSize     = errors.New("wrong leafHashes size")
 )
