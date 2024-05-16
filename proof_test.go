@@ -546,6 +546,168 @@ func TestVerifyNamespace_False(t *testing.T) {
 	}
 }
 
+func TestVerifyInclusion_MismatchingRange(t *testing.T) {
+	nIDs := []byte{1, 2, 3, 4, 6, 6, 6, 9}
+	nmt := exampleNMT(1, true, nIDs...)
+	root, err := nmt.Root()
+	require.NoError(t, err)
+
+	nid6 := namespace.ID{6}
+	// node at index 5 has namespace ID 6
+	incProof6, err := nmt.ProveNamespace(nid6)
+	require.NoError(t, err)
+	// leaves with namespace ID 6
+	leaf4 := nmt.leaves[4][nmt.NamespaceSize():]
+	leaf5 := nmt.leaves[5][nmt.NamespaceSize():]
+	leaf6 := nmt.leaves[6][nmt.NamespaceSize():]
+
+	type args struct {
+		nIDSize                namespace.IDSize
+		nID                    namespace.ID
+		leavesWithoutNamespace [][]byte
+		root                   []byte
+	}
+	tests := []struct {
+		name   string
+		proof  Proof
+		args   args
+		result bool
+	}{
+		{
+			"inclusion proof: size of proof's range = size of leavesWithoutNamespace",
+			incProof6,
+			args{1, nid6, [][]byte{leaf4, leaf5, leaf6}, root},
+			true,
+		},
+		{
+			"inclusion proof: size of proof's range > size of" +
+				" a non-empty leavesWithoutNamespace",
+			incProof6,
+			args{1, nid6, [][]byte{leaf4, leaf5}, root},
+			false,
+		},
+		{
+			"inclusion proof: size of proof's range > size of" +
+				" an empty leavesWithoutNamespace",
+			incProof6,
+			args{1, nid6, [][]byte{}, root},
+			false,
+		},
+		{
+			"inclusion proof: size of proof's range < size of" +
+				" leavesWithoutNamespace",
+			incProof6,
+			args{1, nid6, [][]byte{leaf4, leaf5, leaf6, leaf6}, root},
+			false,
+		},
+		{
+			// in this testcase the nameID does not really matter since the
+			// leaves are empty
+			"empty proof: size of proof's range = size of leavesWithoutNamespace",
+			Proof{start: 1, end: 1},
+			args{1, nid6, [][]byte{}, root},
+			true,
+		},
+		{
+			"empty proof: size of proof's range < size of" +
+				" leavesWithoutNamespace",
+			Proof{start: 1, end: 1},
+			args{1, nid6, [][]byte{leaf4, leaf5, leaf6}, root},
+			false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			hasher := sha256.New()
+			got := tt.proof.VerifyInclusion(hasher, tt.args.nID,
+				tt.args.leavesWithoutNamespace, tt.args.root)
+			assert.Equal(t, tt.result, got)
+		})
+	}
+}
+
+func TestVerifyLeafHashes_MismatchingRange(t *testing.T) {
+	nIDs := []byte{1, 2, 3, 4, 6, 6, 6, 9}
+	nmt := exampleNMT(1, true, nIDs...)
+	root, err := nmt.Root()
+	require.NoError(t, err)
+
+	nid5 := namespace.ID{5}
+	// namespace 5 does not exist in the tree, hence the proof is an absence proof
+	absenceProof5, err := nmt.ProveNamespace(nid5)
+	require.NoError(t, err)
+	leafHash5 := nmt.leafHashes[4]
+
+	nid6 := namespace.ID{6}
+	// node at index 5 has namespace ID 6
+	incProof6, err := nmt.Prove(5)
+	require.NoError(t, err)
+	leafHash6 := nmt.leafHashes[5]
+
+	type args struct {
+		nIDSize    namespace.IDSize
+		nID        namespace.ID
+		leafHashes [][]byte
+		root       []byte
+	}
+	tests := []struct {
+		name   string
+		proof  Proof
+		args   args
+		result bool
+		err    error
+	}{
+		{
+			"absence proof: size of proof's range = size of leafHashes",
+			absenceProof5,
+			args{1, namespace.ID{5}, [][]byte{leafHash5}, root},
+			true, nil,
+		},
+		{
+			"absence proof: size of proof's range > size of leafHashes",
+			absenceProof5,
+			args{1, nid5, [][]byte{}, root},
+			false, ErrWrongLeafHashesSize,
+		},
+		{
+			"absence proof: size of proof's range < size of leafHashes",
+			absenceProof5,
+			args{1, nid5, [][]byte{leafHash5, leafHash5}, root},
+			false, ErrWrongLeafHashesSize,
+		},
+		{
+			"inclusion proof: size of proof's range = size of leafHashes",
+			incProof6,
+			args{1, nid6, [][]byte{leafHash6}, root},
+			true, nil,
+		},
+		{
+			"inclusion proof: size of proof's range > size of leafHashes",
+			incProof6,
+			args{1, nid6, [][]byte{}, root},
+			false, ErrWrongLeafHashesSize,
+		},
+		{
+			"inclusion proof: size of proof's range < size of leafHashes",
+			incProof6,
+			args{1, nid6, [][]byte{leafHash6, leafHash6}, root},
+			false,
+			ErrWrongLeafHashesSize,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			hasher := NewNmtHasher(sha256.New(), tt.args.nIDSize, true)
+			got, err := tt.proof.VerifyLeafHashes(hasher, false, tt.args.nID,
+				tt.args.leafHashes, tt.args.root)
+			assert.Equal(t, tt.result, got)
+			if tt.err != nil {
+				assert.ErrorAs(t, err, &tt.err)
+			}
+		})
+	}
+}
+
 func TestVerifyLeafHashes_False(t *testing.T) {
 	nIDs := []byte{1, 2, 3, 4, 6, 7, 8, 9}
 
@@ -594,7 +756,12 @@ func TestVerifyLeafHashes_False(t *testing.T) {
 		args   args
 		result bool
 	}{
-		{"nID size of proof < nID size of VerifyLeafHashes' nmt hasher", proof4_1, args{2, nid4_2, [][]byte{leafHash2}, root2}, false},
+		{
+			"nID size of proof < nID size of VerifyLeafHashes' nmt hasher",
+			proof4_1,
+			args{2, nid4_2, [][]byte{leafHash2}, root2},
+			false,
+		},
 		{"nID size of proof > nID size of VerifyLeafHashes' nmt hasher", proof4_2, args{1, nid4_1, [][]byte{leafHash1}, root1}, false},
 		{"nID size of root < nID size of VerifyLeafHashes' nmt hasher", proof4_2, args{2, nid4_2, [][]byte{leafHash2}, root1}, false},
 		{"nID size of root > nID size of VerifyLeafHashes' nmt hasher", proof4_1, args{1, nid4_1, [][]byte{leafHash1}, root2}, false},
