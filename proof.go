@@ -9,7 +9,7 @@ import (
 	"math/bits"
 
 	"github.com/celestiaorg/nmt/namespace"
-	pb "github.com/celestiaorg/nmt/pb"
+	"github.com/celestiaorg/nmt/pb"
 )
 
 var (
@@ -402,6 +402,130 @@ func (proof Proof) VerifyLeafHashes(nth *NmtHasher, verifyCompleteness bool, nID
 	}
 
 	return bytes.Equal(rootHash, root), nil
+}
+
+type InnerProof struct {
+	nodes                   [][]byte
+	coordinates             []Coordinate
+	treeSize                int
+	isMaxNamespaceIDIgnored bool
+}
+
+// TODO add marshallers and protobuf definitions
+
+// NewInnerInclusionProof constructs a proof that proves that a set of inner is
+// included in an NMT.
+func NewInnerInclusionProof(proofNodes [][]byte, coordinates []Coordinate, treeSize int, ignoreMaxNamespace bool) InnerProof {
+	return InnerProof{
+		nodes:                   proofNodes,
+		coordinates:             coordinates,
+		treeSize:                treeSize,
+		isMaxNamespaceIDIgnored: ignoreMaxNamespace,
+	}
+}
+
+// VerifyInnerNodes
+// coordinates should be in the same order as inner nodes
+func (proof InnerProof) VerifyInnerNodes(nth *NmtHasher, nID namespace.ID, innerNodes [][]byte, coordinates []Coordinate, root []byte) (bool, error) {
+	// validate the inner proof: same number of nodes and coordinates
+
+	// perform some consistency checks:
+	if nID.Size() != nth.NamespaceSize() {
+		return false, fmt.Errorf("namespace ID size (%d) does not match the namespace size of the NMT hasher (%d)", nID.Size(), nth.NamespaceSize())
+	}
+	// check that the root is valid w.r.t the NMT hasher
+	if err := nth.ValidateNodeFormat(root); err != nil {
+		return false, fmt.Errorf("root does not match the NMT hasher's hash format: %w", err)
+	}
+	// check that all the proof.nodes are valid w.r.t the NMT hasher
+	for _, node := range proof.nodes {
+		if err := nth.ValidateNodeFormat(node); err != nil {
+			return false, fmt.Errorf("proof nodes do not match the NMT hasher's hash format: %w", err)
+		}
+	}
+	// check that all the leafHashes are valid w.r.t the NMT hasher
+	for _, leafHash := range innerNodes {
+		if err := nth.ValidateNodeFormat(leafHash); err != nil {
+			return false, fmt.Errorf("leaf hash does not match the NMT hasher's hash format: %w", err)
+		}
+	}
+	// validate that nID is included in the inner nodes
+
+	_, proofEnd := toRange(coordinates, proof.treeSize)
+
+	allNodes := append(proof.nodes, innerNodes...)
+	allCoordinates := append(proof.coordinates, coordinates...)
+
+	var computeRoot func(start, end int) ([]byte, error)
+	// computeRoot can return error iff the HashNode function fails while calculating the root
+	computeRoot = func(start, end int) ([]byte, error) {
+		innerNode, found := getInnerNode(allNodes, allCoordinates, proof.treeSize, start, end)
+		if found {
+			return innerNode, nil
+		}
+
+		// Recursively get left and right subtree
+		k := getSplitPoint(end - start)
+		left, found := getInnerNode(allNodes, allCoordinates, proof.treeSize, start, start+k)
+		var err error
+		if found {
+			// TODO: do we want to remove the node and coordinates from allNodes and allCoordinates? Or it's just a premature optimisation
+		} else {
+			left, err = computeRoot(start, start+k)
+			if err != nil {
+				return nil, fmt.Errorf("failed to compute subtree root [%d, %d): %w", start, start+k, err)
+			}
+		}
+		right, found := getInnerNode(allNodes, allCoordinates, proof.treeSize, start+k, end)
+		if found {
+			// TODO: do we want to remove the node and coordinates from allNodes and allCoordinates? Or it's just a premature optimisation
+		} else {
+			right, err = computeRoot(start+k, end)
+			if err != nil {
+				return nil, fmt.Errorf("failed to compute subtree root [%d, %d): %w", start+k, end, err)
+			}
+		}
+
+		// only right leaf/subtree can be non-existent
+		if right == nil {
+			return left, nil
+		}
+		hash, err := nth.HashNode(left, right)
+		if err != nil {
+			return nil, fmt.Errorf("failed to hash node: %w", err)
+		}
+		return hash, nil
+	}
+
+	// estimate the leaf size of the subtree containing the proof range
+	proofRangeSubtreeEstimate := getSplitPoint(proofEnd) * 2
+	if proofRangeSubtreeEstimate < 1 {
+		proofRangeSubtreeEstimate = 1
+	}
+	rootHash, err := computeRoot(0, proofRangeSubtreeEstimate)
+	if err != nil {
+		return false, fmt.Errorf("failed to compute root [%d, %d): %w", 0, proofRangeSubtreeEstimate, err)
+	}
+	for i := 0; i < len(proof.nodes); i++ {
+		rootHash, err = nth.HashNode(rootHash, proof.nodes[i])
+		if err != nil {
+			return false, fmt.Errorf("failed to hash node: %w", err)
+		}
+	}
+
+	return bytes.Equal(rootHash, root), nil
+}
+
+// getInnerNode
+// expect the number of nodes and coordinates to be the same
+func getInnerNode(nodes [][]byte, coordinates []Coordinate, treeSize int, start int, end int) ([]byte, bool) {
+	for index, coordinate := range coordinates {
+		startLeaf, endLeaf := toRange([]Coordinate{coordinate}, treeSize)
+		if startLeaf == start && endLeaf == end {
+			return nodes[index], true
+		}
+	}
+	return nil, false
 }
 
 // VerifyInclusion checks that the inclusion proof is valid by using leaf data

@@ -190,11 +190,84 @@ func (n *NamespacedMerkleTree) ProveRange(start, end int) (Proof, error) {
 	if err := n.validateRange(start, end); err != nil {
 		return NewEmptyRangeProof(isMaxNsIgnored), err
 	}
-	proof, err := n.buildRangeProof(start, end)
+	proof, _, err := n.buildRangeProof(start, end)
 	if err != nil {
 		return Proof{}, err
 	}
 	return NewInclusionProof(start, end, proof, isMaxNsIgnored), nil
+}
+
+// Coordinate identifies a tree node using the depth and position
+//
+//	Depth       Position
+//	0              0
+//	              / \
+//	             /   \
+//	1           0     1
+//	           /\     /\
+//	2         0  1   2  3
+//	         /\  /\ /\  /\
+//	3       0 1 2 3 4 5 6 7
+type Coordinate struct {
+	// depth is the typical depth of a tree, 0 being the root
+	depth int
+	// position is the index of a node of a given depth, 0 being the left most
+	// node
+	position int
+}
+
+// ProveInner
+// TODO: range is consecutive
+func (n *NamespacedMerkleTree) ProveInner(coordinates []Coordinate) (InnerProof, error) {
+	isMaxNsIgnored := n.treeHasher.IsMaxNamespaceIDIgnored()
+	start, end := toRange(coordinates, n.Size())
+	proof, coordinates, err := n.buildRangeProof(start, end)
+	if err != nil {
+		return InnerProof{}, err
+	}
+	return NewInnerInclusionProof(proof, coordinates, n.Size(), isMaxNsIgnored), nil
+}
+
+// toRange
+// makes the range consecutive
+func toRange(coordinates []Coordinate, treeSize int) (int, int) {
+	//if err := validateRange(coordinates, treeSize); err != nil {
+	//	return -1, -1, err // TODO is -1 a good return? or 0? or maybe remove this from here and keep it in ProveInner?
+	//}
+	start := 0
+	end := 0
+	maxDepth := maxDepth(treeSize)
+	for _, coord := range coordinates {
+		currentStart := startLeafIndex(coord, maxDepth)
+		currentEnd := endLeafIndex(coord, maxDepth)
+		if currentEnd < start {
+			start = currentStart
+		}
+		if currentEnd > end {
+			end = currentEnd
+		}
+	}
+	return start, end
+}
+
+func maxDepth(treeSize int) int {
+	return bits.Len(uint(treeSize)) - 1
+}
+
+func endLeafIndex(coordinate Coordinate, maxDepth int) int {
+	height := maxDepth - coordinate.depth
+	subtreeSize := 1 << height
+	return (coordinate.position + 1) * subtreeSize
+}
+
+func startLeafIndex(coordinate Coordinate, maxDepth int) int {
+	// since the coordinates are expressed in depth. We need to calculate the height
+	// using ...
+	height := maxDepth - coordinate.depth
+	// In a merkle tree, the tree height grows with every number of leaves multiple of 2.
+	// For example, for all the trees of size 4 to 7, the RFC 6962 tree will have a height of 3.
+	subtreeSize := 1 << height
+	return coordinate.position * subtreeSize
 }
 
 // ProveNamespace returns a range proof for the given NamespaceID.
@@ -265,7 +338,7 @@ func (n *NamespacedMerkleTree) ProveNamespace(nID namespace.ID) (Proof, error) {
 	// the tree or calculated the range it would be in (to generate a proof of
 	// absence and to return the corresponding leaf hashes).
 
-	proof, err := n.buildRangeProof(proofStart, proofEnd)
+	proof, _, err := n.buildRangeProof(proofStart, proofEnd)
 	if err != nil {
 		return Proof{}, err
 	}
@@ -290,13 +363,14 @@ func (n *NamespacedMerkleTree) validateRange(start, end int) error {
 // supplied range i.e., [proofStart, proofEnd) where proofEnd is non-inclusive.
 // The nodes are ordered according to in order traversal of the namespaced tree.
 // Any errors returned by this method are irrecoverable and indicate an illegal state of the tree (n).
-func (n *NamespacedMerkleTree) buildRangeProof(proofStart, proofEnd int) ([][]byte, error) {
-	proof := [][]byte{} // it is the list of nodes hashes (as byte slices) with no index
+func (n *NamespacedMerkleTree) buildRangeProof(proofStart, proofEnd int) ([][]byte, []Coordinate, error) {
+	var proof [][]byte // it is the list of nodes hashes (as byte slices) with no index
+	var coordinates []Coordinate
 	var recurse func(start, end int, includeNode bool) ([]byte, error)
 
 	// validate the range
 	if err := n.validateRange(proofStart, proofEnd); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// start, end are indices of leaves in the tree hence they should be within
@@ -318,6 +392,10 @@ func (n *NamespacedMerkleTree) buildRangeProof(proofStart, proofEnd int) ([][]by
 			if (start < proofStart || start >= proofEnd) && includeNode {
 				// add the leafHash to the proof
 				proof = append(proof, leafHash)
+				coordinates = append(coordinates, Coordinate{
+					depth:    maxDepth(n.Size()),
+					position: start,
+				})
 			}
 			// if the index of the leaf is within the queried range i.e.,
 			// [proofStart, proofEnd] OR if the leaf is not required as part of
@@ -368,6 +446,7 @@ func (n *NamespacedMerkleTree) buildRangeProof(proofStart, proofEnd int) ([][]by
 		// of the proof but not its left and right subtrees
 		if includeNode && !newIncludeNode {
 			proof = append(proof, hash)
+			coordinates = append(coordinates, ToCoordinate(start, end, n.Size()))
 		}
 
 		return hash, nil
@@ -378,9 +457,19 @@ func (n *NamespacedMerkleTree) buildRangeProof(proofStart, proofEnd int) ([][]by
 		fullTreeSize = 1
 	}
 	if _, err := recurse(0, fullTreeSize, true); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return proof, nil
+	return proof, coordinates, nil
+}
+
+func ToCoordinate(start, end, treeSize int) Coordinate {
+	height := bits.Len(uint(end-start)) - 1
+	maxDepth := maxDepth(treeSize)
+	position := start / (1 << height)
+	return Coordinate{
+		depth:    maxDepth - height,
+		position: position,
+	}
 }
 
 // Get returns leaves for the given namespace.ID.

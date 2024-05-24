@@ -122,7 +122,7 @@ func TestProof_VerifyNamespace_False(t *testing.T) {
 		t.Fatalf("invalid test setup: error on ProveNamespace(): %v", err)
 	}
 	// inclusion proof of the leaf index 0
-	incProof0, err := n.buildRangeProof(0, 1)
+	incProof0, _, err := n.buildRangeProof(0, 1)
 	require.NoError(t, err)
 	incompleteFirstNs := NewInclusionProof(0, 1, incProof0, false)
 	type args struct {
@@ -135,13 +135,13 @@ func TestProof_VerifyNamespace_False(t *testing.T) {
 
 	// an invalid absence proof for an existing namespace ID (2) in the constructed tree
 	leafIndex := 3
-	inclusionProofOfLeafIndex, err := n.buildRangeProof(leafIndex, leafIndex+1)
+	inclusionProofOfLeafIndex, _, err := n.buildRangeProof(leafIndex, leafIndex+1)
 	require.NoError(t, err)
 	leafHash := n.leafHashes[leafIndex] // the only data item with namespace ID = 2 in the constructed tree is at index 3
 	invalidAbsenceProof := NewAbsenceProof(leafIndex, leafIndex+1, inclusionProofOfLeafIndex, leafHash, false)
 
 	// inclusion proof of the leaf index 10
-	incProof10, err := n.buildRangeProof(10, 11)
+	incProof10, _, err := n.buildRangeProof(10, 11)
 	require.NoError(t, err)
 
 	// root
@@ -229,6 +229,14 @@ func TestProof_VerifyNamespace_False(t *testing.T) {
 	}
 }
 
+func TestInnerProofs(t *testing.T) {
+	n := exampleNMT(1, true, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15)
+	proof, err := n.ProveInner([]Coordinate{
+		{1, 0}, {3, 4}, {4, 10},
+	})
+	assert.NoError(t, err)
+	assert.NotNil(t, proof) // this is just to stop the debugger here and see if the proof is valid
+}
 func TestProof_MultipleLeaves(t *testing.T) {
 	n := New(sha256.New())
 	ns := []byte{1, 2, 3, 4, 5, 6, 7, 8}

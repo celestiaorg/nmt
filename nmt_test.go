@@ -906,7 +906,7 @@ func Test_buildRangeProof_Err(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := tt.tree.buildRangeProof(tt.proofStart, tt.proofEnd)
+			_, _, err := tt.tree.buildRangeProof(tt.proofStart, tt.proofEnd)
 			assert.Equal(t, tt.wantErr, err != nil)
 			if tt.wantErr {
 				assert.True(t, errors.Is(err, tt.errType))
