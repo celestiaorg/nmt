@@ -1175,3 +1175,84 @@ func TestForcedOutOfOrderNamespacedMerkleTree(t *testing.T) {
 		assert.NoError(t, err)
 	}
 }
+
+func TestToCoordinate(t *testing.T) {
+	tests := []struct {
+		start, end, treeSize int
+		expectedCoordinate   Coordinate
+	}{
+		{start: 0, end: 1, treeSize: 1, expectedCoordinate: Coordinate{depth: 0, position: 0}},
+		{start: 0, end: 2, treeSize: 2, expectedCoordinate: Coordinate{depth: 0, position: 0}},
+		{start: 0, end: 3, treeSize: 4, expectedCoordinate: Coordinate{depth: 1, position: 0}},
+		{start: 1, end: 2, treeSize: 4, expectedCoordinate: Coordinate{depth: 2, position: 1}},
+		{start: 0, end: 4, treeSize: 4, expectedCoordinate: Coordinate{depth: 0, position: 0}},
+		{start: 0, end: 3, treeSize: 5, expectedCoordinate: Coordinate{depth: 1, position: 0}},
+		{start: 0, end: 3, treeSize: 6, expectedCoordinate: Coordinate{depth: 1, position: 0}},
+		{start: 0, end: 3, treeSize: 7, expectedCoordinate: Coordinate{depth: 1, position: 0}},
+		{start: 2, end: 4, treeSize: 8, expectedCoordinate: Coordinate{depth: 2, position: 1}},
+		{start: 3, end: 4, treeSize: 8, expectedCoordinate: Coordinate{depth: 3, position: 3}},
+		{start: 0, end: 8, treeSize: 8, expectedCoordinate: Coordinate{depth: 0, position: 0}},
+	}
+
+	for _, test := range tests {
+		result := ToCoordinate(test.start, test.end, test.treeSize)
+		if result != test.expectedCoordinate {
+			t.Errorf("ToCoordinate(%d, %d, %d) = %+v, want %+v", test.start, test.end, test.treeSize, result, test.expectedCoordinate)
+		}
+	}
+}
+
+func TestBuildRangeProofCoordinates(t *testing.T) {
+	tests := []struct {
+		leavesNID   []byte
+		proofStart  int
+		proofEnd    int
+		expected    []Coordinate
+		expectError bool
+	}{
+		{
+			leavesNID:   []byte{1, 2, 3, 4, 5, 6, 7, 8},
+			proofStart:  2,
+			proofEnd:    4,
+			expected:    []Coordinate{{depth: 2, position: 0}, {depth: 1, position: 1}},
+			expectError: false,
+		},
+		{
+			leavesNID:   []byte{1, 2, 3, 4, 5, 6, 7, 8},
+			proofStart:  1,
+			proofEnd:    3,
+			expected:    []Coordinate{{depth: 3, position: 0}, {depth: 3, position: 3}, {depth: 1, position: 1}},
+			expectError: false,
+		},
+		{
+			leavesNID:   []byte{1, 2, 3, 4, 5, 6, 7, 8},
+			proofStart:  0,
+			proofEnd:    8,
+			expected:    []Coordinate{},
+			expectError: false,
+		},
+	}
+
+	for _, test := range tests {
+		tree := exampleNMT(1, true, test.leavesNID...)
+		_, coords, err := tree.buildRangeProof(test.proofStart, test.proofEnd)
+		if (err != nil) != test.expectError {
+			t.Fatalf("expected error: %v, got: %v", test.expectError, err)
+		}
+		if !test.expectError && !equalCoordinates(coords, test.expected) {
+			t.Fatalf("expected: %+v, got: %+v", test.expected, coords)
+		}
+	}
+}
+
+func equalCoordinates(a, b []Coordinate) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}

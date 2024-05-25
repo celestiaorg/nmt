@@ -362,10 +362,12 @@ func (n *NamespacedMerkleTree) validateRange(start, end int) error {
 // buildRangeProof returns the nodes (as byte slices) in the range proof of the
 // supplied range i.e., [proofStart, proofEnd) where proofEnd is non-inclusive.
 // The nodes are ordered according to in order traversal of the namespaced tree.
+// Also, it returns the coordinates of the nodes of the range proof in the same
+// order as the nodes. These can be used for creating inner nodes proofs.
 // Any errors returned by this method are irrecoverable and indicate an illegal state of the tree (n).
 func (n *NamespacedMerkleTree) buildRangeProof(proofStart, proofEnd int) ([][]byte, []Coordinate, error) {
-	var proof [][]byte // it is the list of nodes hashes (as byte slices) with no index
-	var coordinates []Coordinate
+	var proof [][]byte           // it is the list of nodes hashes (as byte slices) with no index
+	var coordinates []Coordinate // the list of the proof nodes coordinates
 	var recurse func(start, end int, includeNode bool) ([]byte, error)
 
 	// validate the range
@@ -462,9 +464,32 @@ func (n *NamespacedMerkleTree) buildRangeProof(proofStart, proofEnd int) ([][]by
 	return proof, coordinates, nil
 }
 
+// ToCoordinate takes a start leaf index, an end exclusive leaf index
+// and a tree size and returns the coordinates of the node
+// that covers that whole range.
+// The target node can either be a leaf node if the range contains
+// a single element, i.e. (end-start == 1), or an inner node.
+// The coordinate calculation follows the RFC-6962 standard.
+// This means that leaves get elevated in trees that have
+// a size that is not a power of 2.
+// Important: Expects the range to be pre-validated:
+// - start >= 0
+// - end > start
+// - treeSize >= end
+// Note: the formula used is based on:
+// - start_leaf = position * (2 ** height)
+// - end_leaf = start_leaf + (2 ** height)
+// with position being the index of the inner node inside the tree
+// and the height being the traditional height of a tree, i.e. bottom -> top.
 func ToCoordinate(start, end, treeSize int) Coordinate {
+	// calculates the height of the smallest subtree
+	// that can contain the [start, end) range.
+	// bits.Len() - 1 is used as a fast alternative to compute
+	// the integer part of the result of log2(end-start).
 	height := bits.Len(uint(end-start)) - 1
 	maxDepth := maxDepth(treeSize)
+	// 1 << height == 2 ** height. This result is based
+	// on the formula documented above.
 	position := start / (1 << height)
 	return Coordinate{
 		depth:    maxDepth - height,
