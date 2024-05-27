@@ -402,6 +402,130 @@ func (proof Proof) VerifyLeafHashes(nth *NmtHasher, verifyCompleteness bool, nID
 	return bytes.Equal(rootHash, root), nil
 }
 
+// The VerifyPowerOfTwoInnerInclusion function checks whether the given proof is a valid Merkle
+// range proof for the leaves in the leafHashes input. It returns true or false accordingly.
+// If there is an issue during the proof verification e.g., a node does not conform to the namespace hash format, then a proper error is returned to indicate the root cause of the issue.
+// The leafHashes parameter is a list of leaf hashes, where each leaf hash is represented
+// by a byte slice.
+// The size of leafHashes should match the proof range i.e., end-start.
+// If the verifyCompleteness parameter is set to true, the function also checks
+// the completeness of the proof by verifying that there is no leaf in the
+// tree represented by the root parameter that matches the namespace ID nID
+// outside the leafHashes list.
+func (proof Proof) VerifyPowerOfTwoInnerInclusion(nth *NmtHasher, innerNodes [][]byte, root []byte) (bool, error) {
+	// check that the proof range is valid
+	if proof.Start() < 0 || proof.Start() >= proof.End() {
+		return false, fmt.Errorf("proof range [proof.start=%d, proof.end=%d) is not valid: %w", proof.Start(), proof.End(), ErrInvalidRange)
+	}
+
+	// check whether the number of leaves match the proof range i.e., end-start.
+	// If not, make an early return.
+	expectedLeafHashesCount := proof.End() - proof.Start()
+	if len(leafHashes) != expectedLeafHashesCount {
+		return false, fmt.Errorf(
+			"supplied leafHashes size  %d, expected size %d: %w",
+			len(leafHashes), expectedLeafHashesCount, ErrWrongLeafHashesSize)
+	}
+
+	// check that the root is valid w.r.t the NMT hasher
+	if err := nth.ValidateNodeFormat(root); err != nil {
+		return false, fmt.Errorf("root does not match the NMT hasher's hash format: %w", err)
+	}
+	// check that all the proof.nodes are valid w.r.t the NMT hasher
+	for _, node := range proof.nodes {
+		if err := nth.ValidateNodeFormat(node); err != nil {
+			return false, fmt.Errorf("proof nodes do not match the NMT hasher's hash format: %w", err)
+		}
+	}
+	// check that all the leafHashes are valid w.r.t the NMT hasher
+	for _, leafHash := range innerNodes {
+		if err := nth.ValidateNodeFormat(leafHash); err != nil {
+			return false, fmt.Errorf("inner nodes does not match the NMT hasher's hash format: %w", err)
+		}
+	}
+
+	// TODO the proof contains a leaf hash for an absence proof.
+	// Can we have proof of absence using subtree roots?
+
+	type innerNodeRange struct {
+		start int
+		end   int
+	}
+
+	var ranges []innerNodeRange
+
+	var computeRoot func(start, end int) ([]byte, error)
+	// computeRoot can return error iff the HashNode function fails while calculating the root
+	computeRoot = func(start, end int) ([]byte, error) {
+
+		// if current range does not overlap with the proof range, pop and
+		// return a proof node if present, else return nil because subtree
+		// doesn't exist
+		if end <= proof.Start() || start >= proof.End() {
+			return popIfNonEmpty(&proof.nodes), nil
+		}
+
+		// Recursively get left and right subtree
+		k := getSplitPoint(end - start)
+		left, err := computeRoot(start, start+k)
+		if err != nil {
+			return nil, fmt.Errorf("failed to compute subtree root [%d, %d): %w", start, start+k, err)
+		}
+		right, err := computeRoot(start+k, end)
+		if err != nil {
+			return nil, fmt.Errorf("failed to compute subtree root [%d, %d): %w", start+k, end, err)
+		}
+
+		// only right leaf/subtree can be non-existent
+		if right == nil {
+			return left, nil
+		}
+		hash, err := nth.HashNode(left, right)
+		if err != nil {
+			return nil, fmt.Errorf("failed to hash node: %w", err)
+		}
+		return hash, nil
+	}
+
+	// estimate the leaf size of the subtree containing the proof range
+	proofRangeSubtreeEstimate := getSplitPoint(proof.end) * 2
+	if proofRangeSubtreeEstimate < 1 {
+		proofRangeSubtreeEstimate = 1
+	}
+
+	proofRange := proof.end - proof.start
+
+	for proofRange != 0 {
+		subtreeRootRange := largestPowerOfTwo(uint(proofRange))
+		subtreeRootEndIndex := proof.start + subtreeRootRange
+		ranges = append(ranges, innerNodeRange{proof.start, subtreeRootEndIndex})
+		proofRange -= subtreeRootRange
+	}
+
+	if end == subtreeRootEndIndex {
+		return popIfNonEmpty(&innerNodes), nil // Sou
+	}
+
+	rootHash, err := computeRoot(0, proofRangeSubtreeEstimate)
+	if err != nil {
+		return false, fmt.Errorf("failed to compute root [%d, %d): %w", 0, proofRangeSubtreeEstimate, err)
+	}
+	for i := 0; i < len(proof.nodes); i++ {
+		rootHash, err = nth.HashNode(rootHash, proof.nodes[i])
+		if err != nil {
+			return false, fmt.Errorf("failed to hash node: %w", err)
+		}
+	}
+
+	return bytes.Equal(rootHash, root), nil
+}
+
+// largestPowerOfTwo calculates the largest power of two
+// that is smaller than 'bound'
+func largestPowerOfTwo(bound uint) int {
+	return 1 << (bits.Len(bound) - 1)
+}
+
 // VerifyInclusion checks that the inclusion proof is valid by using leaf data
 // and the provided proof to regenerate and compare the root. Note that the leavesWithoutNamespace data should not contain the prefixed namespace, unlike the tree.Push method,
 // which takes prefixed data. All leaves implicitly have the same namespace ID:
