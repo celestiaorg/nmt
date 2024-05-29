@@ -862,6 +862,20 @@ func exampleNMT(nidSize int, ignoreMaxNamespace bool, leavesNIDs ...byte) *Names
 	return tree
 }
 
+// exampleNMT2 Replica of exampleNMT except that it uses the namespace IDs in the
+// leaves instead of the index.
+func exampleNMT2(nidSize int, ignoreMaxNamespace bool, leavesNIDs ...byte) *NamespacedMerkleTree {
+	tree := New(sha256.New(), NamespaceIDSize(nidSize), IgnoreMaxNamespace(ignoreMaxNamespace))
+	for _, nid := range leavesNIDs {
+		namespace := bytes.Repeat([]byte{nid}, nidSize)
+		d := append(namespace, []byte(fmt.Sprintf("leaf_%d", nid))...)
+		if err := tree.Push(d); err != nil {
+			panic(fmt.Sprintf("unexpected error: %v", err))
+		}
+	}
+	return tree
+}
+
 func swap(slice [][]byte, i int, j int) {
 	temp := slice[i]
 	slice[i] = slice[j]
@@ -1173,5 +1187,163 @@ func TestForcedOutOfOrderNamespacedMerkleTree(t *testing.T) {
 	for _, d := range data {
 		err := tree.ForceAddLeaf(d)
 		assert.NoError(t, err)
+	}
+}
+
+func TestIsPowerOfTwo(t *testing.T) {
+	tests := []struct {
+		input    int
+		expected bool
+	}{
+		{input: 0, expected: false},
+		{input: 1, expected: true},
+		{input: 2, expected: true},
+		{input: 3, expected: false},
+		{input: 4, expected: true},
+		{input: 5, expected: false},
+		{input: 8, expected: true},
+		{input: 16, expected: true},
+		{input: -1, expected: false},
+		{input: -2, expected: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(fmt.Sprintf("input=%d", tt.input), func(t *testing.T) {
+			result := isPowerOfTwo(tt.input)
+			if result != tt.expected {
+				t.Errorf("expected %v, got %v", tt.expected, result)
+			}
+		})
+	}
+}
+
+func TestComputeSubtreeRoot(t *testing.T) {
+	n := exampleNMT2(1, true, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15)
+	tests := []struct {
+		start, end   int
+		tree         *NamespacedMerkleTree
+		expectedRoot []byte
+		expectError  bool
+	}{
+		{
+			start: 0,
+			end:   16,
+			tree:  n,
+			expectedRoot: func() []byte {
+				root, err := n.Root()
+				require.NoError(t, err)
+				return root
+			}(),
+		},
+		{
+			start: 0,
+			end:   8,
+			tree:  n,
+			expectedRoot: func() []byte {
+				// because the root of the range [0,8) coincides with the root of this tree
+				root, err := exampleNMT2(1, true, 0, 1, 2, 3, 4, 5, 6, 7).Root()
+				require.NoError(t, err)
+				return root
+			}(),
+		},
+		{
+			start: 8,
+			end:   16,
+			tree:  n,
+			expectedRoot: func() []byte {
+				// because the root of the range [8,16) coincides with the root of this tree
+				root, err := exampleNMT2(1, true, 8, 9, 10, 11, 12, 13, 14, 15).Root()
+				require.NoError(t, err)
+				return root
+			}(),
+		},
+		{
+			start: 8,
+			end:   12,
+			tree:  n,
+			expectedRoot: func() []byte {
+				// because the root of the range [8,12) coincides with the root of this tree
+				root, err := exampleNMT2(1, true, 8, 9, 10, 11).Root()
+				require.NoError(t, err)
+				return root
+			}(),
+		},
+		{
+			start: 4,
+			end:   8,
+			tree:  n,
+			expectedRoot: func() []byte {
+				// because the root of the range [4,8) coincides with the root of this tree
+				root, err := exampleNMT2(1, true, 4, 5, 6, 7).Root()
+				require.NoError(t, err)
+				return root
+			}(),
+		},
+		{
+			start: 4,
+			end:   6,
+			tree:  n,
+			expectedRoot: func() []byte {
+				// because the root of the range [4,6) coincides with the root of this tree
+				root, err := exampleNMT2(1, true, 4, 5).Root()
+				require.NoError(t, err)
+				return root
+			}(),
+		},
+		{
+			start: 4,
+			end:   5,
+			tree:  n,
+			expectedRoot: func() []byte {
+				// because the root of the range [4,5) coincides with the root of this tree
+				root, err := exampleNMT2(1, true, 4).Root()
+				require.NoError(t, err)
+				return root
+			}(),
+		},
+		{ // doesn't correctly reference an inner node
+			start:       2,
+			end:         6,
+			tree:        n,
+			expectError: true,
+		},
+		{
+			start:       -1, // invalid start
+			end:         4,
+			tree:        n,
+			expectError: true,
+		},
+		{
+			start:       4,
+			end:         4, // start == end
+			tree:        n,
+			expectError: true,
+		},
+		{
+			start:       5, // start >= end
+			end:         4,
+			tree:        n,
+			expectError: true,
+		},
+		{
+			start: 0,
+			end:   16,
+			tree: func() *NamespacedMerkleTree {
+				return exampleNMT2(1, true, 0, 1, 2, 3, 4) // tree leaves are not a power of 2
+			}(),
+			expectError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(fmt.Sprintf("treeSize=%d,start=%d,end=%d", tt.tree.Size(), tt.start, tt.end), func(t *testing.T) {
+			root, err := tt.tree.ComputeSubtreeRoot(tt.start, tt.end)
+			if tt.expectError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tt.expectedRoot, root)
+			}
+		})
 	}
 }

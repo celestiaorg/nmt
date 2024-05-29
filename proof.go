@@ -9,7 +9,7 @@ import (
 	"math/bits"
 
 	"github.com/celestiaorg/nmt/namespace"
-	pb "github.com/celestiaorg/nmt/pb"
+	"github.com/celestiaorg/nmt/pb"
 )
 
 var (
@@ -402,130 +402,6 @@ func (proof Proof) VerifyLeafHashes(nth *NmtHasher, verifyCompleteness bool, nID
 	return bytes.Equal(rootHash, root), nil
 }
 
-// The VerifyPowerOfTwoInnerInclusion function checks whether the given proof is a valid Merkle
-// range proof for the leaves in the leafHashes input. It returns true or false accordingly.
-// If there is an issue during the proof verification e.g., a node does not conform to the namespace hash format, then a proper error is returned to indicate the root cause of the issue.
-// The leafHashes parameter is a list of leaf hashes, where each leaf hash is represented
-// by a byte slice.
-// The size of leafHashes should match the proof range i.e., end-start.
-// If the verifyCompleteness parameter is set to true, the function also checks
-// the completeness of the proof by verifying that there is no leaf in the
-// tree represented by the root parameter that matches the namespace ID nID
-// outside the leafHashes list.
-func (proof Proof) VerifyPowerOfTwoInnerInclusion(nth *NmtHasher, innerNodes [][]byte, root []byte) (bool, error) {
-	// check that the proof range is valid
-	if proof.Start() < 0 || proof.Start() >= proof.End() {
-		return false, fmt.Errorf("proof range [proof.start=%d, proof.end=%d) is not valid: %w", proof.Start(), proof.End(), ErrInvalidRange)
-	}
-
-	// check whether the number of leaves match the proof range i.e., end-start.
-	// If not, make an early return.
-	expectedLeafHashesCount := proof.End() - proof.Start()
-	if len(leafHashes) != expectedLeafHashesCount {
-		return false, fmt.Errorf(
-			"supplied leafHashes size  %d, expected size %d: %w",
-			len(leafHashes), expectedLeafHashesCount, ErrWrongLeafHashesSize)
-	}
-
-	// check that the root is valid w.r.t the NMT hasher
-	if err := nth.ValidateNodeFormat(root); err != nil {
-		return false, fmt.Errorf("root does not match the NMT hasher's hash format: %w", err)
-	}
-	// check that all the proof.nodes are valid w.r.t the NMT hasher
-	for _, node := range proof.nodes {
-		if err := nth.ValidateNodeFormat(node); err != nil {
-			return false, fmt.Errorf("proof nodes do not match the NMT hasher's hash format: %w", err)
-		}
-	}
-	// check that all the leafHashes are valid w.r.t the NMT hasher
-	for _, leafHash := range innerNodes {
-		if err := nth.ValidateNodeFormat(leafHash); err != nil {
-			return false, fmt.Errorf("inner nodes does not match the NMT hasher's hash format: %w", err)
-		}
-	}
-
-	// TODO the proof contains a leaf hash for an absence proof.
-	// Can we have proof of absence using subtree roots?
-
-	type innerNodeRange struct {
-		start int
-		end   int
-	}
-
-	var ranges []innerNodeRange
-
-	var computeRoot func(start, end int) ([]byte, error)
-	// computeRoot can return error iff the HashNode function fails while calculating the root
-	computeRoot = func(start, end int) ([]byte, error) {
-
-		// if current range does not overlap with the proof range, pop and
-		// return a proof node if present, else return nil because subtree
-		// doesn't exist
-		if end <= proof.Start() || start >= proof.End() {
-			return popIfNonEmpty(&proof.nodes), nil
-		}
-
-		// Recursively get left and right subtree
-		k := getSplitPoint(end - start)
-		left, err := computeRoot(start, start+k)
-		if err != nil {
-			return nil, fmt.Errorf("failed to compute subtree root [%d, %d): %w", start, start+k, err)
-		}
-		right, err := computeRoot(start+k, end)
-		if err != nil {
-			return nil, fmt.Errorf("failed to compute subtree root [%d, %d): %w", start+k, end, err)
-		}
-
-		// only right leaf/subtree can be non-existent
-		if right == nil {
-			return left, nil
-		}
-		hash, err := nth.HashNode(left, right)
-		if err != nil {
-			return nil, fmt.Errorf("failed to hash node: %w", err)
-		}
-		return hash, nil
-	}
-
-	// estimate the leaf size of the subtree containing the proof range
-	proofRangeSubtreeEstimate := getSplitPoint(proof.end) * 2
-	if proofRangeSubtreeEstimate < 1 {
-		proofRangeSubtreeEstimate = 1
-	}
-
-	proofRange := proof.end - proof.start
-
-	for proofRange != 0 {
-		subtreeRootRange := largestPowerOfTwo(uint(proofRange))
-		subtreeRootEndIndex := proof.start + subtreeRootRange
-		ranges = append(ranges, innerNodeRange{proof.start, subtreeRootEndIndex})
-		proofRange -= subtreeRootRange
-	}
-
-	if end == subtreeRootEndIndex {
-		return popIfNonEmpty(&innerNodes), nil // Sou
-	}
-
-	rootHash, err := computeRoot(0, proofRangeSubtreeEstimate)
-	if err != nil {
-		return false, fmt.Errorf("failed to compute root [%d, %d): %w", 0, proofRangeSubtreeEstimate, err)
-	}
-	for i := 0; i < len(proof.nodes); i++ {
-		rootHash, err = nth.HashNode(rootHash, proof.nodes[i])
-		if err != nil {
-			return false, fmt.Errorf("failed to hash node: %w", err)
-		}
-	}
-
-	return bytes.Equal(rootHash, root), nil
-}
-
-// largestPowerOfTwo calculates the largest power of two
-// that is smaller than 'bound'
-func largestPowerOfTwo(bound uint) int {
-	return 1 << (bits.Len(bound) - 1)
-}
-
 // VerifyInclusion checks that the inclusion proof is valid by using leaf data
 // and the provided proof to regenerate and compare the root. Note that the leavesWithoutNamespace data should not contain the prefixed namespace, unlike the tree.Push method,
 // which takes prefixed data. All leaves implicitly have the same namespace ID:
@@ -589,6 +465,212 @@ func (proof Proof) VerifyInclusion(h hash.Hash, nid namespace.ID, leavesWithoutN
 	return res
 }
 
+// VerifySubtreeRootInclusion verifies that a set of subtree roots is included in
+// an NMT.
+// Note: This method is Celestia specific.
+// It makes the following assumptions:
+// - The subtree roots are created according to the ADR-013
+// https://github.com/celestiaorg/celestia-app/blob/main/docs/architecture/adr-013-non-interactive-default-rules-for-zero-padding.md
+// - The tree's number of leaves is a power of two
+// Using this method without making sure the above assumptions are respected
+// can return invalid results.
+// The subtreeRootThreshold is also defined in ADR-013.
+// More information on the algorithm used can be found in the toLeafRanges() method docs.
+func (proof Proof) VerifySubtreeRootInclusion(nth *NmtHasher, subtreeRoots [][]byte, subtreeRootThreshold int, root []byte) (bool, error) {
+	// check that the proof range is valid
+	if proof.Start() < 0 || proof.Start() >= proof.End() {
+		return false, fmt.Errorf("proof range [proof.start=%d, proof.end=%d) is not valid: %w", proof.Start(), proof.End(), ErrInvalidRange)
+	}
+
+	// check that the root is valid w.r.t the NMT hasher
+	if err := nth.ValidateNodeFormat(root); err != nil {
+		return false, fmt.Errorf("root does not match the NMT hasher's hash format: %w", err)
+	}
+	// check that all the proof.Notes() are valid w.r.t the NMT hasher
+	for _, node := range proof.Nodes() {
+		if err := nth.ValidateNodeFormat(node); err != nil {
+			return false, fmt.Errorf("proof nodes do not match the NMT hasher's hash format: %w", err)
+		}
+	}
+	// check that all the subtree roots are valid w.r.t the NMT hasher
+	for _, subtreeRoot := range subtreeRoots {
+		if err := nth.ValidateNodeFormat(subtreeRoot); err != nil {
+			return false, fmt.Errorf("inner nodes does not match the NMT hasher's hash format: %w", err)
+		}
+	}
+
+	// get the subtree roots leaf ranges
+	ranges, err := toLeafRanges(proof.Start(), proof.End(), subtreeRootThreshold)
+	if err != nil {
+		return false, err
+	}
+
+	// check whether the number of ranges matches the number of subtree roots.
+	// if not, make an early return.
+	if len(subtreeRoots) != len(ranges) {
+		return false, fmt.Errorf("number of subtree roots %d is different than the number of leaf ranges %d", len(subtreeRoots), len(ranges))
+	}
+
+	var computeRoot func(start, end int) ([]byte, error)
+	// computeRoot can return error iff the HashNode function fails while calculating the root
+	computeRoot = func(start, end int) ([]byte, error) {
+		// reached a leaf
+		if end-start == 1 {
+			// if the leaf index falls within the proof range, pop and return a
+			// leaf
+			if proof.Start() <= start && start < proof.End() {
+				// advance the list of ranges
+				ranges = ranges[1:]
+				// advance leafHashes
+				return popIfNonEmpty(&subtreeRoots), nil
+			}
+
+			// if the leaf index is outside the proof range, pop and return a
+			// proof node (which in this case is a leaf) if present, else return
+			// nil because leaf doesn't exist
+			return popIfNonEmpty(&proof.nodes), nil
+		}
+
+		// if the current range does not overlap with the proof range, pop and
+		// return a proof node if present, else return nil because subtree
+		// doesn't exist
+		if end <= proof.Start() || start >= proof.End() {
+			return popIfNonEmpty(&proof.nodes), nil
+		}
+
+		if len(ranges) != 0 && ranges[0].start == start && ranges[0].end == end {
+			ranges = ranges[1:]
+			return popIfNonEmpty(&subtreeRoots), nil
+		}
+
+		// Recursively get left and right subtree
+		k := getSplitPoint(end - start)
+		left, err := computeRoot(start, start+k)
+		if err != nil {
+			return nil, fmt.Errorf("failed to compute subtree root [%d, %d): %w", start, start+k, err)
+		}
+		right, err := computeRoot(start+k, end)
+		if err != nil {
+			return nil, fmt.Errorf("failed to compute subtree root [%d, %d): %w", start+k, end, err)
+		}
+
+		// only right leaf/subtree can be non-existent
+		if right == nil {
+			return left, nil
+		}
+		hash, err := nth.HashNode(left, right)
+		if err != nil {
+			return nil, fmt.Errorf("failed to hash node: %w", err)
+		}
+		return hash, nil
+	}
+
+	// estimate the leaf size of the subtree containing the proof range
+	proofRangeSubtreeEstimate := getSplitPoint(proof.End()) * 2
+	if proofRangeSubtreeEstimate < 1 {
+		proofRangeSubtreeEstimate = 1
+	}
+	rootHash, err := computeRoot(0, proofRangeSubtreeEstimate)
+	if err != nil {
+		return false, fmt.Errorf("failed to compute root [%d, %d): %w", 0, proofRangeSubtreeEstimate, err)
+	}
+	for i := 0; i < len(proof.Nodes()); i++ {
+		rootHash, err = nth.HashNode(rootHash, proof.Nodes()[i])
+		if err != nil {
+			return false, fmt.Errorf("failed to hash node: %w", err)
+		}
+	}
+
+	return bytes.Equal(rootHash, root), nil
+}
+
+// toLeafRanges returns the leaf ranges corresponding to the provided subtree roots.
+// It uses the subtree root threshold to calculate the maximum number of leaves a subtree root can
+// commit to.
+// The subtree root threshold is defined as per ADR-013:
+// https://github.com/celestiaorg/celestia-app/blob/main/docs/architecture/adr-013-non-interactive-default-rules-for-zero-padding.md
+// This method assumes:
+// - The subtree roots are created according to the ADR-013 non-interactive defaults rules
+// - The tree's number of leaves is a power of two
+// The algorithm is as follows:
+// - Let `d` be `y - x` (the range of the proof).
+// - `i` is the index of the next subtree root.
+// - While `d != 0`:
+//   - Let `z` be the largest power of 2 that fits in `d`; here we are finding the range for the next subtree root.
+//   - The range for the next subtree root is `[x, x + z)`, i.e., `S_i` is the subtree root of leaves at indices `[x, x + z)`.
+//   - `d = d - z` (move past the first subtree root and its range).
+//   - `i = i + 1`.
+//   - Go back to the loop condition.
+//
+// Note: This method is Celestia specific.
+func toLeafRanges(proofStart, proofEnd, subtreeRootThreshold int) ([]leafRange, error) {
+	if proofStart < 0 {
+		return nil, fmt.Errorf("proof start %d shouldn't be strictly negative", proofStart)
+	}
+	if proofEnd <= proofStart {
+		return nil, fmt.Errorf("proof end %d should be stricly bigger than proof start %d", proofEnd, proofStart)
+	}
+	if subtreeRootThreshold < 0 {
+		return nil, fmt.Errorf("subtree root threshold cannot be negative %d", subtreeRootThreshold)
+	}
+	currentStart := proofStart
+	currentLeafRange := proofEnd - proofStart
+	var ranges []leafRange
+	maximumLeafRange, err := subtreeRootThresholdToLeafRange(subtreeRootThreshold)
+	if err != nil {
+		return nil, err
+	}
+	for currentLeafRange != 0 {
+		nextRange, err := nextLeafRange(currentStart, proofEnd, maximumLeafRange)
+		if err != nil {
+			return nil, err
+		}
+		ranges = append(ranges, nextRange)
+		currentStart = nextRange.end
+		currentLeafRange = currentLeafRange - nextRange.end + nextRange.start
+	}
+	return ranges, nil
+}
+
+// subtreeRootThresholdToLeafRange calculates the maximum number of leaves a subtree root
+// can commit to.
+// The subtree root threshold is defined as per ADR-013:
+// https://github.com/celestiaorg/celestia-app/blob/main/docs/architecture/adr-013-non-interactive-default-rules-for-zero-padding.md
+func subtreeRootThresholdToLeafRange(subtreeRootThreshold int) (int, error) {
+	if subtreeRootThreshold < 0 {
+		return 0, fmt.Errorf("subtree root threshold cannot be negative %d", subtreeRootThreshold)
+	}
+	return 1 << subtreeRootThreshold, nil
+}
+
+// nextLeafRange takes a proof start, proof end, and the maximum range a subtree
+// root can cover, and returns the corresponding subtree root range.
+// The subtreeRootMaximum LeafRange is calculated using subtreeRootThresholdToLeafRange() method.
+// Check toLeafRanges() for more information on the algorithm used.
+// Note: This method is Celestia specific.
+func nextLeafRange(currentStart, currentEnd, subtreeRootMaximumLeafRange int) (leafRange, error) {
+	currentLeafRange := currentEnd - currentStart
+	minimum := minInt(currentLeafRange, subtreeRootMaximumLeafRange)
+	uMinimum, err := safeIntToUint(minimum)
+	if err != nil {
+		return leafRange{}, fmt.Errorf("failed to convert subtree root range to Uint %w", err)
+	}
+	currentRange, err := largestPowerOfTwo(uMinimum)
+	if err != nil {
+		return leafRange{}, err
+	}
+	return leafRange{start: currentStart, end: currentStart + currentRange}, nil
+}
+
+// largestPowerOfTwo calculates the largest power of two
+// that is smaller than 'bound'
+func largestPowerOfTwo(bound uint) (int, error) {
+	if bound == 0 {
+		return 0, fmt.Errorf("bound cannot be equal to 0")
+	}
+	return 1 << (bits.Len(bound) - 1), nil
+}
+
 // ProtoToProof creates a proof from its proto representation.
 func ProtoToProof(protoProof pb.Proof) Proof {
 	if protoProof.Start == 0 && protoProof.End == 0 {
@@ -635,4 +717,18 @@ func popIfNonEmpty(s *[][]byte) []byte {
 		return first
 	}
 	return nil
+}
+
+func safeIntToUint(val int) (uint, error) {
+	if val < 0 {
+		return 0, fmt.Errorf("cannot convert a negative int %d to uint", val)
+	}
+	return uint(val), nil
+}
+
+func minInt(val1, val2 int) int {
+	if val1 > val2 {
+		return val2
+	}
+	return val1
 }

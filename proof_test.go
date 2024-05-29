@@ -3,6 +3,7 @@ package nmt
 import (
 	"bytes"
 	"crypto/sha256"
+	"fmt"
 	"hash"
 	"testing"
 
@@ -1121,6 +1122,720 @@ func Test_ProtoToProof(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			proof := ProtoToProof(tt.protoProof)
 			tt.verifyFn(t, proof, tt.protoProof)
+		})
+	}
+}
+func TestLargestPowerOfTwo(t *testing.T) {
+	tests := []struct {
+		bound       uint
+		expected    int
+		expectError bool
+	}{
+		{bound: 1, expected: 1},
+		{bound: 2, expected: 2},
+		{bound: 3, expected: 2},
+		{bound: 4, expected: 4},
+		{bound: 5, expected: 4},
+		{bound: 6, expected: 4},
+		{bound: 7, expected: 4},
+		{bound: 8, expected: 8},
+		{bound: 0, expectError: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(fmt.Sprintf("bound=%d", tt.bound), func(t *testing.T) {
+			result, err := largestPowerOfTwo(tt.bound)
+			if tt.expectError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tt.expected, result)
+			}
+		})
+	}
+}
+
+func TestSubtreeRootThresholdToLeafRange(t *testing.T) {
+	tests := []struct {
+		subtreeRootThreshold int
+		expected             int
+		expectErr            bool
+	}{
+		{0, 1, false},
+		{1, 2, false},
+		{-1, 0, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(fmt.Sprintf("subtreeRootThreshold=%d", tt.subtreeRootThreshold), func(t *testing.T) {
+			result, err := subtreeRootThresholdToLeafRange(tt.subtreeRootThreshold)
+			if tt.expectErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tt.expected, result)
+			}
+		})
+	}
+}
+
+func TestToLeafRanges(t *testing.T) {
+	tests := []struct {
+		proofStart, proofEnd, subtreeRootThreshold int
+		expectedRanges                             []leafRange
+		expectError                                bool
+	}{
+		{
+			proofStart:           0,
+			proofEnd:             8,
+			subtreeRootThreshold: 3,
+			expectedRanges: []leafRange{
+				{start: 0, end: 8},
+			},
+		},
+		{
+			proofStart:           0,
+			proofEnd:             9,
+			subtreeRootThreshold: 3,
+			expectedRanges: []leafRange{
+				{start: 0, end: 8},
+				{start: 8, end: 9},
+			},
+		},
+		{
+			proofStart:           0,
+			proofEnd:             16,
+			subtreeRootThreshold: 1,
+			expectedRanges: []leafRange{
+				{start: 0, end: 2},
+				{start: 2, end: 4},
+				{start: 4, end: 6},
+				{start: 6, end: 8},
+				{start: 8, end: 10},
+				{start: 10, end: 12},
+				{start: 12, end: 14},
+				{start: 14, end: 16},
+			},
+		},
+		{
+			proofStart:           0,
+			proofEnd:             16,
+			subtreeRootThreshold: 2,
+			expectedRanges: []leafRange{
+				{start: 0, end: 4},
+				{start: 4, end: 8},
+				{start: 8, end: 12},
+				{start: 12, end: 16},
+			},
+		},
+		{
+			proofStart:           0,
+			proofEnd:             16,
+			subtreeRootThreshold: 3,
+			expectedRanges: []leafRange{
+				{start: 0, end: 8},
+				{start: 8, end: 16},
+			},
+		},
+		{
+			proofStart:           0,
+			proofEnd:             16,
+			subtreeRootThreshold: 4,
+			expectedRanges: []leafRange{
+				{start: 0, end: 16},
+			},
+		},
+		{
+			proofStart:           4,
+			proofEnd:             12,
+			subtreeRootThreshold: 0,
+			expectedRanges: []leafRange{
+				{start: 4, end: 5},
+				{start: 5, end: 6},
+				{start: 6, end: 7},
+				{start: 7, end: 8},
+				{start: 8, end: 9},
+				{start: 9, end: 10},
+				{start: 10, end: 11},
+				{start: 11, end: 12},
+			},
+		},
+		{
+			proofStart:           4,
+			proofEnd:             12,
+			subtreeRootThreshold: 1,
+			expectedRanges: []leafRange{
+				{start: 4, end: 6},
+				{start: 6, end: 8},
+				{start: 8, end: 10},
+				{start: 10, end: 12},
+			},
+		},
+		{
+			proofStart:           4,
+			proofEnd:             12,
+			subtreeRootThreshold: 2,
+			expectedRanges: []leafRange{
+				{start: 4, end: 8},
+				{start: 8, end: 12},
+			},
+		},
+		{
+			proofStart:           8,
+			proofEnd:             10,
+			subtreeRootThreshold: 1,
+			expectedRanges: []leafRange{
+				{start: 8, end: 10},
+			},
+		},
+		{
+			proofStart:           -1,
+			proofEnd:             0,
+			subtreeRootThreshold: -1,
+			expectedRanges:       nil,
+			expectError:          true,
+		},
+		{
+			proofStart:           0,
+			proofEnd:             -1,
+			subtreeRootThreshold: -1,
+			expectedRanges:       nil,
+			expectError:          true,
+		},
+		{
+			proofStart:           0,
+			proofEnd:             0,
+			subtreeRootThreshold: 2,
+			expectedRanges:       nil,
+			expectError:          true,
+		},
+		{
+			proofStart:           0,
+			proofEnd:             0,
+			subtreeRootThreshold: -1,
+			expectedRanges:       nil,
+			expectError:          true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(fmt.Sprintf("proofStart=%d, proofEnd=%d, subtreeRootThreshold=%d", tt.proofStart, tt.proofEnd, tt.subtreeRootThreshold), func(t *testing.T) {
+			result, err := toLeafRanges(tt.proofStart, tt.proofEnd, tt.subtreeRootThreshold)
+			if tt.expectError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+				assert.True(t, compareRanges(result, tt.expectedRanges))
+			}
+		})
+	}
+}
+
+func compareRanges(a, b []leafRange) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
+func TestNextLeafRange(t *testing.T) {
+	tests := []struct {
+		currentStart, currentEnd, subtreeRootMaximumLeafRange int
+		expectedRange                                         leafRange
+		expectError                                           bool
+	}{
+		{
+			currentStart:                0,
+			currentEnd:                  8,
+			subtreeRootMaximumLeafRange: 4,
+			expectedRange:               leafRange{start: 0, end: 4},
+		},
+		{
+			currentStart:                4,
+			currentEnd:                  10,
+			subtreeRootMaximumLeafRange: 8,
+			expectedRange:               leafRange{start: 4, end: 8},
+		},
+		{
+			currentStart:                4,
+			currentEnd:                  20,
+			subtreeRootMaximumLeafRange: 16,
+			expectedRange:               leafRange{start: 4, end: 20},
+		},
+		{
+			currentStart:                4,
+			currentEnd:                  20,
+			subtreeRootMaximumLeafRange: 1,
+			expectedRange:               leafRange{start: 4, end: 5},
+		},
+		{
+			currentStart:                4,
+			currentEnd:                  20,
+			subtreeRootMaximumLeafRange: 2,
+			expectedRange:               leafRange{start: 4, end: 6},
+		},
+		{
+			currentStart:                4,
+			currentEnd:                  20,
+			subtreeRootMaximumLeafRange: 4,
+			expectedRange:               leafRange{start: 4, end: 8},
+		},
+		{
+			currentStart:                4,
+			currentEnd:                  20,
+			subtreeRootMaximumLeafRange: 8,
+			expectedRange:               leafRange{start: 4, end: 12},
+		},
+		{
+			currentStart:                0,
+			currentEnd:                  1,
+			subtreeRootMaximumLeafRange: 1,
+			expectedRange:               leafRange{start: 0, end: 1},
+		},
+		{
+			currentStart:                0,
+			currentEnd:                  16,
+			subtreeRootMaximumLeafRange: 16,
+			expectedRange:               leafRange{start: 0, end: 16},
+		},
+		{
+			currentStart:                0,
+			currentEnd:                  0,
+			subtreeRootMaximumLeafRange: 4,
+			expectError:                 true,
+		},
+		{
+			currentStart:                5,
+			currentEnd:                  2,
+			subtreeRootMaximumLeafRange: 4,
+			expectError:                 true,
+		},
+		{
+			currentStart:                5,
+			currentEnd:                  2,
+			subtreeRootMaximumLeafRange: 0,
+			expectError:                 true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(fmt.Sprintf("currentStart=%d, currentEnd=%d, subtreeRootMaximumLeafRange=%d", tt.currentStart, tt.currentEnd, tt.subtreeRootMaximumLeafRange), func(t *testing.T) {
+			result, err := nextLeafRange(tt.currentStart, tt.currentEnd, tt.subtreeRootMaximumLeafRange)
+			if tt.expectError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tt.expectedRange, result)
+			}
+		})
+	}
+}
+
+func TestSafeIntToUint(t *testing.T) {
+	tests := []struct {
+		input         int
+		expectedUint  uint
+		expectedError error
+	}{
+		{
+			input:         10,
+			expectedUint:  10,
+			expectedError: nil,
+		},
+		{
+			input:         0,
+			expectedUint:  0,
+			expectedError: nil,
+		},
+		{
+			input:         -5,
+			expectedUint:  0,
+			expectedError: fmt.Errorf("cannot convert a negative int %d to uint", -5),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(fmt.Sprintf("input=%d", tt.input), func(t *testing.T) {
+			result, err := safeIntToUint(tt.input)
+			if (err != nil) != (tt.expectedError != nil) || (err != nil && err.Error() != tt.expectedError.Error()) {
+				t.Errorf("expected error %v, got %v", tt.expectedError, err)
+			}
+			if result != tt.expectedUint {
+				t.Errorf("expected uint %v, got %v", tt.expectedUint, result)
+			}
+		})
+	}
+}
+
+func TestMinInt(t *testing.T) {
+	tests := []struct {
+		val1, val2 int
+		expected   int
+	}{
+		{
+			val1:     10,
+			val2:     20,
+			expected: 10,
+		},
+		{
+			val1:     -5,
+			val2:     6,
+			expected: -5,
+		},
+		{
+			val1:     5,
+			val2:     -6,
+			expected: -6,
+		},
+		{
+			val1:     -5,
+			val2:     -6,
+			expected: -6,
+		},
+		{
+			val1:     0,
+			val2:     0,
+			expected: 0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(fmt.Sprintf("val1=%d, val2=%d", tt.val1, tt.val2), func(t *testing.T) {
+			result := minInt(tt.val1, tt.val2)
+			if result != tt.expected {
+				t.Errorf("expected %d, got %d", tt.expected, result)
+			}
+		})
+	}
+}
+
+func TestVerifySubtreeRootInclusion(t *testing.T) {
+	tree := exampleNMT(1, true, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15)
+	root, err := tree.Root()
+	require.NoError(t, err)
+
+	nmthasher := tree.treeHasher
+	hasher := nmthasher.(*NmtHasher)
+
+	tests := []struct {
+		proof                Proof
+		subtreeRoots         [][]byte
+		subtreeRootThreshold int
+		root                 []byte
+		validProof           bool
+		expectError          bool
+	}{
+		{
+			proof: func() Proof {
+				p, err := tree.ProveRange(0, 8)
+				require.NoError(t, err)
+				return p
+			}(),
+			subtreeRoots: func() [][]byte {
+				subtreeRoot, err := tree.ComputeSubtreeRoot(0, 8)
+				require.NoError(t, err)
+				return [][]byte{subtreeRoot}
+			}(),
+			subtreeRootThreshold: 3,
+			root:                 root,
+			validProof:           true,
+		},
+		{
+			proof: func() Proof {
+				p, err := tree.ProveRange(0, 1)
+				require.NoError(t, err)
+				return p
+			}(),
+			subtreeRoots: func() [][]byte {
+				subtreeRoot, err := tree.ComputeSubtreeRoot(0, 1)
+				require.NoError(t, err)
+				return [][]byte{subtreeRoot}
+			}(),
+			subtreeRootThreshold: 3,
+			root:                 root,
+			validProof:           true,
+		},
+		{
+			proof: func() Proof {
+				p, err := tree.ProveRange(0, 2)
+				require.NoError(t, err)
+				return p
+			}(),
+			subtreeRoots: func() [][]byte {
+				subtreeRoot, err := tree.ComputeSubtreeRoot(0, 2)
+				require.NoError(t, err)
+				return [][]byte{subtreeRoot}
+			}(),
+			subtreeRootThreshold: 3,
+			root:                 root,
+			validProof:           true,
+		},
+		{
+			proof: func() Proof {
+				p, err := tree.ProveRange(2, 4)
+				require.NoError(t, err)
+				return p
+			}(),
+			subtreeRoots: func() [][]byte {
+				subtreeRoot, err := tree.ComputeSubtreeRoot(2, 4)
+				require.NoError(t, err)
+				return [][]byte{subtreeRoot}
+			}(),
+			subtreeRootThreshold: 3,
+			root:                 root,
+			validProof:           true,
+		},
+		{
+			proof: func() Proof {
+				p, err := tree.ProveRange(0, 8)
+				require.NoError(t, err)
+				return p
+			}(),
+			subtreeRoots: func() [][]byte {
+				subtreeRoot1, err := tree.ComputeSubtreeRoot(0, 4)
+				require.NoError(t, err)
+				subtreeRoot2, err := tree.ComputeSubtreeRoot(4, 8)
+				require.NoError(t, err)
+				return [][]byte{subtreeRoot1, subtreeRoot2}
+			}(),
+			subtreeRootThreshold: 2,
+			root:                 root,
+			validProof:           true,
+		},
+		{
+			proof: func() Proof {
+				p, err := tree.ProveRange(0, 8)
+				require.NoError(t, err)
+				return p
+			}(),
+			subtreeRoots: func() [][]byte {
+				subtreeRoot1, err := tree.ComputeSubtreeRoot(0, 2)
+				require.NoError(t, err)
+				subtreeRoot2, err := tree.ComputeSubtreeRoot(2, 4)
+				require.NoError(t, err)
+				subtreeRoot3, err := tree.ComputeSubtreeRoot(4, 6)
+				require.NoError(t, err)
+				subtreeRoot4, err := tree.ComputeSubtreeRoot(6, 8)
+				require.NoError(t, err)
+				return [][]byte{subtreeRoot1, subtreeRoot2, subtreeRoot3, subtreeRoot4}
+			}(),
+			subtreeRootThreshold: 1,
+			root:                 root,
+			validProof:           true,
+		},
+		{
+			proof: func() Proof {
+				p, err := tree.ProveRange(0, 8)
+				require.NoError(t, err)
+				return p
+			}(),
+			subtreeRoots: func() [][]byte {
+				subtreeRoot1, err := tree.ComputeSubtreeRoot(0, 1)
+				require.NoError(t, err)
+				subtreeRoot2, err := tree.ComputeSubtreeRoot(1, 2)
+				require.NoError(t, err)
+				subtreeRoot3, err := tree.ComputeSubtreeRoot(2, 3)
+				require.NoError(t, err)
+				subtreeRoot4, err := tree.ComputeSubtreeRoot(3, 4)
+				require.NoError(t, err)
+				subtreeRoot5, err := tree.ComputeSubtreeRoot(4, 5)
+				require.NoError(t, err)
+				subtreeRoot6, err := tree.ComputeSubtreeRoot(5, 6)
+				require.NoError(t, err)
+				subtreeRoot7, err := tree.ComputeSubtreeRoot(6, 7)
+				require.NoError(t, err)
+				subtreeRoot8, err := tree.ComputeSubtreeRoot(7, 8)
+				require.NoError(t, err)
+				return [][]byte{subtreeRoot1, subtreeRoot2, subtreeRoot3, subtreeRoot4, subtreeRoot5, subtreeRoot6, subtreeRoot7, subtreeRoot8}
+			}(),
+			subtreeRootThreshold: 0,
+			root:                 root,
+			validProof:           true,
+		},
+		{
+			proof: func() Proof {
+				p, err := tree.ProveRange(4, 8)
+				require.NoError(t, err)
+				return p
+			}(),
+			subtreeRoots: func() [][]byte {
+				subtreeRoot, err := tree.ComputeSubtreeRoot(4, 8)
+				require.NoError(t, err)
+				return [][]byte{subtreeRoot}
+			}(),
+			subtreeRootThreshold: 3,
+			root:                 root,
+			validProof:           true,
+		},
+		{
+			proof: func() Proof {
+				p, err := tree.ProveRange(12, 14)
+				require.NoError(t, err)
+				return p
+			}(),
+			subtreeRoots: func() [][]byte {
+				subtreeRoot, err := tree.ComputeSubtreeRoot(12, 14)
+				require.NoError(t, err)
+				return [][]byte{subtreeRoot}
+			}(),
+			subtreeRootThreshold: 3,
+			root:                 root,
+			validProof:           true,
+		},
+		{
+			proof: func() Proof {
+				p, err := tree.ProveRange(14, 16)
+				require.NoError(t, err)
+				return p
+			}(),
+			subtreeRoots: func() [][]byte {
+				subtreeRoot, err := tree.ComputeSubtreeRoot(14, 16)
+				require.NoError(t, err)
+				return [][]byte{subtreeRoot}
+			}(),
+			subtreeRootThreshold: 3,
+			root:                 root,
+			validProof:           true,
+		},
+		{
+			proof: func() Proof {
+				p, err := tree.ProveRange(14, 15)
+				require.NoError(t, err)
+				return p
+			}(),
+			subtreeRoots: func() [][]byte {
+				subtreeRoot, err := tree.ComputeSubtreeRoot(14, 15)
+				require.NoError(t, err)
+				return [][]byte{subtreeRoot}
+			}(),
+			subtreeRootThreshold: 3,
+			root:                 root,
+			validProof:           true,
+		},
+		{
+			proof: func() Proof {
+				p, err := tree.ProveRange(15, 16)
+				require.NoError(t, err)
+				return p
+			}(),
+			subtreeRoots: func() [][]byte {
+				subtreeRoot, err := tree.ComputeSubtreeRoot(15, 16)
+				require.NoError(t, err)
+				return [][]byte{subtreeRoot}
+			}(),
+			subtreeRootThreshold: 3,
+			root:                 root,
+			validProof:           true,
+		},
+		{
+			proof: func() Proof {
+				p, err := tree.ProveRange(15, 16)
+				require.NoError(t, err)
+				return p
+			}(),
+			subtreeRoots: func() [][]byte {
+				subtreeRoot, err := tree.ComputeSubtreeRoot(15, 16)
+				require.NoError(t, err)
+				return [][]byte{subtreeRoot}
+			}(),
+			subtreeRootThreshold: -3, // invalid subtree root threshold
+			root:                 root,
+			expectError:          true,
+		},
+		{
+			proof: func() Proof {
+				p, err := tree.ProveRange(15, 16)
+				require.NoError(t, err)
+				return p
+			}(),
+			subtreeRoots: func() [][]byte {
+				subtreeRoot, err := tree.ComputeSubtreeRoot(15, 16)
+				require.NoError(t, err)
+				return [][]byte{subtreeRoot, subtreeRoot} // invalid number of subtree roots
+			}(),
+			subtreeRootThreshold: 3,
+			root:                 root,
+			expectError:          true,
+		},
+		{
+			proof: func() Proof {
+				p, err := tree.ProveRange(15, 16)
+				require.NoError(t, err)
+				return p
+			}(),
+			subtreeRoots: func() [][]byte {
+				subtreeRoot, err := tree.ComputeSubtreeRoot(15, 16)
+				require.NoError(t, err)
+				return [][]byte{subtreeRoot}
+			}(),
+			subtreeRootThreshold: 3,
+			root:                 []byte("random root"), // invalid root format
+			expectError:          true,
+		},
+		{
+			proof: Proof{start: -1}, // invalid start
+			subtreeRoots: func() [][]byte {
+				subtreeRoot, err := tree.ComputeSubtreeRoot(15, 16)
+				require.NoError(t, err)
+				return [][]byte{subtreeRoot}
+			}(),
+			subtreeRootThreshold: 3,
+			root:                 root,
+			expectError:          true,
+		},
+		{
+			proof: Proof{end: 1, start: 2}, // invalid end
+			subtreeRoots: func() [][]byte {
+				subtreeRoot, err := tree.ComputeSubtreeRoot(15, 16)
+				require.NoError(t, err)
+				return [][]byte{subtreeRoot}
+			}(),
+			subtreeRootThreshold: 3,
+			root:                 root,
+			expectError:          true,
+		},
+		{
+			proof: Proof{
+				start: 0,
+				end:   4,
+				nodes: [][]byte{[]byte("invalid proof node")}, // invalid proof node
+			},
+			subtreeRoots: func() [][]byte {
+				subtreeRoot, err := tree.ComputeSubtreeRoot(15, 16)
+				require.NoError(t, err)
+				return [][]byte{subtreeRoot}
+			}(),
+			subtreeRootThreshold: 3,
+			root:                 root,
+			expectError:          true,
+		},
+		{
+			proof: func() Proof {
+				p, err := tree.ProveRange(15, 16)
+				require.NoError(t, err)
+				return p
+			}(),
+			subtreeRoots:         [][]byte{[]byte("invalid subtree root")}, // invalid subtree root
+			subtreeRootThreshold: 3,
+			root:                 root,
+			expectError:          true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(fmt.Sprintf("proofStart=%d, proofEnd=%d, subTreeRootThreshold=%d", tt.proof.Start(), tt.proof.End(), tt.subtreeRootThreshold), func(t *testing.T) {
+			result, err := tt.proof.VerifySubtreeRootInclusion(hasher, tt.subtreeRoots, tt.subtreeRootThreshold, tt.root)
+			if tt.expectError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tt.validProof, result)
+			}
 		})
 	}
 }

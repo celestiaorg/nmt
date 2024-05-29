@@ -644,6 +644,41 @@ func (n *NamespacedMerkleTree) updateMinMaxID(id namespace.ID) {
 	}
 }
 
+// ComputeSubtreeRoot takes a leaf range and returns the corresponding subtree root.
+// This method requires the merkle tree size to be a power of two.
+// Also, it requires the start and end range to correctly reference an inner node.
+func (n *NamespacedMerkleTree) ComputeSubtreeRoot(start, end int) ([]byte, error) {
+	// check if the tree's number of leaves is a power of two.
+	if !isPowerOfTwo(n.Size()) {
+		return nil, fmt.Errorf("the tree size %d needs to be a power of two", n.Size())
+	}
+	if start < 0 {
+		return nil, fmt.Errorf("start %d shouldn't be strictly negative", start)
+	}
+	if end <= start {
+		return nil, fmt.Errorf("end %d should be stricly bigger than start %d", end, start)
+	}
+	uStart, err := safeIntToUint(start)
+	if err != nil {
+		return nil, err
+	}
+	uEnd, err := safeIntToUint(end)
+	if err != nil {
+		return nil, err
+	}
+	// check if the provided range correctly references an inner node.
+	// calculates the ideal tree from the provided range, and verifies if it is the same as the range
+	if idealTreeRange := nextSubtreeSize(uint64(uStart), uint64(uEnd)); end-start != idealTreeRange {
+		return nil, fmt.Errorf("the provided range [%d, %d) does not construct a valid subtree root range", start, end)
+	}
+	return n.computeRoot(start, end)
+}
+
+// isPowerOfTwo checks if a number is a power of two
+func isPowerOfTwo(n int) bool {
+	return n > 0 && (n&(n-1)) == 0
+}
+
 type leafRange struct {
 	// start and end denote the indices of a leaf in the tree. start ranges from
 	// 0 up to the total number of leaves minus 1 end ranges from 1 up to the
