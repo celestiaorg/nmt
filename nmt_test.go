@@ -1179,25 +1179,29 @@ func TestForcedOutOfOrderNamespacedMerkleTree(t *testing.T) {
 func TestToCoordinate(t *testing.T) {
 	tests := []struct {
 		start, end, treeSize int
+		expectError          bool
 		expectedCoordinate   Coordinate
 	}{
-		{start: 0, end: 1, treeSize: 1, expectedCoordinate: Coordinate{depth: 0, position: 0}},
-		{start: 0, end: 2, treeSize: 2, expectedCoordinate: Coordinate{depth: 0, position: 0}},
-		{start: 0, end: 3, treeSize: 4, expectedCoordinate: Coordinate{depth: 1, position: 0}},
-		{start: 1, end: 2, treeSize: 4, expectedCoordinate: Coordinate{depth: 2, position: 1}},
-		{start: 0, end: 4, treeSize: 4, expectedCoordinate: Coordinate{depth: 0, position: 0}},
-		{start: 0, end: 3, treeSize: 5, expectedCoordinate: Coordinate{depth: 1, position: 0}},
-		{start: 0, end: 3, treeSize: 6, expectedCoordinate: Coordinate{depth: 1, position: 0}},
-		{start: 0, end: 3, treeSize: 7, expectedCoordinate: Coordinate{depth: 1, position: 0}},
-		{start: 2, end: 4, treeSize: 8, expectedCoordinate: Coordinate{depth: 2, position: 1}},
-		{start: 3, end: 4, treeSize: 8, expectedCoordinate: Coordinate{depth: 3, position: 3}},
-		{start: 0, end: 8, treeSize: 8, expectedCoordinate: Coordinate{depth: 0, position: 0}},
+		{start: 0, end: 1, treeSize: 1, expectError: false, expectedCoordinate: Coordinate{depth: 0, position: 0}},
+		{start: 0, end: 2, treeSize: 2, expectError: false, expectedCoordinate: Coordinate{depth: 0, position: 0}},
+		{start: 0, end: 3, treeSize: 4, expectError: false, expectedCoordinate: Coordinate{depth: 1, position: 0}},
+		{start: 1, end: 2, treeSize: 4, expectError: false, expectedCoordinate: Coordinate{depth: 2, position: 1}},
+		{start: 0, end: 4, treeSize: 4, expectError: false, expectedCoordinate: Coordinate{depth: 0, position: 0}},
+		{start: 0, end: 3, treeSize: 5, expectError: false, expectedCoordinate: Coordinate{depth: 1, position: 0}},
+		{start: 0, end: 3, treeSize: 6, expectError: false, expectedCoordinate: Coordinate{depth: 1, position: 0}},
+		{start: 0, end: 3, treeSize: 7, expectError: false, expectedCoordinate: Coordinate{depth: 1, position: 0}},
+		{start: 2, end: 4, treeSize: 8, expectError: false, expectedCoordinate: Coordinate{depth: 2, position: 1}},
+		{start: 3, end: 4, treeSize: 8, expectError: false, expectedCoordinate: Coordinate{depth: 3, position: 3}},
+		{start: 0, end: 8, treeSize: 8, expectError: false, expectedCoordinate: Coordinate{depth: 0, position: 0}},
+		// TODO add false cases and add all cases for 7 leaves tree
 	}
 
 	for _, test := range tests {
-		result := ToCoordinate(test.start, test.end, test.treeSize)
-		if result != test.expectedCoordinate {
-			t.Errorf("ToCoordinate(%d, %d, %d) = %+v, want %+v", test.start, test.end, test.treeSize, result, test.expectedCoordinate)
+		result, err := ToCoordinate(test.start, test.end, test.treeSize)
+		if test.expectError {
+			assert.Error(t, err)
+		} else {
+			assert.Equal(t, test.expectedCoordinate, result)
 		}
 	}
 }
@@ -1231,6 +1235,7 @@ func TestBuildRangeProofCoordinates(t *testing.T) {
 			expected:    []Coordinate{},
 			expectError: false,
 		},
+		// TODO add all cases for 7 leaves tree
 	}
 
 	for _, test := range tests {
