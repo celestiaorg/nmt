@@ -1125,6 +1125,7 @@ func Test_ProtoToProof(t *testing.T) {
 		})
 	}
 }
+
 func TestLargestPowerOfTwo(t *testing.T) {
 	tests := []struct {
 		bound       uint
