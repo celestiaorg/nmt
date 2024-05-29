@@ -116,3 +116,9 @@ Markdown files must conform to [GitHub Flavored Markdown](https://github.github.
 
 - [markdownlint](https://github.com/DavidAnson/markdownlint)
 - [Markdown Table Prettifier](https://github.com/darkriszty/MarkdownTablePrettify-VSCodeExt)
+
+## Audits
+
+Date      | Auditor                                       | Report
+----------|-----------------------------------------------|--------------------------------------------------------
+2023/8/18 | [Informal Systems](https://informal.systems/) | [informal-systems.pdf](docs/audit/informal-systems.pdf)
