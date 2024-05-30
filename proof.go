@@ -538,7 +538,7 @@ func (proof Proof) VerifySubtreeRootInclusion(nth *NmtHasher, subtreeRoots [][]b
 			return popIfNonEmpty(&proof.nodes), nil
 		}
 
-		if len(ranges) != 0 && ranges[0].start == start && ranges[0].end == end {
+		if len(ranges) != 0 && ranges[0].Start == start && ranges[0].End == end {
 			ranges = ranges[1:]
 			return popIfNonEmpty(&subtreeRoots), nil
 		}
@@ -626,8 +626,8 @@ func ToLeafRanges(proofStart, proofEnd, subtreeRootThreshold int) ([]LeafRange, 
 			return nil, err
 		}
 		ranges = append(ranges, nextRange)
-		currentStart = nextRange.end
-		currentLeafRange = currentLeafRange - nextRange.end + nextRange.start
+		currentStart = nextRange.End
+		currentLeafRange = currentLeafRange - nextRange.End + nextRange.Start
 	}
 	return ranges, nil
 }
@@ -659,7 +659,7 @@ func nextLeafRange(currentStart, currentEnd, subtreeRootMaximumLeafRange int) (L
 	if err != nil {
 		return LeafRange{}, err
 	}
-	return LeafRange{start: currentStart, end: currentStart + currentRange}, nil
+	return LeafRange{Start: currentStart, End: currentStart + currentRange}, nil
 }
 
 // largestPowerOfTwo calculates the largest power of two

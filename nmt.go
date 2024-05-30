@@ -436,7 +436,7 @@ func (n *NamespacedMerkleTree) foundInRange(nID namespace.ID) (found bool, start
 	// This is a faster version of this code snippet:
 	// https://github.com/celestiaorg/celestiaorg-prototype/blob/2aeca6f55ad389b9d68034a0a7038f80a8d2982e/simpleblock.go#L106-L117
 	foundRng, found := n.namespaceRanges[string(nID)]
-	return found, foundRng.start, foundRng.end
+	return found, foundRng.Start, foundRng.End
 }
 
 // NamespaceSize returns the underlying namespace size. Note that all namespaced
@@ -591,13 +591,13 @@ func (n *NamespacedMerkleTree) updateNamespaceRanges() {
 		lastRange, found := n.namespaceRanges[lastNsStr]
 		if !found {
 			n.namespaceRanges[lastNsStr] = LeafRange{
-				start: lastIndex,
-				end:   lastIndex + 1,
+				Start: lastIndex,
+				End:   lastIndex + 1,
 			}
 		} else {
 			n.namespaceRanges[lastNsStr] = LeafRange{
-				start: lastRange.start,
-				end:   lastRange.end + 1,
+				Start: lastRange.Start,
+				End:   lastRange.End + 1,
 			}
 		}
 	}
@@ -680,10 +680,11 @@ func isPowerOfTwo(n int) bool {
 }
 
 type LeafRange struct {
-	// start and end denote the indices of a leaf in the tree. start ranges from
-	// 0 up to the total number of leaves minus 1 end ranges from 1 up to the
-	// total number of leaves end is non-inclusive
-	start, end int
+	// Start and End denote the indices of a leaf in the tree.
+	// Start ranges from 0 up to the total number of leaves minus 1.
+	// End ranges from 1 up to the total number of leaves.
+	// End is non-inclusive
+	Start, End int
 }
 
 // MinNamespace extracts the minimum namespace ID from a given namespace hash,

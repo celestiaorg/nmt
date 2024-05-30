@@ -1191,7 +1191,7 @@ func TestToLeafRanges(t *testing.T) {
 			proofEnd:             8,
 			subtreeRootThreshold: 3,
 			expectedRanges: []LeafRange{
-				{start: 0, end: 8},
+				{Start: 0, End: 8},
 			},
 		},
 		{
@@ -1199,8 +1199,8 @@ func TestToLeafRanges(t *testing.T) {
 			proofEnd:             9,
 			subtreeRootThreshold: 3,
 			expectedRanges: []LeafRange{
-				{start: 0, end: 8},
-				{start: 8, end: 9},
+				{Start: 0, End: 8},
+				{Start: 8, End: 9},
 			},
 		},
 		{
@@ -1208,14 +1208,14 @@ func TestToLeafRanges(t *testing.T) {
 			proofEnd:             16,
 			subtreeRootThreshold: 1,
 			expectedRanges: []LeafRange{
-				{start: 0, end: 2},
-				{start: 2, end: 4},
-				{start: 4, end: 6},
-				{start: 6, end: 8},
-				{start: 8, end: 10},
-				{start: 10, end: 12},
-				{start: 12, end: 14},
-				{start: 14, end: 16},
+				{Start: 0, End: 2},
+				{Start: 2, End: 4},
+				{Start: 4, End: 6},
+				{Start: 6, End: 8},
+				{Start: 8, End: 10},
+				{Start: 10, End: 12},
+				{Start: 12, End: 14},
+				{Start: 14, End: 16},
 			},
 		},
 		{
@@ -1223,10 +1223,10 @@ func TestToLeafRanges(t *testing.T) {
 			proofEnd:             16,
 			subtreeRootThreshold: 2,
 			expectedRanges: []LeafRange{
-				{start: 0, end: 4},
-				{start: 4, end: 8},
-				{start: 8, end: 12},
-				{start: 12, end: 16},
+				{Start: 0, End: 4},
+				{Start: 4, End: 8},
+				{Start: 8, End: 12},
+				{Start: 12, End: 16},
 			},
 		},
 		{
@@ -1234,8 +1234,8 @@ func TestToLeafRanges(t *testing.T) {
 			proofEnd:             16,
 			subtreeRootThreshold: 3,
 			expectedRanges: []LeafRange{
-				{start: 0, end: 8},
-				{start: 8, end: 16},
+				{Start: 0, End: 8},
+				{Start: 8, End: 16},
 			},
 		},
 		{
@@ -1243,7 +1243,7 @@ func TestToLeafRanges(t *testing.T) {
 			proofEnd:             16,
 			subtreeRootThreshold: 4,
 			expectedRanges: []LeafRange{
-				{start: 0, end: 16},
+				{Start: 0, End: 16},
 			},
 		},
 		{
@@ -1251,14 +1251,14 @@ func TestToLeafRanges(t *testing.T) {
 			proofEnd:             12,
 			subtreeRootThreshold: 0,
 			expectedRanges: []LeafRange{
-				{start: 4, end: 5},
-				{start: 5, end: 6},
-				{start: 6, end: 7},
-				{start: 7, end: 8},
-				{start: 8, end: 9},
-				{start: 9, end: 10},
-				{start: 10, end: 11},
-				{start: 11, end: 12},
+				{Start: 4, End: 5},
+				{Start: 5, End: 6},
+				{Start: 6, End: 7},
+				{Start: 7, End: 8},
+				{Start: 8, End: 9},
+				{Start: 9, End: 10},
+				{Start: 10, End: 11},
+				{Start: 11, End: 12},
 			},
 		},
 		{
@@ -1266,10 +1266,10 @@ func TestToLeafRanges(t *testing.T) {
 			proofEnd:             12,
 			subtreeRootThreshold: 1,
 			expectedRanges: []LeafRange{
-				{start: 4, end: 6},
-				{start: 6, end: 8},
-				{start: 8, end: 10},
-				{start: 10, end: 12},
+				{Start: 4, End: 6},
+				{Start: 6, End: 8},
+				{Start: 8, End: 10},
+				{Start: 10, End: 12},
 			},
 		},
 		{
@@ -1277,8 +1277,8 @@ func TestToLeafRanges(t *testing.T) {
 			proofEnd:             12,
 			subtreeRootThreshold: 2,
 			expectedRanges: []LeafRange{
-				{start: 4, end: 8},
-				{start: 8, end: 12},
+				{Start: 4, End: 8},
+				{Start: 8, End: 12},
 			},
 		},
 		{
@@ -1286,7 +1286,7 @@ func TestToLeafRanges(t *testing.T) {
 			proofEnd:             10,
 			subtreeRootThreshold: 1,
 			expectedRanges: []LeafRange{
-				{start: 8, end: 10},
+				{Start: 8, End: 10},
 			},
 		},
 		{
@@ -1354,55 +1354,55 @@ func TestNextLeafRange(t *testing.T) {
 			currentStart:                0,
 			currentEnd:                  8,
 			subtreeRootMaximumLeafRange: 4,
-			expectedRange:               LeafRange{start: 0, end: 4},
+			expectedRange:               LeafRange{Start: 0, End: 4},
 		},
 		{
 			currentStart:                4,
 			currentEnd:                  10,
 			subtreeRootMaximumLeafRange: 8,
-			expectedRange:               LeafRange{start: 4, end: 8},
+			expectedRange:               LeafRange{Start: 4, End: 8},
 		},
 		{
 			currentStart:                4,
 			currentEnd:                  20,
 			subtreeRootMaximumLeafRange: 16,
-			expectedRange:               LeafRange{start: 4, end: 20},
+			expectedRange:               LeafRange{Start: 4, End: 20},
 		},
 		{
 			currentStart:                4,
 			currentEnd:                  20,
 			subtreeRootMaximumLeafRange: 1,
-			expectedRange:               LeafRange{start: 4, end: 5},
+			expectedRange:               LeafRange{Start: 4, End: 5},
 		},
 		{
 			currentStart:                4,
 			currentEnd:                  20,
 			subtreeRootMaximumLeafRange: 2,
-			expectedRange:               LeafRange{start: 4, end: 6},
+			expectedRange:               LeafRange{Start: 4, End: 6},
 		},
 		{
 			currentStart:                4,
 			currentEnd:                  20,
 			subtreeRootMaximumLeafRange: 4,
-			expectedRange:               LeafRange{start: 4, end: 8},
+			expectedRange:               LeafRange{Start: 4, End: 8},
 		},
 		{
 			currentStart:                4,
 			currentEnd:                  20,
 			subtreeRootMaximumLeafRange: 8,
-			expectedRange:               LeafRange{start: 4, end: 12},
+			expectedRange:               LeafRange{Start: 4, End: 12},
 		},
 		{
 			currentStart:                0,
 			currentEnd:                  1,
 			subtreeRootMaximumLeafRange: 1,
-			expectedRange:               LeafRange{start: 0, end: 1},
+			expectedRange:               LeafRange{Start: 0, End: 1},
 		},
 		{
 			currentStart:                0,
 			currentEnd:                  16,
 			subtreeRootMaximumLeafRange: 16,
-			expectedRange:               LeafRange{start: 0, end: 16},
+			expectedRange:               LeafRange{Start: 0, End: 16},
 		},
 		{
 			currentStart:                0,
