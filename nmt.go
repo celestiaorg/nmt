@@ -107,9 +107,9 @@ type NamespacedMerkleTree struct {
 
 	// namespaceRanges can be used to efficiently look up the range for an
 	// existing namespace without iterating through the leaves. The map key is
-	// the string representation of a namespace.ID  and the leafRange indicates
+	// the string representation of a namespace.ID  and the LeafRange indicates
 	// the range of the leaves matching that namespace ID in the tree
-	namespaceRanges map[string]leafRange
+	namespaceRanges map[string]LeafRange
 	// minNID is the minimum namespace ID of the leaves
 	minNID namespace.ID
 	// maxNID is the maximum namespace ID of the leaves
@@ -151,7 +151,7 @@ func New(h hash.Hash, setters ...Option) *NamespacedMerkleTree {
 		visit:           opts.NodeVisitor,
 		leaves:          make([][]byte, 0, opts.InitialCapacity),
 		leafHashes:      make([][]byte, 0, opts.InitialCapacity),
-		namespaceRanges: make(map[string]leafRange),
+		namespaceRanges: make(map[string]LeafRange),
 		minNID:          bytes.Repeat([]byte{0xFF}, int(opts.NamespaceIDSize)),
 		maxNID:          bytes.Repeat([]byte{0x00}, int(opts.NamespaceIDSize)),
 	}
@@ -590,12 +590,12 @@ func (n *NamespacedMerkleTree) updateNamespaceRanges() {
 		lastNsStr := string(lastPushed[:n.treeHasher.NamespaceSize()])
 		lastRange, found := n.namespaceRanges[lastNsStr]
 		if !found {
-			n.namespaceRanges[lastNsStr] = leafRange{
+			n.namespaceRanges[lastNsStr] = LeafRange{
 				start: lastIndex,
 				end:   lastIndex + 1,
 			}
 		} else {
-			n.namespaceRanges[lastNsStr] = leafRange{
+			n.namespaceRanges[lastNsStr] = LeafRange{
 				start: lastRange.start,
 				end:   lastRange.end + 1,
 			}
@@ -679,7 +679,7 @@ func isPowerOfTwo(n int) bool {
 	return n > 0 && (n&(n-1)) == 0
 }
 
-type leafRange struct {
+type LeafRange struct {
 	// start and end denote the indices of a leaf in the tree. start ranges from
 	// 0 up to the total number of leaves minus 1 end ranges from 1 up to the
 	// total number of leaves end is non-inclusive

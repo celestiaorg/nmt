@@ -475,7 +475,7 @@ func (proof Proof) VerifyInclusion(h hash.Hash, nid namespace.ID, leavesWithoutN
 // Using this method without making sure the above assumptions are respected
 // can return invalid results.
 // The subtreeRootThreshold is also defined in ADR-013.
-// More information on the algorithm used can be found in the toLeafRanges() method docs.
+// More information on the algorithm used can be found in the ToLeafRanges() method docs.
 func (proof Proof) VerifySubtreeRootInclusion(nth *NmtHasher, subtreeRoots [][]byte, subtreeRootThreshold int, root []byte) (bool, error) {
 	// check that the proof range is valid
 	if proof.Start() < 0 || proof.Start() >= proof.End() {
@@ -500,7 +500,7 @@ func (proof Proof) VerifySubtreeRootInclusion(nth *NmtHasher, subtreeRoots [][]b
 	}
 
 	// get the subtree roots leaf ranges
-	ranges, err := toLeafRanges(proof.Start(), proof.End(), subtreeRootThreshold)
+	ranges, err := ToLeafRanges(proof.Start(), proof.End(), subtreeRootThreshold)
 	if err != nil {
 		return false, err
 	}
@@ -584,7 +584,7 @@ func (proof Proof) VerifySubtreeRootInclusion(nth *NmtHasher, subtreeRoots [][]b
 	return bytes.Equal(rootHash, root), nil
 }
 
-// toLeafRanges returns the leaf ranges corresponding to the provided subtree roots.
+// ToLeafRanges returns the leaf ranges corresponding to the provided subtree roots.
 // It uses the subtree root threshold to calculate the maximum number of leaves a subtree root can
 // commit to.
 // The subtree root threshold is defined as per ADR-013:
@@ -603,7 +603,7 @@ func (proof Proof) VerifySubtreeRootInclusion(nth *NmtHasher, subtreeRoots [][]b
 //   - Go back to the loop condition.
 //
 // Note: This method is Celestia specific.
-func toLeafRanges(proofStart, proofEnd, subtreeRootThreshold int) ([]leafRange, error) {
+func ToLeafRanges(proofStart, proofEnd, subtreeRootThreshold int) ([]LeafRange, error) {
 	if proofStart < 0 {
 		return nil, fmt.Errorf("proof start %d shouldn't be strictly negative", proofStart)
 	}
@@ -615,7 +615,7 @@ func toLeafRanges(proofStart, proofEnd, subtreeRootThreshold int) ([]leafRange, 
 	}
 	currentStart := proofStart
 	currentLeafRange := proofEnd - proofStart
-	var ranges []leafRange
+	var ranges []LeafRange
 	maximumLeafRange, err := subtreeRootThresholdToLeafRange(subtreeRootThreshold)
 	if err != nil {
 		return nil, err
@@ -646,20 +646,20 @@ func subtreeRootThresholdToLeafRange(subtreeRootThreshold int) (int, error) {
 // nextLeafRange takes a proof start, proof end, and the maximum range a subtree
 // root can cover, and returns the corresponding subtree root range.
 // The subtreeRootMaximum LeafRange is calculated using subtreeRootThresholdToLeafRange() method.
-// Check toLeafRanges() for more information on the algorithm used.
+// Check ToLeafRanges() for more information on the algorithm used.
 // Note: This method is Celestia specific.
-func nextLeafRange(currentStart, currentEnd, subtreeRootMaximumLeafRange int) (leafRange, error) {
+func nextLeafRange(currentStart, currentEnd, subtreeRootMaximumLeafRange int) (LeafRange, error) {
 	currentLeafRange := currentEnd - currentStart
 	minimum := minInt(currentLeafRange, subtreeRootMaximumLeafRange)
 	uMinimum, err := safeIntToUint(minimum)
 	if err != nil {
-		return leafRange{}, fmt.Errorf("failed to convert subtree root range to Uint %w", err)
+		return LeafRange{}, fmt.Errorf("failed to convert subtree root range to Uint %w", err)
 	}
 	currentRange, err := largestPowerOfTwo(uMinimum)
 	if err != nil {
-		return leafRange{}, err
+		return LeafRange{}, err
 	}
-	return leafRange{start: currentStart, end: currentStart + currentRange}, nil
+	return LeafRange{start: currentStart, end: currentStart + currentRange}, nil
 }
 
 // largestPowerOfTwo calculates the largest power of two

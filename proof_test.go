@@ -1183,14 +1183,14 @@ func TestSubtreeRootThresholdToLeafRange(t *testing.T) {
 func TestToLeafRanges(t *testing.T) {
 	tests := []struct {
 		proofStart, proofEnd, subtreeRootThreshold int
-		expectedRanges                             []leafRange
+		expectedRanges                             []LeafRange
 		expectError                                bool
 	}{
 		{
 			proofStart:           0,
 			proofEnd:             8,
 			subtreeRootThreshold: 3,
-			expectedRanges: []leafRange{
+			expectedRanges: []LeafRange{
 				{start: 0, end: 8},
 			},
 		},
@@ -1198,7 +1198,7 @@ func TestToLeafRanges(t *testing.T) {
 			proofStart:           0,
 			proofEnd:             9,
 			subtreeRootThreshold: 3,
-			expectedRanges: []leafRange{
+			expectedRanges: []LeafRange{
 				{start: 0, end: 8},
 				{start: 8, end: 9},
 			},
@@ -1207,7 +1207,7 @@ func TestToLeafRanges(t *testing.T) {
 			proofStart:           0,
 			proofEnd:             16,
 			subtreeRootThreshold: 1,
-			expectedRanges: []leafRange{
+			expectedRanges: []LeafRange{
 				{start: 0, end: 2},
 				{start: 2, end: 4},
 				{start: 4, end: 6},
@@ -1222,7 +1222,7 @@ func TestToLeafRanges(t *testing.T) {
 			proofStart:           0,
 			proofEnd:             16,
 			subtreeRootThreshold: 2,
-			expectedRanges: []leafRange{
+			expectedRanges: []LeafRange{
 				{start: 0, end: 4},
 				{start: 4, end: 8},
 				{start: 8, end: 12},
@@ -1233,7 +1233,7 @@ func TestToLeafRanges(t *testing.T) {
 			proofStart:           0,
 			proofEnd:             16,
 			subtreeRootThreshold: 3,
-			expectedRanges: []leafRange{
+			expectedRanges: []LeafRange{
 				{start: 0, end: 8},
 				{start: 8, end: 16},
 			},
@@ -1242,7 +1242,7 @@ func TestToLeafRanges(t *testing.T) {
 			proofStart:           0,
 			proofEnd:             16,
 			subtreeRootThreshold: 4,
-			expectedRanges: []leafRange{
+			expectedRanges: []LeafRange{
 				{start: 0, end: 16},
 			},
 		},
@@ -1250,7 +1250,7 @@ func TestToLeafRanges(t *testing.T) {
 			proofStart:           4,
 			proofEnd:             12,
 			subtreeRootThreshold: 0,
-			expectedRanges: []leafRange{
+			expectedRanges: []LeafRange{
 				{start: 4, end: 5},
 				{start: 5, end: 6},
 				{start: 6, end: 7},
@@ -1265,7 +1265,7 @@ func TestToLeafRanges(t *testing.T) {
 			proofStart:           4,
 			proofEnd:             12,
 			subtreeRootThreshold: 1,
-			expectedRanges: []leafRange{
+			expectedRanges: []LeafRange{
 				{start: 4, end: 6},
 				{start: 6, end: 8},
 				{start: 8, end: 10},
@@ -1276,7 +1276,7 @@ func TestToLeafRanges(t *testing.T) {
 			proofStart:           4,
 			proofEnd:             12,
 			subtreeRootThreshold: 2,
-			expectedRanges: []leafRange{
+			expectedRanges: []LeafRange{
 				{start: 4, end: 8},
 				{start: 8, end: 12},
 			},
@@ -1285,7 +1285,7 @@ func TestToLeafRanges(t *testing.T) {
 			proofStart:           8,
 			proofEnd:             10,
 			subtreeRootThreshold: 1,
-			expectedRanges: []leafRange{
+			expectedRanges: []LeafRange{
 				{start: 8, end: 10},
 			},
 		},
@@ -1321,7 +1321,7 @@ func TestToLeafRanges(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(fmt.Sprintf("proofStart=%d, proofEnd=%d, subtreeRootThreshold=%d", tt.proofStart, tt.proofEnd, tt.subtreeRootThreshold), func(t *testing.T) {
-			result, err := toLeafRanges(tt.proofStart, tt.proofEnd, tt.subtreeRootThreshold)
+			result, err := ToLeafRanges(tt.proofStart, tt.proofEnd, tt.subtreeRootThreshold)
 			if tt.expectError {
 				assert.Error(t, err)
 			} else {
@@ -1332,7 +1332,7 @@ func TestToLeafRanges(t *testing.T) {
 	}
 }
 
-func compareRanges(a, b []leafRange) bool {
+func compareRanges(a, b []LeafRange) bool {
 	if len(a) != len(b) {
 		return false
 	}
@@ -1347,62 +1347,62 @@ func compareRanges(a, b []leafRange) bool {
 func TestNextLeafRange(t *testing.T) {
 	tests := []struct {
 		currentStart, currentEnd, subtreeRootMaximumLeafRange int
-		expectedRange                                         leafRange
+		expectedRange                                         LeafRange
 		expectError                                           bool
 	}{
 		{
 			currentStart:                0,
 			currentEnd:                  8,
 			subtreeRootMaximumLeafRange: 4,
-			expectedRange:               leafRange{start: 0, end: 4},
+			expectedRange:               LeafRange{start: 0, end: 4},
 		},
 		{
 			currentStart:                4,
 			currentEnd:                  10,
 			subtreeRootMaximumLeafRange: 8,
-			expectedRange:               leafRange{start: 4, end: 8},
+			expectedRange:               LeafRange{start: 4, end: 8},
 		},
 		{
 			currentStart:                4,
 			currentEnd:                  20,
 			subtreeRootMaximumLeafRange: 16,
-			expectedRange:               leafRange{start: 4, end: 20},
+			expectedRange:               LeafRange{start: 4, end: 20},
 		},
 		{
 			currentStart:                4,
 			currentEnd:                  20,
 			subtreeRootMaximumLeafRange: 1,
-			expectedRange:               leafRange{start: 4, end: 5},
+			expectedRange:               LeafRange{start: 4, end: 5},
 		},
 		{
 			currentStart:                4,
 			currentEnd:                  20,
 			subtreeRootMaximumLeafRange: 2,
-			expectedRange:               leafRange{start: 4, end: 6},
+			expectedRange:               LeafRange{start: 4, end: 6},
 		},
 		{
 			currentStart:                4,
 			currentEnd:                  20,
 			subtreeRootMaximumLeafRange: 4,
-			expectedRange:               leafRange{start: 4, end: 8},
+			expectedRange:               LeafRange{start: 4, end: 8},
 		},
 		{
 			currentStart:                4,
 			currentEnd:                  20,
 			subtreeRootMaximumLeafRange: 8,
-			expectedRange:               leafRange{start: 4, end: 12},
+			expectedRange:               LeafRange{start: 4, end: 12},
 		},
 		{
 			currentStart:                0,
 			currentEnd:                  1,
 			subtreeRootMaximumLeafRange: 1,
-			expectedRange:               leafRange{start: 0, end: 1},
+			expectedRange:               LeafRange{start: 0, end: 1},
 		},
 		{
 			currentStart:                0,
 			currentEnd:                  16,
 			subtreeRootMaximumLeafRange: 16,
-			expectedRange:               leafRange{start: 0, end: 16},
+			expectedRange:               LeafRange{start: 0, end: 16},
 		},
 		{
 			currentStart:                0,
