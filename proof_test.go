@@ -1165,7 +1165,7 @@ func TestToLeafRanges(t *testing.T) {
 		{
 			proofStart:           0,
 			proofEnd:             8,
-			subtreeRootThreshold: 3,
+			subtreeRootThreshold: 8,
 			expectedRanges: []LeafRange{
 				{Start: 0, End: 8},
 			},
@@ -1173,7 +1173,7 @@ func TestToLeafRanges(t *testing.T) {
 		{
 			proofStart:           0,
 			proofEnd:             9,
-			subtreeRootThreshold: 3,
+			subtreeRootThreshold: 8,
 			expectedRanges: []LeafRange{
 				{Start: 0, End: 8},
 				{Start: 8, End: 9},
@@ -1182,7 +1182,7 @@ func TestToLeafRanges(t *testing.T) {
 		{
 			proofStart:           0,
 			proofEnd:             16,
-			subtreeRootThreshold: 1,
+			subtreeRootThreshold: 2,
 			expectedRanges: []LeafRange{
 				{Start: 0, End: 2},
 				{Start: 2, End: 4},
@@ -1197,7 +1197,7 @@ func TestToLeafRanges(t *testing.T) {
 		{
 			proofStart:           0,
 			proofEnd:             16,
-			subtreeRootThreshold: 2,
+			subtreeRootThreshold: 4,
 			expectedRanges: []LeafRange{
 				{Start: 0, End: 4},
 				{Start: 4, End: 8},
@@ -1208,7 +1208,7 @@ func TestToLeafRanges(t *testing.T) {
 		{
 			proofStart:           0,
 			proofEnd:             16,
-			subtreeRootThreshold: 3,
+			subtreeRootThreshold: 8,
 			expectedRanges: []LeafRange{
 				{Start: 0, End: 8},
 				{Start: 8, End: 16},
@@ -1217,7 +1217,7 @@ func TestToLeafRanges(t *testing.T) {
 		{
 			proofStart:           0,
 			proofEnd:             16,
-			subtreeRootThreshold: 4,
+			subtreeRootThreshold: 16,
 			expectedRanges: []LeafRange{
 				{Start: 0, End: 16},
 			},
@@ -1225,7 +1225,7 @@ func TestToLeafRanges(t *testing.T) {
 		{
 			proofStart:           4,
 			proofEnd:             12,
-			subtreeRootThreshold: 0,
+			subtreeRootThreshold: 1,
 			expectedRanges: []LeafRange{
 				{Start: 4, End: 5},
 				{Start: 5, End: 6},
@@ -1240,7 +1240,7 @@ func TestToLeafRanges(t *testing.T) {
 		{
 			proofStart:           4,
 			proofEnd:             12,
-			subtreeRootThreshold: 1,
+			subtreeRootThreshold: 2,
 			expectedRanges: []LeafRange{
 				{Start: 4, End: 6},
 				{Start: 6, End: 8},
@@ -1251,7 +1251,7 @@ func TestToLeafRanges(t *testing.T) {
 		{
 			proofStart:           4,
 			proofEnd:             12,
-			subtreeRootThreshold: 2,
+			subtreeRootThreshold: 4,
 			expectedRanges: []LeafRange{
 				{Start: 4, End: 8},
 				{Start: 8, End: 12},
@@ -1260,7 +1260,7 @@ func TestToLeafRanges(t *testing.T) {
 		{
 			proofStart:           8,
 			proofEnd:             10,
-			subtreeRootThreshold: 1,
+			subtreeRootThreshold: 2,
 			expectedRanges: []LeafRange{
 				{Start: 8, End: 10},
 			},
@@ -1518,7 +1518,7 @@ func TestVerifySubtreeRootInclusion(t *testing.T) {
 				require.NoError(t, err)
 				return [][]byte{subtreeRoot}
 			}(),
-			subtreeRootThreshold: 3,
+			subtreeRootThreshold: 8,
 			root:                 root,
 			validProof:           true,
 		},
@@ -1533,7 +1533,7 @@ func TestVerifySubtreeRootInclusion(t *testing.T) {
 				require.NoError(t, err)
 				return [][]byte{subtreeRoot}
 			}(),
-			subtreeRootThreshold: 3,
+			subtreeRootThreshold: 8,
 			root:                 root,
 			validProof:           true,
 		},
@@ -1548,7 +1548,7 @@ func TestVerifySubtreeRootInclusion(t *testing.T) {
 				require.NoError(t, err)
 				return [][]byte{subtreeRoot}
 			}(),
-			subtreeRootThreshold: 3,
+			subtreeRootThreshold: 8,
 			root:                 root,
 			validProof:           true,
 		},
@@ -1563,7 +1563,7 @@ func TestVerifySubtreeRootInclusion(t *testing.T) {
 				require.NoError(t, err)
 				return [][]byte{subtreeRoot}
 			}(),
-			subtreeRootThreshold: 3,
+			subtreeRootThreshold: 8,
 			root:                 root,
 			validProof:           true,
 		},
@@ -1580,7 +1580,7 @@ func TestVerifySubtreeRootInclusion(t *testing.T) {
 				require.NoError(t, err)
 				return [][]byte{subtreeRoot1, subtreeRoot2}
 			}(),
-			subtreeRootThreshold: 2,
+			subtreeRootThreshold: 4,
 			root:                 root,
 			validProof:           true,
 		},
@@ -1601,7 +1601,7 @@ func TestVerifySubtreeRootInclusion(t *testing.T) {
 				require.NoError(t, err)
 				return [][]byte{subtreeRoot1, subtreeRoot2, subtreeRoot3, subtreeRoot4}
 			}(),
-			subtreeRootThreshold: 1,
+			subtreeRootThreshold: 2,
 			root:                 root,
 			validProof:           true,
 		},
@@ -1630,7 +1630,7 @@ func TestVerifySubtreeRootInclusion(t *testing.T) {
 				require.NoError(t, err)
 				return [][]byte{subtreeRoot1, subtreeRoot2, subtreeRoot3, subtreeRoot4, subtreeRoot5, subtreeRoot6, subtreeRoot7, subtreeRoot8}
 			}(),
-			subtreeRootThreshold: 0,
+			subtreeRootThreshold: 1,
 			root:                 root,
 			validProof:           true,
 		},
@@ -1645,7 +1645,7 @@ func TestVerifySubtreeRootInclusion(t *testing.T) {
 				require.NoError(t, err)
 				return [][]byte{subtreeRoot}
 			}(),
-			subtreeRootThreshold: 3,
+			subtreeRootThreshold: 8,
 			root:                 root,
 			validProof:           true,
 		},
@@ -1660,7 +1660,7 @@ func TestVerifySubtreeRootInclusion(t *testing.T) {
 				require.NoError(t, err)
 				return [][]byte{subtreeRoot}
 			}(),
-			subtreeRootThreshold: 3,
+			subtreeRootThreshold: 8,
 			root:                 root,
 			validProof:           true,
 		},
@@ -1675,7 +1675,7 @@ func TestVerifySubtreeRootInclusion(t *testing.T) {
 				require.NoError(t, err)
 				return [][]byte{subtreeRoot}
 			}(),
-			subtreeRootThreshold: 3,
+			subtreeRootThreshold: 8,
 			root:                 root,
 			validProof:           true,
 		},
@@ -1690,7 +1690,7 @@ func TestVerifySubtreeRootInclusion(t *testing.T) {
 				require.NoError(t, err)
 				return [][]byte{subtreeRoot}
 			}(),
-			subtreeRootThreshold: 3,
+			subtreeRootThreshold: 8,
 			root:                 root,
 			validProof:           true,
 		},
@@ -1705,7 +1705,7 @@ func TestVerifySubtreeRootInclusion(t *testing.T) {
 				require.NoError(t, err)
 				return [][]byte{subtreeRoot}
 			}(),
-			subtreeRootThreshold: 3,
+			subtreeRootThreshold: 8,
 			root:                 root,
 			validProof:           true,
 		},
@@ -1735,7 +1735,7 @@ func TestVerifySubtreeRootInclusion(t *testing.T) {
 				require.NoError(t, err)
 				return [][]byte{subtreeRoot, subtreeRoot} // invalid number of subtree roots
 			}(),
-			subtreeRootThreshold: 3,
+			subtreeRootThreshold: 8,
 			root:                 root,
 			expectError:          true,
 		},
@@ -1750,7 +1750,7 @@ func TestVerifySubtreeRootInclusion(t *testing.T) {
 				require.NoError(t, err)
 				return [][]byte{subtreeRoot}
 			}(),
-			subtreeRootThreshold: 3,
+			subtreeRootThreshold: 8,
 			root:                 []byte("random root"), // invalid root format
 			expectError:          true,
 		},
@@ -1761,7 +1761,7 @@ func TestVerifySubtreeRootInclusion(t *testing.T) {
 				require.NoError(t, err)
 				return [][]byte{subtreeRoot}
 			}(),
-			subtreeRootThreshold: 3,
+			subtreeRootThreshold: 8,
 			root:                 root,
 			expectError:          true,
 		},
@@ -1772,7 +1772,7 @@ func TestVerifySubtreeRootInclusion(t *testing.T) {
 				require.NoError(t, err)
 				return [][]byte{subtreeRoot}
 			}(),
-			subtreeRootThreshold: 3,
+			subtreeRootThreshold: 8,
 			root:                 root,
 			expectError:          true,
 		},
@@ -1787,7 +1787,7 @@ func TestVerifySubtreeRootInclusion(t *testing.T) {
 				require.NoError(t, err)
 				return [][]byte{subtreeRoot}
 			}(),
-			subtreeRootThreshold: 3,
+			subtreeRootThreshold: 8,
 			root:                 root,
 			expectError:          true,
 		},
@@ -1798,7 +1798,7 @@ func TestVerifySubtreeRootInclusion(t *testing.T) {
 				return p
 			}(),
 			subtreeRoots:         [][]byte{[]byte("invalid subtree root")}, // invalid subtree root
-			subtreeRootThreshold: 3,
+			subtreeRootThreshold: 8,
 			root:                 root,
 			expectError:          true,
 		},
