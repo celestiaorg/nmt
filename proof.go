@@ -610,16 +610,13 @@ func ToLeafRanges(proofStart, proofEnd, subtreeRootThreshold int) ([]LeafRange, 
 	if proofEnd <= proofStart {
 		return nil, fmt.Errorf("proof end %d should be stricly bigger than proof start %d", proofEnd, proofStart)
 	}
-	if subtreeRootThreshold < 0 {
+	if subtreeRootThreshold <= 0 {
 		return nil, fmt.Errorf("subtree root threshold cannot be negative %d", subtreeRootThreshold)
 	}
 	currentStart := proofStart
 	currentLeafRange := proofEnd - proofStart
 	var ranges []LeafRange
-	maximumLeafRange, err := subtreeRootThresholdToLeafRange(subtreeRootThreshold)
-	if err != nil {
-		return nil, err
-	}
+	maximumLeafRange := subtreeRootThreshold
 	for currentLeafRange != 0 {
 		nextRange, err := nextLeafRange(currentStart, proofEnd, maximumLeafRange)
 		if err != nil {
@@ -632,25 +629,13 @@ func ToLeafRanges(proofStart, proofEnd, subtreeRootThreshold int) ([]LeafRange, 
 	return ranges, nil
 }
 
-// subtreeRootThresholdToLeafRange calculates the maximum number of leaves a subtree root
-// can commit to.
-// The subtree root threshold is defined as per ADR-013:
-// https://github.com/celestiaorg/celestia-app/blob/main/docs/architecture/adr-013-non-interactive-default-rules-for-zero-padding.md
-func subtreeRootThresholdToLeafRange(subtreeRootThreshold int) (int, error) {
-	if subtreeRootThreshold < 0 {
-		return 0, fmt.Errorf("subtree root threshold cannot be negative %d", subtreeRootThreshold)
-	}
-	return 1 << subtreeRootThreshold, nil
-}
-
 // nextLeafRange takes a proof start, proof end, and the maximum range a subtree
 // root can cover, and returns the corresponding subtree root range.
-// The subtreeRootMaximum LeafRange is calculated using subtreeRootThresholdToLeafRange() method.
 // Check ToLeafRanges() for more information on the algorithm used.
 // Note: This method is Celestia specific.
-func nextLeafRange(currentStart, currentEnd, subtreeRootMaximumLeafRange int) (LeafRange, error) {
+func nextLeafRange(currentStart, currentEnd, subtreeRootThreshold int) (LeafRange, error) {
 	currentLeafRange := currentEnd - currentStart
-	minimum := minInt(currentLeafRange, subtreeRootMaximumLeafRange)
+	minimum := minInt(currentLeafRange, subtreeRootThreshold)
 	uMinimum, err := safeIntToUint(minimum)
 	if err != nil {
 		return LeafRange{}, fmt.Errorf("failed to convert subtree root range to Uint %w", err)

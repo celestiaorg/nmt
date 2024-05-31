@@ -1156,30 +1156,6 @@ func TestLargestPowerOfTwo(t *testing.T) {
 	}
 }
 
-func TestSubtreeRootThresholdToLeafRange(t *testing.T) {
-	tests := []struct {
-		subtreeRootThreshold int
-		expected             int
-		expectErr            bool
-	}{
-		{0, 1, false},
-		{1, 2, false},
-		{-1, 0, true},
-	}
-
-	for _, tt := range tests {
-		t.Run(fmt.Sprintf("subtreeRootThreshold=%d", tt.subtreeRootThreshold), func(t *testing.T) {
-			result, err := subtreeRootThresholdToLeafRange(tt.subtreeRootThreshold)
-			if tt.expectErr {
-				assert.Error(t, err)
-			} else {
-				assert.NoError(t, err)
-				assert.Equal(t, tt.expected, result)
-			}
-		})
-	}
-}
-
 func TestToLeafRanges(t *testing.T) {
 	tests := []struct {
 		proofStart, proofEnd, subtreeRootThreshold int
