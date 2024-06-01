@@ -645,13 +645,8 @@ func (n *NamespacedMerkleTree) updateMinMaxID(id namespace.ID) {
 }
 
 // ComputeSubtreeRoot takes a leaf range and returns the corresponding subtree root.
-// This method requires the merkle tree size to be a power of two.
 // Also, it requires the start and end range to correctly reference an inner node.
 func (n *NamespacedMerkleTree) ComputeSubtreeRoot(start, end int) ([]byte, error) {
-	// check if the tree's number of leaves is a power of two.
-	if !isPowerOfTwo(n.Size()) {
-		return nil, fmt.Errorf("the tree size %d needs to be a power of two", n.Size())
-	}
 	if start < 0 {
 		return nil, fmt.Errorf("start %d shouldn't be strictly negative", start)
 	}
