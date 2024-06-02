@@ -1190,33 +1190,6 @@ func TestForcedOutOfOrderNamespacedMerkleTree(t *testing.T) {
 	}
 }
 
-func TestIsPowerOfTwo(t *testing.T) {
-	tests := []struct {
-		input    int
-		expected bool
-	}{
-		{input: 0, expected: false},
-		{input: 1, expected: true},
-		{input: 2, expected: true},
-		{input: 3, expected: false},
-		{input: 4, expected: true},
-		{input: 5, expected: false},
-		{input: 8, expected: true},
-		{input: 16, expected: true},
-		{input: -1, expected: false},
-		{input: -2, expected: false},
-	}
-
-	for _, tt := range tests {
-		t.Run(fmt.Sprintf("input=%d", tt.input), func(t *testing.T) {
-			result := isPowerOfTwo(tt.input)
-			if result != tt.expected {
-				t.Errorf("expected %v, got %v", tt.expected, result)
-			}
-		})
-	}
-}
-
 func TestComputeSubtreeRoot(t *testing.T) {
 	n := exampleNMT2(1, true, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15)
 	tests := []struct {

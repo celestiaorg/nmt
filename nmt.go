@@ -669,11 +669,6 @@ func (n *NamespacedMerkleTree) ComputeSubtreeRoot(start, end int) ([]byte, error
 	return n.computeRoot(start, end)
 }
 
-// isPowerOfTwo checks if a number is a power of two
-func isPowerOfTwo(n int) bool {
-	return n > 0 && (n&(n-1)) == 0
-}
-
 type LeafRange struct {
 	// Start and End denote the indices of a leaf in the tree.
 	// Start ranges from 0 up to the total number of leaves minus 1.
