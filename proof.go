@@ -467,13 +467,11 @@ func (proof Proof) VerifyInclusion(h hash.Hash, nid namespace.ID, leavesWithoutN
 
 // VerifySubtreeRootInclusion verifies that a set of subtree roots is included in
 // an NMT.
-// Note: This method is Celestia specific.
-// It makes the following assumptions:
+// Warning: This method is Celestia specific! Using it without verifying
+// the following assumptions, can return unexpected errors, false positive/negatives:
 // - The subtree roots are created according to the ADR-013
 // https://github.com/celestiaorg/celestia-app/blob/main/docs/architecture/adr-013-non-interactive-default-rules-for-zero-padding.md
 // - The tree's number of leaves is a power of two
-// Using this method without making sure the above assumptions are respected
-// can return invalid results.
 // The subtreeWidth is also defined in ADR-013.
 // More information on the algorithm used can be found in the ToLeafRanges() method docs.
 func (proof Proof) VerifySubtreeRootInclusion(nth *NmtHasher, subtreeRoots [][]byte, subtreeWidth int, root []byte) (bool, error) {
