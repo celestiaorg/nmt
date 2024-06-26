@@ -587,6 +587,7 @@ func (proof Proof) VerifySubtreeRootInclusion(nth *NmtHasher, subtreeRoots [][]b
 }
 
 // ToLeafRanges returns the leaf ranges corresponding to the provided subtree roots.
+// The proof range defined by proofStart and proofEnd is end exclusive.
 // It uses the subtree root width to calculate the maximum number of leaves a subtree root can
 // commit to.
 // The subtree root width is defined as per ADR-013:
