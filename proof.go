@@ -506,7 +506,7 @@ func (proof Proof) VerifySubtreeRootInclusion(nth *NmtHasher, subtreeRoots [][]b
 	// check whether the number of ranges matches the number of subtree roots.
 	// if not, make an early return.
 	if len(subtreeRoots) != len(ranges) {
-		return false, fmt.Errorf("number of subtree roots %d is different than the number of leaf ranges %d", len(subtreeRoots), len(ranges))
+		return false, fmt.Errorf("number of subtree roots %d is different than the number of the expected leaf ranges %d", len(subtreeRoots), len(ranges))
 	}
 
 	var computeRoot func(start, end int) ([]byte, error)

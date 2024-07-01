@@ -646,6 +646,7 @@ func (n *NamespacedMerkleTree) updateMinMaxID(id namespace.ID) {
 
 // ComputeSubtreeRoot takes a leaf range and returns the corresponding subtree root.
 // Also, it requires the start and end range to correctly reference an inner node.
+// The provided range, defined by start and end, is end-exclusive.
 func (n *NamespacedMerkleTree) ComputeSubtreeRoot(start, end int) ([]byte, error) {
 	if start < 0 {
 		return nil, fmt.Errorf("start %d shouldn't be strictly negative", start)
