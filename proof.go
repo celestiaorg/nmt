@@ -637,6 +637,8 @@ func ToLeafRanges(proofStart, proofEnd, subtreeWidth int) ([]LeafRange, error) {
 // Check ToLeafRanges() for more information on the algorithm used.
 // The subtreeWidth is calculated using SubTreeWidth() method
 // in celestiaorg/go-square/inclusion package.
+// The subtreeWidth is a power of two.
+// Also, the LeafRange values, i.e., the range size, are all powers of two.
 // Note: This method is Celestia specific.
 func nextLeafRange(currentStart, currentEnd, subtreeWidth int) (LeafRange, error) {
 	currentLeafRange := currentEnd - currentStart
