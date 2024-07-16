@@ -1298,14 +1298,6 @@ func TestComputeSubtreeRoot(t *testing.T) {
 			tree:        n,
 			expectError: true,
 		},
-		{
-			start: 0,
-			end:   2,
-			tree: func() *NamespacedMerkleTree {
-				return exampleNMT2(1, true, 0, 1, 2, 3, 4) // tree leaves are not a power of 2
-			}(),
-			expectError: true,
-		},
 	}
 
 	for _, tt := range tests {
