@@ -512,27 +512,6 @@ func (proof Proof) VerifySubtreeRootInclusion(nth *NmtHasher, subtreeRoots [][]b
 	var computeRoot func(start, end int) ([]byte, error)
 	// computeRoot can return error iff the HashNode function fails while calculating the root
 	computeRoot = func(start, end int) ([]byte, error) {
-		// reached a leaf
-		if end-start == 1 {
-			// if the leaf index falls within the proof range, pop and return a
-			// leaf
-			if proof.Start() <= start && start < proof.End() {
-				// this check should always be the case.
-				// however, it is added to avoid nil pointer exceptions
-				if len(ranges) != 0 {
-					// advance the list of ranges
-					ranges = ranges[1:]
-				}
-				// advance leafHashes
-				return popIfNonEmpty(&subtreeRoots), nil
-			}
-
-			// if the leaf index is outside the proof range, pop and return a
-			// proof node (which in this case is a leaf) if present, else return
-			// nil because leaf doesn't exist
-			return popIfNonEmpty(&proof.nodes), nil
-		}
-
 		// if the current range does not overlap with the proof range, pop and
 		// return a proof node if present, else return nil because subtree
 		// doesn't exist
@@ -540,7 +519,11 @@ func (proof Proof) VerifySubtreeRootInclusion(nth *NmtHasher, subtreeRoots [][]b
 			return popIfNonEmpty(&proof.nodes), nil
 		}
 
-		if len(ranges) != 0 && ranges[0].Start == start && ranges[0].End == end {
+		if len(ranges) == 0 {
+			return nil, fmt.Errorf(fmt.Sprintf("expected to have a subtree root for range [%d, %d)", start, end))
+		}
+
+		if ranges[0].Start == start && ranges[0].End == end {
 			ranges = ranges[1:]
 			return popIfNonEmpty(&subtreeRoots), nil
 		}

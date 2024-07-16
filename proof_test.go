@@ -1798,6 +1798,22 @@ func TestVerifySubtreeRootInclusion(t *testing.T) {
 			root:         root,
 			expectError:  true,
 		},
+
+		{
+			proof: func() Proof {
+				p, err := tree.ProveRange(0, 8)
+				require.NoError(t, err)
+				return p
+			}(),
+			subtreeRoots: func() [][]byte {
+				subtreeRoot1, err := tree.ComputeSubtreeRoot(0, 4)
+				require.NoError(t, err)
+				return [][]byte{subtreeRoot1} // will error because it requires the subtree root of [4,8) too
+			}(),
+			subtreeWidth: 4,
+			root:         root,
+			expectError:  true,
+		},
 	}
 
 	for _, tt := range tests {
