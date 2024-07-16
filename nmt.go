@@ -107,9 +107,9 @@ type NamespacedMerkleTree struct {
 
 	// namespaceRanges can be used to efficiently look up the range for an
 	// existing namespace without iterating through the leaves. The map key is
-	// the string representation of a namespace.ID  and the leafRange indicates
+	// the string representation of a namespace.ID  and the LeafRange indicates
 	// the range of the leaves matching that namespace ID in the tree
-	namespaceRanges map[string]leafRange
+	namespaceRanges map[string]LeafRange
 	// minNID is the minimum namespace ID of the leaves
 	minNID namespace.ID
 	// maxNID is the maximum namespace ID of the leaves
@@ -151,7 +151,7 @@ func New(h hash.Hash, setters ...Option) *NamespacedMerkleTree {
 		visit:           opts.NodeVisitor,
 		leaves:          make([][]byte, 0, opts.InitialCapacity),
 		leafHashes:      make([][]byte, 0, opts.InitialCapacity),
-		namespaceRanges: make(map[string]leafRange),
+		namespaceRanges: make(map[string]LeafRange),
 		minNID:          bytes.Repeat([]byte{0xFF}, int(opts.NamespaceIDSize)),
 		maxNID:          bytes.Repeat([]byte{0x00}, int(opts.NamespaceIDSize)),
 	}
@@ -436,7 +436,7 @@ func (n *NamespacedMerkleTree) foundInRange(nID namespace.ID) (found bool, start
 	// This is a faster version of this code snippet:
 	// https://github.com/celestiaorg/celestiaorg-prototype/blob/2aeca6f55ad389b9d68034a0a7038f80a8d2982e/simpleblock.go#L106-L117
 	foundRng, found := n.namespaceRanges[string(nID)]
-	return found, foundRng.start, foundRng.end
+	return found, foundRng.Start, foundRng.End
 }
 
 // NamespaceSize returns the underlying namespace size. Note that all namespaced
@@ -590,14 +590,14 @@ func (n *NamespacedMerkleTree) updateNamespaceRanges() {
 		lastNsStr := string(lastPushed[:n.treeHasher.NamespaceSize()])
 		lastRange, found := n.namespaceRanges[lastNsStr]
 		if !found {
-			n.namespaceRanges[lastNsStr] = leafRange{
-				start: lastIndex,
-				end:   lastIndex + 1,
+			n.namespaceRanges[lastNsStr] = LeafRange{
+				Start: lastIndex,
+				End:   lastIndex + 1,
 			}
 		} else {
-			n.namespaceRanges[lastNsStr] = leafRange{
-				start: lastRange.start,
-				end:   lastRange.end + 1,
+			n.namespaceRanges[lastNsStr] = LeafRange{
+				Start: lastRange.Start,
+				End:   lastRange.End + 1,
 			}
 		}
 	}
@@ -644,11 +644,38 @@ func (n *NamespacedMerkleTree) updateMinMaxID(id namespace.ID) {
 	}
 }
 
-type leafRange struct {
-	// start and end denote the indices of a leaf in the tree. start ranges from
-	// 0 up to the total number of leaves minus 1 end ranges from 1 up to the
-	// total number of leaves end is non-inclusive
-	start, end int
+// ComputeSubtreeRoot takes a leaf range and returns the corresponding subtree root.
+// Also, it requires the start and end range to correctly reference an inner node.
+// The provided range, defined by start and end, is end-exclusive.
+func (n *NamespacedMerkleTree) ComputeSubtreeRoot(start, end int) ([]byte, error) {
+	if start < 0 {
+		return nil, fmt.Errorf("start %d shouldn't be strictly negative", start)
+	}
+	if end <= start {
+		return nil, fmt.Errorf("end %d should be stricly bigger than start %d", end, start)
+	}
+	uStart, err := safeIntToUint(start)
+	if err != nil {
+		return nil, err
+	}
+	uEnd, err := safeIntToUint(end)
+	if err != nil {
+		return nil, err
+	}
+	// check if the provided range correctly references an inner node.
+	// calculates the ideal tree from the provided range, and verifies if it is the same as the range
+	if idealTreeRange := nextSubtreeSize(uint64(uStart), uint64(uEnd)); end-start != idealTreeRange {
+		return nil, fmt.Errorf("the provided range [%d, %d) does not construct a valid subtree root range", start, end)
+	}
+	return n.computeRoot(start, end)
+}
+
+type LeafRange struct {
+	// Start and End denote the indices of a leaf in the tree.
+	// Start ranges from 0 up to the total number of leaves minus 1.
+	// End ranges from 1 up to the total number of leaves.
+	// End is non-inclusive
+	Start, End int
 }
 
 // MinNamespace extracts the minimum namespace ID from a given namespace hash,
