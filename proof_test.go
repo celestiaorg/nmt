@@ -1843,8 +1843,8 @@ func TestVerifySubtreeRootInclusion(t *testing.T) {
 // TestVerifySubtreeRootInclusion_infiniteRecursion is motivated by a failing test
 // case in celestia-node
 func TestVerifySubtreeRootInclusion_infiniteRecursion(t *testing.T) {
-	namespaceIds := bytes.Repeat([]byte{1}, 64)
-	tree := exampleNMT(1, true, namespaceIds...)
+	namespaceIDs := bytes.Repeat([]byte{1}, 64)
+	tree := exampleNMT(1, true, namespaceIDs...)
 	root, err := tree.Root()
 	require.NoError(t, err)
 
