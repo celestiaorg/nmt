@@ -639,7 +639,7 @@ func nextLeafRange(currentStart, currentEnd, subtreeWidth int) (LeafRange, error
 		return LeafRange{}, err
 	}
 	rangeEnd := currentStart + currentRange
-	idealTreeSize := nextSubtreeSize(uint64(currentStart), uint64(rangeEnd)+1)
+	idealTreeSize := nextSubtreeSize(uint64(currentStart), uint64(rangeEnd))
 	if idealTreeSize != rangeEnd-currentStart {
 		// this will happen if the calculated range does not correctly reference an inner node in the tree.
 		return LeafRange{}, fmt.Errorf("provided subtree width %d doesn't allow creating a valid leaf range [%d, %d)", subtreeWidth, currentStart, rangeEnd)
