@@ -1859,7 +1859,7 @@ func TestVerifySubtreeRootInclusion_infiniteRecursion(t *testing.T) {
 	require.NoError(t, err)
 
 	require.NotPanics(t, func() {
-		// This hits:
+		// This previously hits:
 		// runtime: goroutine stack exceeds 1000000000-byte limit
 		// runtime: sp=0x14020160480 stack=[0x14020160000, 0x14040160000]
 		// fatal error: stack overflow
