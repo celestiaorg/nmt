@@ -1335,18 +1335,6 @@ func TestNextLeafRange(t *testing.T) {
 		{
 			currentStart:                4,
 			currentEnd:                  20,
-			subtreeRootMaximumLeafRange: 16,
-			expectedRange:               LeafRange{Start: 4, End: 20},
-		},
-		{
-			currentStart:                4,
-			currentEnd:                  20,
-			subtreeRootMaximumLeafRange: 1,
-			expectedRange:               LeafRange{Start: 4, End: 5},
-		},
-		{
-			currentStart:                4,
-			currentEnd:                  20,
 			subtreeRootMaximumLeafRange: 2,
 			expectedRange:               LeafRange{Start: 4, End: 6},
 		},
@@ -1355,12 +1343,6 @@ func TestNextLeafRange(t *testing.T) {
 			currentEnd:                  20,
 			subtreeRootMaximumLeafRange: 4,
 			expectedRange:               LeafRange{Start: 4, End: 8},
-		},
-		{
-			currentStart:                4,
-			currentEnd:                  20,
-			subtreeRootMaximumLeafRange: 8,
-			expectedRange:               LeafRange{Start: 4, End: 12},
 		},
 		{
 			currentStart:                0,
@@ -1390,6 +1372,36 @@ func TestNextLeafRange(t *testing.T) {
 			currentStart:                5,
 			currentEnd:                  2,
 			subtreeRootMaximumLeafRange: 0,
+			expectError:                 true,
+		},
+		{ // A range not referencing any inner node
+			currentStart:                1,
+			currentEnd:                  3,
+			subtreeRootMaximumLeafRange: 4,
+			expectError:                 true,
+		},
+		{ // A range not referencing any inner node
+			currentStart:                1,
+			currentEnd:                  5,
+			subtreeRootMaximumLeafRange: 4,
+			expectError:                 true,
+		},
+		{ // A range not referencing any inner node
+			currentStart:                1,
+			currentEnd:                  6,
+			subtreeRootMaximumLeafRange: 4,
+			expectError:                 true,
+		},
+		{ // A range not referencing any inner node
+			currentStart:                1,
+			currentEnd:                  7,
+			subtreeRootMaximumLeafRange: 4,
+			expectError:                 true,
+		},
+		{ // A range not referencing any inner node
+			currentStart:                2,
+			currentEnd:                  8,
+			subtreeRootMaximumLeafRange: 4,
 			expectError:                 true,
 		},
 	}
@@ -1798,7 +1810,6 @@ func TestVerifySubtreeRootInclusion(t *testing.T) {
 			root:         root,
 			expectError:  true,
 		},
-
 		{
 			proof: func() Proof {
 				p, err := tree.ProveRange(0, 8)
@@ -1827,4 +1838,32 @@ func TestVerifySubtreeRootInclusion(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestVerifySubtreeRootInclusion_infiniteRecursion is motivated by a failing test
+// case in celestia-node
+func TestVerifySubtreeRootInclusion_infiniteRecursion(t *testing.T) {
+	namespaceIDs := bytes.Repeat([]byte{1}, 64)
+	tree := exampleNMT(1, true, namespaceIDs...)
+	root, err := tree.Root()
+	require.NoError(t, err)
+
+	nmthasher := tree.treeHasher
+	hasher := nmthasher.(*NmtHasher)
+	subtreeRoot, err := tree.ComputeSubtreeRoot(0, 4)
+	require.NoError(t, err)
+	subtreeRoots := [][]byte{subtreeRoot, subtreeRoot, subtreeRoot, subtreeRoot, subtreeRoot, subtreeRoot, subtreeRoot}
+	subtreeWidth := 8
+
+	proof, err := tree.ProveRange(19, 64)
+	require.NoError(t, err)
+
+	require.NotPanics(t, func() {
+		// This previously hits:
+		// runtime: goroutine stack exceeds 1000000000-byte limit
+		// runtime: sp=0x14020160480 stack=[0x14020160000, 0x14040160000]
+		// fatal error: stack overflow
+		_, err = proof.VerifySubtreeRootInclusion(hasher, subtreeRoots, subtreeWidth, root)
+		require.Error(t, err)
+	})
 }

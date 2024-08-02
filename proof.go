@@ -528,6 +528,10 @@ func (proof Proof) VerifySubtreeRootInclusion(nth *NmtHasher, subtreeRoots [][]b
 			return popIfNonEmpty(&subtreeRoots), nil
 		}
 
+		if end-start == 1 {
+			return nil, fmt.Errorf("the provided range [%d, %d) does not reference a valid inner node", proof.start, proof.end)
+		}
+
 		// Recursively get left and right subtree
 		k := getSplitPoint(end - start)
 		left, err := computeRoot(start, start+k)
@@ -634,7 +638,13 @@ func nextLeafRange(currentStart, currentEnd, subtreeWidth int) (LeafRange, error
 	if err != nil {
 		return LeafRange{}, err
 	}
-	return LeafRange{Start: currentStart, End: currentStart + currentRange}, nil
+	rangeEnd := currentStart + currentRange
+	idealTreeSize := nextSubtreeSize(uint64(currentStart), uint64(rangeEnd))
+	if currentStart+idealTreeSize != rangeEnd {
+		// this will happen if the calculated range does not correctly reference an inner node in the tree.
+		return LeafRange{}, fmt.Errorf("provided subtree width %d doesn't allow creating a valid leaf range [%d, %d)", subtreeWidth, currentStart, rangeEnd)
+	}
+	return LeafRange{Start: currentStart, End: rangeEnd}, nil
 }
 
 // largestPowerOfTwo calculates the largest power of two
