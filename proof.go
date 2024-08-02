@@ -528,10 +528,10 @@ func (proof Proof) VerifySubtreeRootInclusion(nth *NmtHasher, subtreeRoots [][]b
 			return popIfNonEmpty(&subtreeRoots), nil
 		}
 
-		// at this level, we reached a leaf, but we couldn't find any range corresponding
-		// to needed leaf [start, end).
-		// this means that the initial provided [start, end) range was invalid.
 		if end-start == 1 {
+			// At this level, we reached a leaf, but we couldn't find any range corresponding
+			// to needed leaf [start, end).
+			// This means that the initial provided [start, end) range was invalid.
 			return nil, fmt.Errorf("the provided range [%d, %d) does not reference a valid inner node", proof.start, proof.end)
 		}
 
