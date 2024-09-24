@@ -1,4 +1,4 @@
-name: Buf CI
+name: buf-ci
 on:
   push:
     branches:
