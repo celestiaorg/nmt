@@ -520,7 +520,7 @@ func (proof Proof) VerifySubtreeRootInclusion(nth *NmtHasher, subtreeRoots [][]b
 		}
 
 		if len(ranges) == 0 {
-			return nil, fmt.Errorf(fmt.Sprintf("expected to have a subtree root for range [%d, %d)", start, end))
+			return nil, fmt.Errorf("expected to have a subtree root for range [%d, %d)", start, end)
 		}
 
 		if ranges[0].Start == start && ranges[0].End == end {
