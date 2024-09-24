@@ -21,7 +21,6 @@ jobs:
       - uses: bufbuild/buf-action@v1
         with:
           token: ${{ secrets.BUF_TOKEN }}
-          input: 'pb'
           breaking-against: 'https://github.com/celestiaorg/nmt.git#branch=main,ref=HEAD~1,subdir=pb'
           # Run breaking change, lint, and format checks for Protobuf sources against all branches,
           # 'pb' # subdirectory, then push to the BSR once validated
