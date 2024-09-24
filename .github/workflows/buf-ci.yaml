@@ -24,6 +24,6 @@ jobs:
           breaking-against: 'https://github.com/celestiaorg/nmt.git#branch=main,ref=HEAD~1,subdir=pb'
           # Run breaking change, lint, and format checks for Protobuf sources against all branches,
           # 'pb' # subdirectory, then push to the BSR once validated
-          lint: ${{ github.event_name == 'push' }}
-          format: ${{ github.event_name == 'push' }}
-          breaking: ${{ github.event_name == 'push' }}
+          lint: true
+          format: true
+          breaking: true
