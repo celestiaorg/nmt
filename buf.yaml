@@ -1,0 +1,12 @@
+version: v2
+modules:
+  - path: pb
+    name: buf.build/celestia/nmt
+lint:
+  ignore_only:
+    PACKAGE_DIRECTORY_MATCH:
+      # ignoring because fixing means we will do a breaking change
+      - pb/proof.proto
+    PACKAGE_VERSION_SUFFIX:
+      # ignoring because fixing means we will do a breaking change
+      - pb/proof.proto
