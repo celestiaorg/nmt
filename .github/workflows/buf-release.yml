@@ -16,8 +16,7 @@ jobs:
       - uses: bufbuild/buf-push-action@v1
         with:
           buf_token: ${{ secrets.BUF_TOKEN }}
-      - name: "set the version tag in BSR"
-        # yamllint disable
+      - name: "push the tag label to BSR"
         run: |
           set -euo pipefail
 
