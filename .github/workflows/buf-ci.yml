@@ -16,7 +16,7 @@ jobs:
       - uses: bufbuild/buf-breaking-action@v1
         with:
           input: pb
-          against: 'https://github.com/rach-id/nmt.git#branch=main,subdir=pb'
+          against: 'https://github.com/celestiaorg/nmt.git#branch=main,subdir=pb'
       - uses: bufbuild/buf-lint-action@v1
         with:
           input: pb
