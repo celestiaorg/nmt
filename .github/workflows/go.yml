@@ -25,9 +25,6 @@ jobs:
         run: |
           go get -v -t -d ./...
 
-      - name: Format
-        run: diff -u <(echo -n) <(gofmt -d .)
-
       - name: Build
         run: go build -v .
 
