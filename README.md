@@ -1,6 +1,5 @@
 # Namespaced Merkle Tree (NMT)
 
-![Go version](https://img.shields.io/badge/go-1.21-blue.svg)
 [![Go Reference](https://pkg.go.dev/badge/github.com/celestiaorg/nmt.svg)](https://pkg.go.dev/github.com/celestiaorg/nmt)
 ![golangci-lint](https://github.com/celestiaorg/nmt/workflows/lint/badge.svg)<!-- it retrieves the lint workflow status badge for the default branch i.e., main, for a different branch, specify the branch parameter in the URL() -->
 ![Go](https://github.com/celestiaorg/nmt/workflows/Go/badge.svg)
