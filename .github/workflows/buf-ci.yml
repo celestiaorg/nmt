@@ -1,0 +1,22 @@
+name: buf-ci
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+permissions:
+  contents: read
+  pull-requests: write
+jobs:
+  buf:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: bufbuild/buf-setup-action@v1
+      - uses: bufbuild/buf-breaking-action@v1
+        with:
+          input: pb
+          against: 'https://github.com/celestiaorg/nmt.git#branch=main,subdir=pb'
+      - uses: bufbuild/buf-lint-action@v1
+        with:
+          input: pb
