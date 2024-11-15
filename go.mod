@@ -1,6 +1,6 @@
 module github.com/celestiaorg/nmt
 
-go 1.21
+go 1.23
 
 require (
 	github.com/gogo/protobuf v1.3.2

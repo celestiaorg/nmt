@@ -61,11 +61,9 @@ While this is not necessary, it is of great help when writing models.
 
 ## Basic resources
 
-- a sequence of very gentle and fun tutorials
-[here](https://github.com/informalsystems/quint/blob/main/tutorials/README.md)
-- language [cheatsheet](https://github.com/informalsystems/quint/blob/main/doc/quint-cheatsheet.pdf)
-- documentation for built-in operators
-[here](https://github.com/informalsystems/quint/blob/main/doc/builtin.md)
+- a sequence of [lessons](https://quint-lang.org/docs/lessons)
+- language [cheatsheet](https://quint-lang.org/quint-cheatsheet.pdf)
+- documentation for [built-in operators](https://quint-lang.org/docs/builtin)
 
 ## REPL
 
