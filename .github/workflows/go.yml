@@ -31,13 +31,7 @@ jobs:
       - name: Build
         run: go build -v .
 
-      - name: Test and Coverage
+      - name: Test
         run: |
           export PATH=$PATH:$(go env GOPATH)/bin
-          go test -v -coverpkg=./... -covermode=atomic -coverprofile coverage.txt ./...
-
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          fail_ci_if_error: true
+          go test -v ./...
