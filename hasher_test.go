@@ -283,56 +283,6 @@ func TestHashNode_Error(t *testing.T) {
 	}
 }
 
-func TestValidateSiblings(t *testing.T) {
-	// create a dummy hash to use as the digest of the left and right child
-	randHash := createByteSlice(sha256.Size, 0x01)
-
-	type children struct {
-		l []byte // namespace hash of the left child with the format of MinNs||MaxNs||h
-		r []byte // namespace hash of the right child with the format of MinNs||MaxNs||h
-	}
-
-	tests := []struct {
-		name     string
-		nidLen   namespace.IDSize
-		children children
-		wantErr  bool
-	}{
-		{
-			"wrong left node format", 2,
-			children{concat([]byte{0, 0, 1, 1}, randHash[:len(randHash)-1]), concat([]byte{0, 0, 1, 1}, randHash)},
-			true,
-		},
-		{
-			"wrong right node format", 2,
-			children{concat([]byte{0, 0, 1, 1}, randHash), concat([]byte{0, 0, 1, 1}, randHash[:len(randHash)-1])},
-			true,
-		},
-		{
-			"left.maxNs>right.minNs", 2,
-			children{concat([]byte{0, 0, 1, 1}, randHash), concat([]byte{0, 0, 1, 1}, randHash)},
-			true,
-		},
-		{
-			"left.maxNs=right.minNs", 2,
-			children{concat([]byte{0, 0, 1, 1}, randHash), concat([]byte{1, 1, 2, 2}, randHash)},
-			false,
-		},
-		{
-			"left.maxNs<right.minNs", 2,
-			children{concat([]byte{0, 0, 1, 1}, randHash), concat([]byte{2, 2, 3, 3}, randHash)},
-			false,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			n := NewNmtHasher(sha256.New(), tt.nidLen, false)
-			err := n.validateSiblingsNamespaceOrder(tt.children.l, tt.children.r)
-			assert.Equal(t, tt.wantErr, err != nil)
-		})
-	}
-}
-
 func TestValidateNodeFormat(t *testing.T) {
 	hashValue := createByteSlice(sha256.Size, 0x01)
 	minNID := createByteSlice(2, 0x00)
