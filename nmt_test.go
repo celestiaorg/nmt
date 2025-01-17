@@ -704,7 +704,7 @@ func BenchmarkComputeRoot(b *testing.B) {
 		{"64-leaves", 64, 8, 256},
 		{"128-leaves", 128, 8, 256},
 		{"256-leaves", 256, 8, 256},
-		//{"20k-leaves", 20000, 8, 512},
+		{"20k-leaves", 20000, 8, 512},
 	}
 
 	for _, tt := range tests {

@@ -154,9 +154,8 @@ func (n *NmtHasher) BlockSize() int {
 
 func (n *NmtHasher) EmptyRoot() []byte {
 	n.baseHasher.Reset()
-	emptyNs := bytes.Repeat([]byte{0}, int(n.NamespaceLen)*2)
 	h := n.baseHasher.Sum(nil)
-	digest := append(emptyNs, h...)
+	digest := append(make([]byte, int(n.NamespaceLen)*2), h...)
 
 	return digest
 }
@@ -212,6 +211,7 @@ func (n *NmtHasher) MustHashLeaf(ndata []byte) []byte {
 	return res
 }
 
+// nsIDRange represents the range of namespace IDs with minimum and maximum values.
 type nsIDRange struct {
 	Min, Max namespace.ID
 }
@@ -235,10 +235,10 @@ func (n *NmtHasher) tryFetchNodeNSRange(node []byte) (nsIDRange, error) {
 }
 
 // ValidateNodeFormat checks whether the supplied node conforms to the
-// namespaced hash format and returns ErrInvalidNodeLen if not.
-func (n *NmtHasher) ValidateNodeFormat(node []byte) (err error) {
-	_, err = n.tryFetchNodeNSRange(node)
-	return
+// namespaced hash format and returns an error if not.
+func (n *NmtHasher) ValidateNodeFormat(node []byte) error {
+	_, err := n.tryFetchNodeNSRange(node)
+	return err
 }
 
 // tryFetchLeftAndRightNSRange attempts to return the min/max namespace ids of both
@@ -246,25 +246,29 @@ func (n *NmtHasher) ValidateNodeFormat(node []byte) (err error) {
 // and right comply by the namespace hash format, and are correctly ordered
 // according to their namespace IDs.
 func (n *NmtHasher) tryFetchLeftAndRightNSRanges(left, right []byte) (
-	lNsRange nsIDRange,
-	rNsRange nsIDRange,
-	err error,
+	nsIDRange,
+	nsIDRange,
+	error,
 ) {
+	var lNsRange nsIDRange
+	var rNsRange nsIDRange
+	var err error
+
 	lNsRange, err = n.tryFetchNodeNSRange(left)
 	if err != nil {
-		return
+		return lNsRange, rNsRange, err
 	}
 	rNsRange, err = n.tryFetchNodeNSRange(right)
 	if err != nil {
-		return
+		return lNsRange, rNsRange, err
 	}
 
 	// check the namespace range of the left and right children
 	if rNsRange.Min.Less(lNsRange.Max) {
-		err = fmt.Errorf("%w: the maximum namespace of the left child %x is greater than the min namespace of the right child %x", ErrUnorderedSiblings, lNsRange.Max, rNsRange.Min)
-		return
+		err = fmt.Errorf("%w: the min namespace ID of the right child %d is less than the max namespace ID of the left child %d", ErrUnorderedSiblings, rNsRange.Min, lNsRange.Max)
 	}
-	return
+
+	return lNsRange, rNsRange, err
 }
 
 // ValidateNodes is a helper function  to verify the
