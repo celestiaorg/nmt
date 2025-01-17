@@ -154,10 +154,12 @@ func (n *NmtHasher) BlockSize() int {
 
 func (n *NmtHasher) EmptyRoot() []byte {
 	n.baseHasher.Reset()
-	h := n.baseHasher.Sum(nil)
-	digest := append(make([]byte, int(n.NamespaceLen)*2), h...)
+	// make returns a zeroed slice, exactly what we need for the (nID || nID)
+	zeroSize := int(n.NamespaceLen) * 2
+	fullSize := zeroSize + n.baseHasher.Size()
 
-	return digest
+	digest := make([]byte, zeroSize, fullSize)
+	return n.baseHasher.Sum(digest)
 }
 
 // ValidateLeaf verifies if data is namespaced and returns an error if not.
@@ -190,11 +192,8 @@ func (n *NmtHasher) HashLeaf(ndata []byte) ([]byte, error) {
 	minMaxNIDs = append(minMaxNIDs, nID...) // nID
 	minMaxNIDs = append(minMaxNIDs, nID...) // nID || nID
 
-	// add LeafPrefix to the ndata
-	leafPrefixedNData := make([]byte, 0, len(ndata)+1)
-	leafPrefixedNData = append(leafPrefixedNData, LeafPrefix)
-	leafPrefixedNData = append(leafPrefixedNData, ndata...)
-	h.Write(leafPrefixedNData)
+	h.Write([]byte{LeafPrefix}) //nolint:errcheck
+	h.Write(ndata)              //nolint:errcheck
 
 	// compute h(LeafPrefix || ndata) and append it to the minMaxNIDs
 	nameSpacedHash := h.Sum(minMaxNIDs) // nID || nID || h(LeafPrefix || ndata)
@@ -306,19 +305,13 @@ func (n *NmtHasher) HashNode(left, right []byte) ([]byte, error) {
 	// compute the namespace range of the parent node
 	minNs, maxNs := computeNsRange(lRange.Min, lRange.Max, rRange.Min, rRange.Max, n.ignoreMaxNs, n.precomputedMaxNs)
 
-	res := make([]byte, 0, len(minNs)*2)
+	res := make([]byte, 0, len(minNs)+len(maxNs)+h.Size())
 	res = append(res, minNs...)
 	res = append(res, maxNs...)
 
-	// Note this seems a little faster than calling several Write()s on the
-	// underlying Hash function (see:
-	// https://github.com/google/trillian/pull/1503):
-	data := make([]byte, 0, 1+len(left)+len(right))
-	data = append(data, NodePrefix)
-	data = append(data, left...)
-	data = append(data, right...)
-	//nolint:errcheck
-	h.Write(data)
+	h.Write([]byte{NodePrefix}) //nolint:errcheck
+	h.Write(left)               //nolint:errcheck
+	h.Write(right)              //nolint:errcheck
 	return h.Sum(res), nil
 }
 
