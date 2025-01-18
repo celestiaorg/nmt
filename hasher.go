@@ -176,8 +176,6 @@ func (n *NmtHasher) ValidateLeaf(data []byte) (err error) {
 // ns(ndata) || ns(ndata) || hash(leafPrefix || ndata), where ns(ndata) is the
 // namespaceID inside the data item namely leaf[:n.NamespaceLen]). Note that for
 // leaves minNs = maxNs = ns(leaf) = leaf[:NamespaceLen]. HashLeaf can return the ErrInvalidNodeLen error if the input is not namespaced.
-//
-//nolint:errcheck
 func (n *NmtHasher) HashLeaf(ndata []byte) ([]byte, error) {
 	h := n.baseHasher
 	h.Reset()
@@ -192,8 +190,8 @@ func (n *NmtHasher) HashLeaf(ndata []byte) ([]byte, error) {
 	minMaxNIDs = append(minMaxNIDs, nID...) // nID
 	minMaxNIDs = append(minMaxNIDs, nID...) // nID || nID
 
-	h.Write([]byte{LeafPrefix}) //nolint:errcheck
-	h.Write(ndata)              //nolint:errcheck
+	h.Write([]byte{LeafPrefix})
+	h.Write(ndata)
 
 	// compute h(LeafPrefix || ndata) and append it to the minMaxNIDs
 	nameSpacedHash := h.Sum(minMaxNIDs) // nID || nID || h(LeafPrefix || ndata)
@@ -309,9 +307,9 @@ func (n *NmtHasher) HashNode(left, right []byte) ([]byte, error) {
 	res = append(res, minNs...)
 	res = append(res, maxNs...)
 
-	h.Write([]byte{NodePrefix}) //nolint:errcheck
-	h.Write(left)               //nolint:errcheck
-	h.Write(right)              //nolint:errcheck
+	h.Write([]byte{NodePrefix})
+	h.Write(left)
+	h.Write(right)
 	return h.Sum(res), nil
 }
 
