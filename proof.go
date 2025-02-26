@@ -632,7 +632,7 @@ func ToLeafRanges(proofStart, proofEnd, subtreeWidth int) ([]LeafRange, error) {
 // Note: This method is Celestia specific.
 func nextLeafRange(currentStart, currentEnd, subtreeWidth int) (LeafRange, error) {
 	currentLeafRange := currentEnd - currentStart
-	minimum := minInt(currentLeafRange, subtreeWidth)
+	minimum := min(currentLeafRange, subtreeWidth)
 	uMinimum, err := safeIntToUint(minimum)
 	if err != nil {
 		return LeafRange{}, fmt.Errorf("failed to convert subtree root range to Uint %w", err)
@@ -712,11 +712,4 @@ func safeIntToUint(val int) (uint, error) {
 		return 0, fmt.Errorf("cannot convert a negative int %d to uint", val)
 	}
 	return uint(val), nil
-}
-
-func minInt(val1, val2 int) int {
-	if val1 > val2 {
-		return val2
-	}
-	return val1
 }

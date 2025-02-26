@@ -514,9 +514,7 @@ func TestVerifyNamespace_False(t *testing.T) {
 	require.True(t, absenceProof9_2.IsOfAbsence())
 
 	// swap leafHashes of the absence proofs
-	buffer := absenceProof9_2.leafHash
-	absenceProof9_2.leafHash = absenceProof9_1.leafHash
-	absenceProof9_1.leafHash = buffer
+	absenceProof9_2.leafHash, absenceProof9_1.leafHash = absenceProof9_1.leafHash, absenceProof9_2.leafHash
 
 	hasher := sha256.New()
 
@@ -1489,7 +1487,7 @@ func TestMinInt(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(fmt.Sprintf("val1=%d, val2=%d", tt.val1, tt.val2), func(t *testing.T) {
-			result := minInt(tt.val1, tt.val2)
+			result := min(tt.val1, tt.val2)
 			if result != tt.expected {
 				t.Errorf("expected %d, got %d", tt.expected, result)
 			}

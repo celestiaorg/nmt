@@ -749,7 +749,7 @@ func TestMax(t *testing.T) {
 
 	for _, ts := range tt {
 		t.Run(ts.name, func(t *testing.T) {
-			maxResult := max(ts.ns, ts.ns2)
+			maxResult := maxNs(ts.ns, ts.ns2)
 			assert.Equal(t, ts.expected, maxResult)
 		})
 	}
@@ -784,7 +784,7 @@ func TestMin(t *testing.T) {
 
 	for _, ts := range tt {
 		t.Run(ts.name, func(t *testing.T) {
-			minResult := min(ts.ns, ts.ns2)
+			minResult := minNs(ts.ns, ts.ns2)
 			assert.Equal(t, ts.expected, minResult)
 		})
 	}
@@ -925,4 +925,18 @@ func TestEmptyRoot(t *testing.T) {
 		// the empty root should be the same before and after the operation
 		assert.Equal(t, want, got)
 	})
+}
+
+func maxNs(ns []byte, ns2 []byte) []byte {
+	if bytes.Compare(ns, ns2) >= 0 {
+		return ns
+	}
+	return ns2
+}
+
+func minNs(ns []byte, ns2 []byte) []byte {
+	if bytes.Compare(ns, ns2) <= 0 {
+		return ns
+	}
+	return ns2
 }
