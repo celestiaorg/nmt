@@ -248,6 +248,19 @@ func (proof Proof) VerifyNamespace(h hash.Hash, nID namespace.ID, leaves [][]byt
 	return res
 }
 
+// ComputeRoot reconstructs the Merkle root from a given proof and a set of leaf hashes.
+// It recursively computes the root hash by combining leaf nodes and proof nodes using the NMT hasher.
+//
+// This function is typically used to verify whether a subset of leaves belongs to a Merkle tree
+// by recomputing the root hash and comparing it to a known root.
+//
+// Parameters:
+// - nth: The Namespaced Merkle Tree (NMT) hasher used for hashing nodes.
+// - leafHashes: A slice of byte slices representing the leaf hashes that are part of the proof.
+//
+// Returns:
+// - []byte: The computed Merkle root hash.
+// - error: An error if the computation fails due to invalid proof structure or hashing issues.
 func (proof Proof) ComputeRoot(nth *NmtHasher, leafHashes [][]byte) ([]byte, error) {
 	var computeRoot func(start, end int) ([]byte, error)
 	// computeRoot can return error iff the HashNode function fails while calculating the root
