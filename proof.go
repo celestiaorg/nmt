@@ -141,8 +141,7 @@ func (proof Proof) IsEmptyProof() bool {
 	return proof.start == proof.end && len(proof.nodes) == 0 && len(proof.leafHash) == 0
 }
 
-// IsValidEmptyRangeProof checks whether the proof is a valid empty range proof.
-func (proof Proof) IsValidEmptyRangeProof(nth *NmtHasher, nID namespace.ID, root []byte, leaves [][]byte, checkNS bool) bool {
+func (proof Proof) isValidEmptyRangeProof(nth *NmtHasher, nID namespace.ID, root []byte, leaves [][]byte, checkNS bool) bool {
 	nIDLen := nID.Size()
 
 	if !proof.IsEmptyProof() || len(leaves) != 0 {
@@ -163,27 +162,36 @@ func (proof Proof) IsValidEmptyRangeProof(nth *NmtHasher, nID namespace.ID, root
 	return nID.Less(rootMin) || rootMax.Less(nID) || bytes.Equal(root, nth.EmptyRoot())
 }
 
-// ComputeLeafHashes computes the hashes of the given leaves by prepending the namespace ID to each leaf and hashing it using the provided NMT hasher.
-func ComputeLeafHashes(nth *NmtHasher, nid namespace.ID, leaves [][]byte, checkOrAppend bool) ([][]byte, error) {
-	nIDLen := nid.Size()
+// ComputeAndValidateLeafHashes validates and hashes a list of leaves using the provided NMT hasher.
+func ComputeAndValidateLeafHashes(nth *NmtHasher, nid namespace.ID, leaves [][]byte) ([][]byte, error) {
 	hashes := make([][]byte, len(leaves))
 	for i, d := range leaves {
-		leafData := d
-		if checkOrAppend {
-			if nth.ValidateLeaf(leafData) != nil {
-				return nil, fmt.Errorf("leaf hash does not match the NMT hasher's hash format")
-			}
-			// check whether the namespace ID of the data matches the queried nID
-			if leadNid := namespace.ID(leafData[:nIDLen]); !leadNid.Equal(nid) {
-				// conflicting namespace IDs in data
-				return nil, fmt.Errorf("leaf hash %x does not belong to namespace %x", leafData, nid)
-			}
-		} else {
-			// prepend the namespace to the leaf data
-			leafData = append(
-				append(make([]byte, 0, len(d)+len(nid)), nid...), d...,
-			)
+		if nth.ValidateLeaf(d) != nil {
+			return nil, fmt.Errorf("leaf hash does not match the NMT hasher's hash format")
 		}
+		// check whether the namespace ID of the data matches the queried nID
+		if leadNid := namespace.ID(d[:nid.Size()]); !leadNid.Equal(nid) {
+			// conflicting namespace IDs in data
+			return nil, fmt.Errorf("leaf hash %x does not belong to namespace %x", d, nid)
+		}
+		res, err := nth.HashLeaf(d)
+		if err != nil {
+			return nil, err
+		}
+		hashes[i] = res
+	}
+	return hashes, nil
+}
+
+// ComputePrefixedLeafHashes computes NMT leaf hashes for raw leaf data by prepending the given namespace ID.
+func ComputePrefixedLeafHashes(nth *NmtHasher, nid namespace.ID, leaves [][]byte) ([][]byte, error) {
+	hashes := make([][]byte, len(leaves))
+	for i, d := range leaves {
+		// prepend the namespace to the leaf data
+		leafData := append(
+			append(make([]byte, 0, len(d)+len(nid)), nid...), d...,
+		)
+
 		res, err := nth.HashLeaf(leafData)
 		if err != nil {
 			return nil, err
@@ -218,7 +226,7 @@ func (proof Proof) VerifyNamespace(h hash.Hash, nID namespace.ID, leaves [][]byt
 
 	// if empty range proof, check that the proof is valid
 	if proof.start == proof.end {
-		return proof.IsValidEmptyRangeProof(nth, nID, root, leaves, true)
+		return proof.isValidEmptyRangeProof(nth, nID, root, leaves, true)
 	}
 
 	gotLeafHashes := make([][]byte, 0, len(leaves))
@@ -226,7 +234,7 @@ func (proof Proof) VerifyNamespace(h hash.Hash, nID namespace.ID, leaves [][]byt
 		gotLeafHashes = append(gotLeafHashes, proof.leafHash)
 	} else {
 		var err error
-		gotLeafHashes, err = ComputeLeafHashes(nth, nID, leaves, true)
+		gotLeafHashes, err = ComputeAndValidateLeafHashes(nth, nID, leaves)
 		if err != nil {
 			return false
 		}
@@ -462,11 +470,11 @@ func (proof Proof) VerifyInclusion(h hash.Hash, nid namespace.ID, leavesWithoutN
 
 	// validate empty proof range
 	if proof.start == proof.end {
-		return proof.IsValidEmptyRangeProof(nth, nid, root, leavesWithoutNamespace, false)
+		return proof.isValidEmptyRangeProof(nth, nid, root, leavesWithoutNamespace, false)
 	}
 
 	// add namespace to all the leaves
-	hashes, err := ComputeLeafHashes(nth, nid, leavesWithoutNamespace, false)
+	hashes, err := ComputePrefixedLeafHashes(nth, nid, leavesWithoutNamespace)
 	if err != nil {
 		return false
 	}
