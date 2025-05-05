@@ -298,8 +298,8 @@ func (proof Proof) ValidateProofStructure(nth *NmtHasher, nID namespace.ID, leaf
 	return nil
 }
 
-// ValidateSingleNamespace ensures all leaf hashes belong to the expected namespace.
-func (proof Proof) ValidateSingleNamespace(nth *NmtHasher, nID namespace.ID, leafHashes [][]byte) error {
+// ValidateNamespace ensures all leaf hashes belong to the expected namespace.
+func (proof Proof) ValidateNamespace(nth *NmtHasher, nID namespace.ID, leafHashes [][]byte) error {
 	for _, leafHash := range leafHashes {
 		minNsID := MinNamespace(leafHash, nth.NamespaceSize())
 		maxNsID := MaxNamespace(leafHash, nth.NamespaceSize())
@@ -310,7 +310,7 @@ func (proof Proof) ValidateSingleNamespace(nth *NmtHasher, nID namespace.ID, lea
 	return nil
 }
 
-// ValidateCompleteness checks that the proof is complete, i.e., it verifies
+// ValidateCompleteness checks whether a namespace proof is complete for the given namespace ID.
 func (proof Proof) ValidateCompleteness(nth *NmtHasher, nID namespace.ID) error {
 	var leafIndex uint64
 	// leftSubtrees is to be populated by the subtree roots upto [0, r.Start)
@@ -441,7 +441,7 @@ func (proof Proof) VerifyLeafHashes(nth *NmtHasher, verifyCompleteness bool, nID
 	// check that the namespace of leafHashes is the same as the queried namespace, except for the case of absence proof
 	if !proof.IsOfAbsence() { // in case of absence proof, the leafHash is the hash of a leaf next to the queried namespace, hence its namespace ID is not the same as the queried namespace ID
 		// check the namespace of all the leaf hashes to be the same as the queried namespace
-		if err := proof.ValidateSingleNamespace(nth, nID, leafHashes); err != nil {
+		if err := proof.ValidateNamespace(nth, nID, leafHashes); err != nil {
 			return false, err
 		}
 	}
