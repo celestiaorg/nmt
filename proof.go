@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"hash"
 	"math/bits"
+	"slices"
 
 	"github.com/celestiaorg/nmt/namespace"
 	"github.com/celestiaorg/nmt/pb"
@@ -142,8 +143,6 @@ func (proof Proof) IsEmptyProof() bool {
 }
 
 func (proof Proof) isValidEmptyRangeProof(nth *NmtHasher, nID namespace.ID, root []byte, leaves [][]byte, checkNS bool) bool {
-	nIDLen := nID.Size()
-
 	if !proof.IsEmptyProof() || len(leaves) != 0 {
 		return false
 	}
@@ -152,6 +151,7 @@ func (proof Proof) isValidEmptyRangeProof(nth *NmtHasher, nID namespace.ID, root
 		return true
 	}
 
+	nIDLen := nID.Size()
 	rootMin := namespace.ID(MinNamespace(root, nIDLen))
 	rootMax := namespace.ID(MaxNamespace(root, nIDLen))
 
@@ -187,12 +187,8 @@ func ComputeAndValidateLeafHashes(nth *NmtHasher, nid namespace.ID, leaves [][]b
 func ComputePrefixedLeafHashes(nth *NmtHasher, nid namespace.ID, leaves [][]byte) ([][]byte, error) {
 	hashes := make([][]byte, len(leaves))
 	for i, d := range leaves {
-		// prepend the namespace to the leaf data
-		leafData := append(
-			append(make([]byte, 0, len(d)+len(nid)), nid...), d...,
-		)
-
-		res, err := nth.HashLeaf(leafData)
+		// prepend the namespace to the leaf data and hash it
+		res, err := nth.HashLeaf(slices.Concat(nid, d))
 		if err != nil {
 			return nil, err
 		}
