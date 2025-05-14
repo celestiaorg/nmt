@@ -165,20 +165,20 @@ func (proof Proof) isValidEmptyRangeProof(nth *NmtHasher, nID namespace.ID, root
 // ComputeAndValidateLeafHashes validates and hashes a list of leaves using the provided NMT hasher.
 func ComputeAndValidateLeafHashes(nth *NmtHasher, nid namespace.ID, leaves [][]byte) ([][]byte, error) {
 	hashes := make([][]byte, len(leaves))
-	for i, d := range leaves {
-		if nth.ValidateLeaf(d) != nil {
-			return nil, fmt.Errorf("leaf hash does not match the NMT hasher's hash format")
+	for i, leaf := range leaves {
+		if nth.ValidateLeaf(leaf) != nil {
+			return nil, fmt.Errorf("invalid leaf data: does not contain the expected namespace prefix")
 		}
 		// check whether the namespace ID of the data matches the queried nID
-		if leadNid := namespace.ID(d[:nid.Size()]); !leadNid.Equal(nid) {
+		if leafNid := namespace.ID(leaf[:nid.Size()]); !leafNid.Equal(nid) {
 			// conflicting namespace IDs in data
-			return nil, fmt.Errorf("leaf hash %x does not belong to namespace %x", d, nid)
+			return nil, fmt.Errorf("leaf with namespace ID %x does not belong to expected namespace %x", leafNid, nid)
 		}
-		res, err := nth.HashLeaf(d)
+		hash, err := nth.HashLeaf(leaf)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to hash leaf: %w", err)
 		}
-		hashes[i] = res
+		hashes[i] = hash
 	}
 	return hashes, nil
 }
@@ -186,13 +186,13 @@ func ComputeAndValidateLeafHashes(nth *NmtHasher, nid namespace.ID, leaves [][]b
 // ComputePrefixedLeafHashes computes NMT leaf hashes for raw leaf data by prepending the given namespace ID.
 func ComputePrefixedLeafHashes(nth *NmtHasher, nid namespace.ID, leaves [][]byte) ([][]byte, error) {
 	hashes := make([][]byte, len(leaves))
-	for i, d := range leaves {
+	for i, leaf := range leaves {
 		// prepend the namespace to the leaf data and hash it
-		res, err := nth.HashLeaf(slices.Concat(nid, d))
+		hash, err := nth.HashLeaf(slices.Concat(nid, leaf))
 		if err != nil {
 			return nil, err
 		}
-		hashes[i] = res
+		hashes[i] = hash
 	}
 	return hashes, nil
 }
