@@ -338,6 +338,48 @@ func (proof Proof) ValidateCompleteness(nth *NmtHasher, nID namespace.ID) error 
 	return nil
 }
 
+// ComputeRootWithBasicValidation computes the Merkle root from a given proof and a set of leaf hashes,
+// performing basic validation steps prior to computing the root.
+//
+// If isNamespace is true, it additionally validates:
+//   - That the leaf hashes belong to the specified namespace.
+//   - That the proof is complete for the given namespace.
+//
+// Parameters:
+//   - nth: The NMT hasher instance used for validation and root computation.
+//   - nID: The namespace ID that the proof is expected to correspond to.
+//   - leafHashes: The hashes of the leaves being proven.
+//   - isNamespace: A flag indicating whether namespace-specific validation should be performed.
+//
+// Returns:
+//   - The computed root hash if all checks pass.
+//   - An error if any validation fails or root computation fails.
+func (proof Proof) ComputeRootWithBasicValidation(nth *NmtHasher, nID namespace.ID, leafHashes [][]byte, isNamespace bool) ([]byte, error) {
+	if err := proof.ValidateProofStructure(nth, nID, leafHashes); err != nil {
+		return nil, err
+	}
+
+	if isNamespace {
+		if err := proof.ValidateNamespace(nth, nID, leafHashes); err != nil {
+			return nil, fmt.Errorf("failed namespace check: %w", err)
+		}
+		if err := proof.ValidateCompleteness(nth, nID); err != nil {
+			return nil, fmt.Errorf("failed completeness check: %w", err)
+		}
+	}
+
+	rootHash, err := proof.ComputeRoot(nth, leafHashes)
+	if err != nil {
+		return nil, fmt.Errorf("failed to compute root: %w", err)
+	}
+
+	if err := nth.ValidateNodeFormat(rootHash); err != nil {
+		return nil, fmt.Errorf("root does not match the NMT hasher's hash format: %w", err)
+	}
+
+	return rootHash, nil
+}
+
 // ComputeRoot reconstructs the Merkle root from a given proof and a set of leaf hashes.
 // It recursively computes the root hash by combining leaf nodes and proof nodes using the NMT hasher.
 //
