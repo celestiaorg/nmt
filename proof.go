@@ -244,8 +244,7 @@ func (proof Proof) VerifyNamespace(h hash.Hash, nID namespace.ID, leaves [][]byt
 	return res
 }
 
-// ValidateProofStructure checks ranges, leaf and node formats, and input compatibility.
-func (proof Proof) ValidateProofStructure(nth *NmtHasher, nID namespace.ID, leafHashes [][]byte) error {
+func (proof Proof) validateProofStructure(nth *NmtHasher, nID namespace.ID, leafHashes [][]byte) error {
 	// check that the proof range is valid
 	if proof.Start() < 0 || proof.Start() >= proof.End() {
 		return fmt.Errorf("proof range [proof.start=%d, proof.end=%d) is not valid: %w", proof.Start(), proof.End(), ErrInvalidRange)
@@ -294,8 +293,7 @@ func (proof Proof) ValidateProofStructure(nth *NmtHasher, nID namespace.ID, leaf
 	return nil
 }
 
-// ValidateNamespace ensures all leaf hashes belong to the expected namespace.
-func (proof Proof) ValidateNamespace(nth *NmtHasher, nID namespace.ID, leafHashes [][]byte) error {
+func (proof Proof) validateNamespace(nth *NmtHasher, nID namespace.ID, leafHashes [][]byte) error {
 	for _, leafHash := range leafHashes {
 		minNsID := MinNamespace(leafHash, nth.NamespaceSize())
 		maxNsID := MaxNamespace(leafHash, nth.NamespaceSize())
@@ -306,8 +304,7 @@ func (proof Proof) ValidateNamespace(nth *NmtHasher, nID namespace.ID, leafHashe
 	return nil
 }
 
-// ValidateCompleteness checks whether a namespace proof is complete for the given namespace ID.
-func (proof Proof) ValidateCompleteness(nth *NmtHasher, nID namespace.ID) error {
+func (proof Proof) validateCompleteness(nth *NmtHasher, nID namespace.ID) error {
 	var leafIndex uint64
 	// leftSubtrees is to be populated by the subtree roots upto [0, r.Start)
 	leftSubtrees := make([][]byte, 0, len(proof.nodes))
@@ -355,20 +352,20 @@ func (proof Proof) ValidateCompleteness(nth *NmtHasher, nID namespace.ID) error 
 //   - The computed root hash if all checks pass.
 //   - An error if any validation fails or root computation fails.
 func (proof Proof) ComputeRootWithBasicValidation(nth *NmtHasher, nID namespace.ID, leafHashes [][]byte, isNamespace bool) ([]byte, error) {
-	if err := proof.ValidateProofStructure(nth, nID, leafHashes); err != nil {
+	if err := proof.validateProofStructure(nth, nID, leafHashes); err != nil {
 		return nil, err
 	}
 
 	if isNamespace {
-		if err := proof.ValidateNamespace(nth, nID, leafHashes); err != nil {
+		if err := proof.validateNamespace(nth, nID, leafHashes); err != nil {
 			return nil, fmt.Errorf("failed namespace check: %w", err)
 		}
-		if err := proof.ValidateCompleteness(nth, nID); err != nil {
+		if err := proof.validateCompleteness(nth, nID); err != nil {
 			return nil, fmt.Errorf("failed completeness check: %w", err)
 		}
 	}
 
-	rootHash, err := proof.ComputeRoot(nth, leafHashes)
+	rootHash, err := proof.computeRoot(nth, leafHashes)
 	if err != nil {
 		return nil, fmt.Errorf("failed to compute root: %w", err)
 	}
@@ -380,20 +377,7 @@ func (proof Proof) ComputeRootWithBasicValidation(nth *NmtHasher, nID namespace.
 	return rootHash, nil
 }
 
-// ComputeRoot reconstructs the Merkle root from a given proof and a set of leaf hashes.
-// It recursively computes the root hash by combining leaf nodes and proof nodes using the NMT hasher.
-//
-// This function is typically used to verify whether a subset of leaves belongs to a Merkle tree
-// by recomputing the root hash and comparing it to a known root.
-//
-// Parameters:
-// - nth: The Namespaced Merkle Tree (NMT) hasher used for hashing nodes.
-// - leafHashes: A slice of byte slices representing the leaf hashes that are part of the proof.
-//
-// Returns:
-// - []byte: The computed Merkle root hash.
-// - error: An error if the computation fails due to invalid proof structure or hashing issues.
-func (proof Proof) ComputeRoot(nth *NmtHasher, leafHashes [][]byte) ([]byte, error) {
+func (proof Proof) computeRoot(nth *NmtHasher, leafHashes [][]byte) ([]byte, error) {
 	var computeRoot func(start, end int) ([]byte, error)
 	// computeRoot can return error iff the HashNode function fails while calculating the root
 	computeRoot = func(start, end int) ([]byte, error) {
@@ -467,7 +451,7 @@ func (proof Proof) ComputeRoot(nth *NmtHasher, leafHashes [][]byte) ([]byte, err
 // tree represented by the root parameter that matches the namespace ID nID
 // outside the leafHashes list.
 func (proof Proof) VerifyLeafHashes(nth *NmtHasher, verifyCompleteness bool, nID namespace.ID, leafHashes [][]byte, root []byte) (bool, error) {
-	if err := proof.ValidateProofStructure(nth, nID, leafHashes); err != nil {
+	if err := proof.validateProofStructure(nth, nID, leafHashes); err != nil {
 		return false, err
 	}
 
@@ -479,18 +463,18 @@ func (proof Proof) VerifyLeafHashes(nth *NmtHasher, verifyCompleteness bool, nID
 	// check that the namespace of leafHashes is the same as the queried namespace, except for the case of absence proof
 	if !proof.IsOfAbsence() { // in case of absence proof, the leafHash is the hash of a leaf next to the queried namespace, hence its namespace ID is not the same as the queried namespace ID
 		// check the namespace of all the leaf hashes to be the same as the queried namespace
-		if err := proof.ValidateNamespace(nth, nID, leafHashes); err != nil {
+		if err := proof.validateNamespace(nth, nID, leafHashes); err != nil {
 			return false, err
 		}
 	}
 
 	if verifyCompleteness {
-		if err := proof.ValidateCompleteness(nth, nID); err != nil {
+		if err := proof.validateCompleteness(nth, nID); err != nil {
 			return false, err
 		}
 	}
 
-	rootHash, err := proof.ComputeRoot(nth, leafHashes)
+	rootHash, err := proof.computeRoot(nth, leafHashes)
 	if err != nil {
 		return false, err
 	}

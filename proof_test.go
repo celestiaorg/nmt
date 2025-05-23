@@ -1914,10 +1914,6 @@ func TestComputeRootWithBasicValidation(t *testing.T) {
 	})
 
 	t.Run("fails completeness check for partial namespace", func(t *testing.T) {
-		// manually truncate leafHashes to simulate an incomplete namespace
-		if len(leafHashes) < 2 {
-			t.Skip("not enough leaf hashes to truncate for completeness test")
-		}
 		incomplete := leafHashes[:len(leafHashes)-1]
 		// Keep the original proof range but provide fewer leaf hashes
 		_, err := proof.ComputeRootWithBasicValidation(hasher, nid, incomplete, true)
@@ -1925,59 +1921,69 @@ func TestComputeRootWithBasicValidation(t *testing.T) {
 	})
 }
 
-func TestValidateNamespace_FailsOnWrongNID(t *testing.T) {
-	tree := exampleNMT(1, true, 1, 2, 3, 4)
+func TestComputeAndValidateLeafHashes_WithTree(t *testing.T) {
+	tree := exampleNMT(1, true, 1, 2, 3, 3, 3, 4, 5, 6, 7, 8)
 	hasher := tree.treeHasher.(*NmtHasher)
 
-	nid := namespace.ID{2}
-	proof, err := tree.ProveNamespace(nid)
-	require.NoError(t, err)
-
+	nid := namespace.ID{3}
 	leaves := tree.Get(nid)
-	require.NotEmpty(t, leaves)
+	require.NotEmpty(t, leaves, "expected non-empty leaves for namespace")
 
-	// Get valid leaf hashes first
-	validLeafHashes, err := ComputeAndValidateLeafHashes(hasher, nid, leaves)
+	hashes, err := ComputeAndValidateLeafHashes(hasher, nid, leaves)
 	require.NoError(t, err)
+	require.Len(t, hashes, len(leaves))
 
-	// Corrupt one leaf hash by replacing its namespace prefix
-	corruptedLeafHash := make([]byte, len(validLeafHashes[0]))
-	copy(corruptedLeafHash, validLeafHashes[0])
-	corruptedLeafHash[0] = 0xFF // wrong min namespace
-	corruptedLeafHash[1] = 0xFF // wrong max namespace
-
-	// Replace in list
-	validLeafHashes[0] = corruptedLeafHash
-
-	// Now call ValidateNamespace and expect it to fail
-	err = proof.ValidateNamespace(hasher, nid, validLeafHashes)
-	require.ErrorContains(t, err, "does not belong to namespace")
+	for i, leaf := range leaves {
+		hash, err := hasher.HashLeaf(leaf)
+		require.NoError(t, err)
+		require.Equal(t, hash, hashes[i])
+	}
 }
 
-func TestValidateCompleteness_FailsOnIncompleteSubtrees(t *testing.T) {
-	// Create a tree with multiple leaves for namespace ID = 2
-	tree := exampleNMT(1, true, 1, 2, 2, 2, 3, 4, 5, 6)
-	nid := namespace.ID{2}
+func TestComputeAndValidateLeafHashes_WithErrors(t *testing.T) {
+	nid := namespace.ID([]byte("namespace1"))
+	hasher := NewNmtHasher(sha256.New(), nid.Size(), false)
 
-	proof, err := tree.ProveNamespace(nid)
+	t.Run("invalid leaf format", func(t *testing.T) {
+		leaves := [][]byte{[]byte("invalid")}
+		_, err := ComputeAndValidateLeafHashes(hasher, nid, leaves)
+		require.ErrorContains(t, err, "invalid leaf data")
+	})
+
+	t.Run("mismatched namespace", func(t *testing.T) {
+		leaves := [][]byte{append([]byte("wrongNS"), []byte("leaf")...)}
+		_, err := ComputeAndValidateLeafHashes(hasher, nid, leaves)
+		require.ErrorContains(t, err, "does not belong to expected namespace")
+	})
+}
+
+func TestComputePrefixedLeafHashes_WithHasher(t *testing.T) {
+	h := sha256.New()
+	nid := namespace.ID([]byte("namespace1"))
+	nth := NewNmtHasher(h, nid.Size(), false)
+
+	leaves := [][]byte{
+		[]byte("leaf1"),
+		[]byte("leaf2"),
+	}
+
+	hashes, err := ComputePrefixedLeafHashes(nth, nid, leaves)
 	require.NoError(t, err)
+	require.Len(t, hashes, len(leaves))
 
-	hasher := tree.treeHasher.(*NmtHasher)
+	for i, leaf := range leaves {
+		hash, err := nth.HashLeaf(append(nid, leaf...))
+		require.NoError(t, err)
+		require.Equal(t, hash, hashes[i])
+	}
+}
 
-	// Ensure original proof is complete
-	err = proof.ValidateCompleteness(hasher, nid)
-	require.NoError(t, err, "baseline completeness check should pass")
+func TestComputePrefixedLeafHashes_EmptyInput(t *testing.T) {
+	h := sha256.New()
+	nid := namespace.ID([]byte("namespace1"))
+	nth := NewNmtHasher(h, nid.Size(), false)
 
-	// Now simulate a missing node by inserting one with overlapping namespace (2)
-	leaf := namespace.PrefixedData(append([]byte{2}, []byte("extra")...))
-	badNode, err := hasher.HashLeaf(leaf)
+	hashes, err := ComputePrefixedLeafHashes(nth, nid, [][]byte{})
 	require.NoError(t, err)
-
-	// Insert it at the beginning to simulate a left subtree (you could test both sides)
-	proof.nodes = append([][]byte{badNode}, proof.nodes...)
-
-	// Should now fail due to namespace overlap
-	err = proof.ValidateCompleteness(hasher, nid)
-	require.Error(t, err)
-	require.ErrorIs(t, err, ErrFailedCompletenessCheck)
+	require.Empty(t, hashes)
 }
