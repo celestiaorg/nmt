@@ -840,12 +840,12 @@ func TestMinMaxNamespace(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			min, err := tc.tree.MinNamespace()
+			minNamespace, err := tc.tree.MinNamespace()
 			require.NoError(t, err)
-			assert.Equal(t, tc.wantMin, min)
-			max, err := tc.tree.MaxNamespace()
+			assert.Equal(t, tc.wantMin, minNamespace)
+			maxNamespace, err := tc.tree.MaxNamespace()
 			require.NoError(t, err)
-			assert.Equal(t, tc.wantMax, max)
+			assert.Equal(t, tc.wantMax, maxNamespace)
 		})
 	}
 }
