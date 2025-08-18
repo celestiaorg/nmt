@@ -7,6 +7,10 @@ linters:
     - misspell
     - prealloc
     - revive
+    - nakedret
+  settings:
+    nakedret:
+      max-func-lines: 0
   exclusions:
     generated: lax
     presets:
