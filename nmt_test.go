@@ -190,6 +190,13 @@ func TestNamespacedMerkleTree_ProveNamespace_Ranges_And_Verify(t *testing.T) {
 		wantFound      bool
 	}{
 		{
+			"empty tree", 1,
+			generateLeafData(1, 0, 0, []byte("_data")),
+			[]byte{0},
+			0, 0,
+			false,
+		},
+		{
 			"found", 1,
 			generateLeafData(1, 0, 1, []byte("_data")),
 			[]byte{0},
