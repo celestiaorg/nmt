@@ -3,31 +3,31 @@ on:
   pull_request:
   push:
     branches:
-      - master
+      - main
 jobs:
   # Runs golangci-lint over the nmt repository
-  # This workflow is run on every pull request and push to master
+  # This workflow is run on every pull request and push to main
   # The `golangci` job will pass without running if no *.{go, mod, sum} files have been modified.
   golangci:
     name: golangci-lint
     runs-on: ubuntu-latest
     timeout-minutes: 4
     steps:
-      - uses: actions/checkout@v2
-      - uses: technote-space/get-diff-action@v4
+      - uses: actions/checkout@v4
+      - uses: technote-space/get-diff-action@v6
         with:
           SUFFIX_FILTER: |
             .go
             .mod
             .sum
-      - uses: golangci/golangci-lint-action@v3
+      - uses: golangci/golangci-lint-action@v6
         with:
-          version: latest
+          version: v1.61.0
           args: --timeout 10m
         if: env.GIT_DIFF
 
   markdown-lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: celestiaorg/.github/.github/actions/markdown-lint@main

@@ -14,15 +14,33 @@ const (
 	NodePrefix = 1
 )
 
-var _ hash.Hash = (*Hasher)(nil)
+var _ hash.Hash = (*NmtHasher)(nil)
 
 var (
-	ErrUnorderedSiblings = errors.New("NMT sibling nodes should be ordered lexicographically by namespace IDs")
-	ErrInvalidNodeLen    = errors.New("invalid NMT node size")
-	ErrInvalidLeafLen    = errors.New("invalid NMT leaf size")
+	ErrUnorderedSiblings         = errors.New("NMT sibling nodes should be ordered lexicographically by namespace IDs")
+	ErrInvalidNodeLen            = errors.New("invalid NMT node size")
+	ErrInvalidLeafLen            = errors.New("invalid NMT leaf size")
+	ErrInvalidNodeNamespaceOrder = errors.New("invalid NMT node namespace order")
 )
 
-type Hasher struct {
+// Hasher describes the interface nmts use to hash leafs and nodes.
+//
+// Note: it is not advised to create alternative hashers if following the
+// specification is desired. The main reason this exists is to not follow the
+// specification for testing purposes.
+type Hasher interface {
+	IsMaxNamespaceIDIgnored() bool
+	NamespaceSize() namespace.IDSize
+	HashLeaf(data []byte) ([]byte, error)
+	HashNode(leftChild, rightChild []byte) ([]byte, error)
+	EmptyRoot() []byte
+}
+
+var _ Hasher = &NmtHasher{}
+
+// NmtHasher is the default hasher. It follows the description of the original
+// hashing function described in the LazyLedger white paper.
+type NmtHasher struct { //nolint:revive
 	baseHasher   hash.Hash
 	NamespaceLen namespace.IDSize
 
@@ -40,16 +58,16 @@ type Hasher struct {
 	data []byte // written data of the NMT node
 }
 
-func (n *Hasher) IsMaxNamespaceIDIgnored() bool {
+func (n *NmtHasher) IsMaxNamespaceIDIgnored() bool {
 	return n.ignoreMaxNs
 }
 
-func (n *Hasher) NamespaceSize() namespace.IDSize {
+func (n *NmtHasher) NamespaceSize() namespace.IDSize {
 	return n.NamespaceLen
 }
 
-func NewNmtHasher(baseHasher hash.Hash, nidLen namespace.IDSize, ignoreMaxNamespace bool) *Hasher {
-	return &Hasher{
+func NewNmtHasher(baseHasher hash.Hash, nidLen namespace.IDSize, ignoreMaxNamespace bool) *NmtHasher {
+	return &NmtHasher{
 		baseHasher:       baseHasher,
 		NamespaceLen:     nidLen,
 		ignoreMaxNs:      ignoreMaxNamespace,
@@ -58,7 +76,7 @@ func NewNmtHasher(baseHasher hash.Hash, nidLen namespace.IDSize, ignoreMaxNamesp
 }
 
 // Size returns the number of bytes Sum will return.
-func (n *Hasher) Size() int {
+func (n *NmtHasher) Size() int {
 	return n.baseHasher.Size() + int(n.NamespaceLen)*2
 }
 
@@ -68,7 +86,7 @@ func (n *Hasher) Size() int {
 // write is allowed.
 // It panics if more than one single write is attempted.
 // If the data does not match the format of an NMT non-leaf node or leaf node, an error will be returned.
-func (n *Hasher) Write(data []byte) (int, error) {
+func (n *NmtHasher) Write(data []byte) (int, error) {
 	if n.data != nil {
 		panic("only a single Write is allowed")
 	}
@@ -100,7 +118,7 @@ func (n *Hasher) Write(data []byte) (int, error) {
 // Sum computes the hash. Does not append the given suffix, violating the
 // interface.
 // It may panic if the data being hashed is invalid. This should never happen since the Write method refuses an invalid data and errors out.
-func (n *Hasher) Sum([]byte) []byte {
+func (n *NmtHasher) Sum([]byte) []byte {
 	switch n.tp {
 	case LeafPrefix:
 		res, err := n.HashLeaf(n.data)
@@ -124,26 +142,28 @@ func (n *Hasher) Sum([]byte) []byte {
 }
 
 // Reset resets the Hash to its initial state.
-func (n *Hasher) Reset() {
+func (n *NmtHasher) Reset() {
 	n.tp, n.data = 255, nil // reset with an invalid node type, as zero value is a valid Leaf
 	n.baseHasher.Reset()
 }
 
 // BlockSize returns the hash's underlying block size.
-func (n *Hasher) BlockSize() int {
+func (n *NmtHasher) BlockSize() int {
 	return n.baseHasher.BlockSize()
 }
 
-func (n *Hasher) EmptyRoot() []byte {
-	emptyNs := bytes.Repeat([]byte{0}, int(n.NamespaceLen))
-	h := n.baseHasher.Sum(nil)
-	digest := append(append(emptyNs, emptyNs...), h...)
+func (n *NmtHasher) EmptyRoot() []byte {
+	n.baseHasher.Reset()
+	// make returns a zeroed slice, exactly what we need for the (nID || nID)
+	zeroSize := int(n.NamespaceLen) * 2
+	fullSize := zeroSize + n.baseHasher.Size()
 
-	return digest
+	digest := make([]byte, zeroSize, fullSize)
+	return n.baseHasher.Sum(digest)
 }
 
 // ValidateLeaf verifies if data is namespaced and returns an error if not.
-func (n *Hasher) ValidateLeaf(data []byte) (err error) {
+func (n *NmtHasher) ValidateLeaf(data []byte) (err error) {
 	nidSize := int(n.NamespaceSize())
 	lenData := len(data)
 	if lenData < nidSize {
@@ -156,9 +176,7 @@ func (n *Hasher) ValidateLeaf(data []byte) (err error) {
 // ns(ndata) || ns(ndata) || hash(leafPrefix || ndata), where ns(ndata) is the
 // namespaceID inside the data item namely leaf[:n.NamespaceLen]). Note that for
 // leaves minNs = maxNs = ns(leaf) = leaf[:NamespaceLen]. HashLeaf can return the ErrInvalidNodeLen error if the input is not namespaced.
-//
-//nolint:errcheck
-func (n *Hasher) HashLeaf(ndata []byte) ([]byte, error) {
+func (n *NmtHasher) HashLeaf(ndata []byte) ([]byte, error) {
 	h := n.baseHasher
 	h.Reset()
 
@@ -172,59 +190,91 @@ func (n *Hasher) HashLeaf(ndata []byte) ([]byte, error) {
 	minMaxNIDs = append(minMaxNIDs, nID...) // nID
 	minMaxNIDs = append(minMaxNIDs, nID...) // nID || nID
 
-	// add LeafPrefix to the ndata
-	leafPrefixedNData := make([]byte, 0, len(ndata)+1)
-	leafPrefixedNData = append(leafPrefixedNData, LeafPrefix)
-	leafPrefixedNData = append(leafPrefixedNData, ndata...)
-	h.Write(leafPrefixedNData)
+	h.Write([]byte{LeafPrefix})
+	h.Write(ndata)
 
 	// compute h(LeafPrefix || ndata) and append it to the minMaxNIDs
 	nameSpacedHash := h.Sum(minMaxNIDs) // nID || nID || h(LeafPrefix || ndata)
 	return nameSpacedHash, nil
 }
 
-// ValidateNodeFormat checks whether the supplied node conforms to the
-// namespaced hash format and returns an error if it does not. Specifically, it returns ErrInvalidNodeLen if the length of the node is less than the 2*namespace length which indicates it does not match the namespaced hash format.
-func (n *Hasher) ValidateNodeFormat(node []byte) (err error) {
-	totalNamespaceLen := 2 * n.NamespaceLen
-	nodeLen := len(node)
-	if nodeLen < int(totalNamespaceLen) {
-		return fmt.Errorf("%w: got: %v, want >= %v", ErrInvalidNodeLen, nodeLen, totalNamespaceLen)
+// MustHashLeaf is a wrapper around HashLeaf that panics if an error is
+// encountered. The ndata must be a valid leaf node.
+func (n *NmtHasher) MustHashLeaf(ndata []byte) []byte {
+	res, err := n.HashLeaf(ndata)
+	if err != nil {
+		panic(err)
 	}
-	return nil
+	return res
 }
 
-// validateSiblingsNamespaceOrder checks whether left and right as two sibling
-// nodes in an NMT have correct namespace IDs relative to each other, more
-// specifically, the maximum namespace ID of the left sibling should not exceed
-// the minimum namespace ID of the right sibling. It returns ErrUnorderedSiblings error if the check fails. Note that the function assumes
-// that the left and right nodes are in correct format, i.e., they are
-// namespaced hash values. Otherwise, it panics.
-func (n *Hasher) validateSiblingsNamespaceOrder(left, right []byte) (err error) {
-	// each NMT node has two namespace IDs for the min and max
-	totalNamespaceLen := 2 * n.NamespaceLen
-	leftMaxNs := namespace.ID(left[n.NamespaceLen:totalNamespaceLen])
-	rightMinNs := namespace.ID(right[:n.NamespaceLen])
+// nsIDRange represents the range of namespace IDs with minimum and maximum values.
+type nsIDRange struct {
+	Min, Max namespace.ID
+}
+
+// tryFetchNodeNSRange attempts to return the min and max namespace ids.
+// It will return an ErrInvalidNodeLen | ErrInvalidNodeNamespaceOrder
+// if the supplied node does not conform to the namespaced hash format.
+func (n *NmtHasher) tryFetchNodeNSRange(node []byte) (nsIDRange, error) {
+	expectedNodeLen := n.Size()
+	nodeLen := len(node)
+	if nodeLen != expectedNodeLen {
+		return nsIDRange{}, fmt.Errorf("%w: got: %v, want %v", ErrInvalidNodeLen, nodeLen, expectedNodeLen)
+	}
+	// check the namespace order
+	minNID := namespace.ID(MinNamespace(node, n.NamespaceSize()))
+	maxNID := namespace.ID(MaxNamespace(node, n.NamespaceSize()))
+	if maxNID.Less(minNID) {
+		return nsIDRange{}, fmt.Errorf("%w: max namespace ID %d is less than min namespace ID %d ", ErrInvalidNodeNamespaceOrder, maxNID, minNID)
+	}
+	return nsIDRange{Min: minNID, Max: maxNID}, nil
+}
+
+// ValidateNodeFormat checks whether the supplied node conforms to the
+// namespaced hash format and returns an error if not.
+func (n *NmtHasher) ValidateNodeFormat(node []byte) error {
+	_, err := n.tryFetchNodeNSRange(node)
+	return err
+}
+
+// tryFetchLeftAndRightNSRange attempts to return the min/max namespace ids of both
+// the left and right nodes. It verifies whether left
+// and right comply by the namespace hash format, and are correctly ordered
+// according to their namespace IDs.
+func (n *NmtHasher) tryFetchLeftAndRightNSRanges(left, right []byte) (
+	nsIDRange,
+	nsIDRange,
+	error,
+) {
+	var lNsRange nsIDRange
+	var rNsRange nsIDRange
+	var err error
+
+	lNsRange, err = n.tryFetchNodeNSRange(left)
+	if err != nil {
+		return lNsRange, rNsRange, err
+	}
+	rNsRange, err = n.tryFetchNodeNSRange(right)
+	if err != nil {
+		return lNsRange, rNsRange, err
+	}
 
 	// check the namespace range of the left and right children
-	if rightMinNs.Less(leftMaxNs) {
-		return fmt.Errorf("%w: the maximum namespace of the left child %x is greater than the min namespace of the right child %x", ErrUnorderedSiblings, leftMaxNs, rightMinNs)
+	if rNsRange.Min.Less(lNsRange.Max) {
+		err = fmt.Errorf("%w: the min namespace ID of the right child %d is less than the max namespace ID of the left child %d", ErrUnorderedSiblings, rNsRange.Min, lNsRange.Max)
 	}
-	return nil
+
+	return lNsRange, rNsRange, err
 }
 
 // ValidateNodes is a helper function  to verify the
 // validity of the inputs of HashNode. It verifies whether left
 // and right comply by the namespace hash format, and are correctly ordered
 // according to their namespace IDs.
-func (n *Hasher) ValidateNodes(left, right []byte) error {
-	if err := n.ValidateNodeFormat(left); err != nil {
-		return err
-	}
-	if err := n.ValidateNodeFormat(right); err != nil {
-		return err
-	}
-	return n.validateSiblingsNamespaceOrder(left, right)
+func (n *NmtHasher) ValidateNodes(left, right []byte) error {
+	_, _, err := n.tryFetchLeftAndRightNSRanges(left, right)
+	return err
 }
 
 // HashNode calculates a namespaced hash of a node using the supplied left and
@@ -237,69 +287,38 @@ func (n *Hasher) ValidateNodes(left, right []byte) error {
 // right.maxNID) || H(NodePrefix, left, right)`. `res` refers to the return
 // value of the HashNode. However, if the `ignoreMaxNs` property of the Hasher
 // is set to true, the calculation of the namespace ID range of the node
-// slightly changes. In this case, when setting the upper range, the maximum
-// possible namespace ID (i.e., 2^NamespaceIDSize-1) should be ignored if
-// possible. This is achieved by taking the maximum value among only those namespace
-// IDs available in the range of its left and right children that are not
-// equal to the maximum possible namespace ID value. If all the namespace IDs are equal
-// to the maximum possible value, then the maximum possible value is used.
-func (n *Hasher) HashNode(left, right []byte) ([]byte, error) {
-	if err := n.ValidateNodeFormat(left); err != nil {
-		return nil, err
-	}
-	if err := n.ValidateNodeFormat(right); err != nil {
+// slightly changes. Let MAXNID be the maximum possible namespace ID value i.e., 2^NamespaceIDSize-1.
+// If the namespace range of the right child is start=end=MAXNID, indicating that it represents the root of a subtree whose leaves all have the namespace ID of `MAXNID`, then exclude the right child from the namespace range calculation. Instead,
+// assign the namespace range of the left child as the parent's namespace range.
+func (n *NmtHasher) HashNode(left, right []byte) ([]byte, error) {
+	// validate the inputs & fetch the namespace ranges
+	lRange, rRange, err := n.tryFetchLeftAndRightNSRanges(left, right)
+	if err != nil {
 		return nil, err
 	}
 
-	// check the namespace range of the left and right children
-	if err := n.validateSiblingsNamespaceOrder(left, right); err != nil {
-		return nil, err
-	}
 	h := n.baseHasher
 	h.Reset()
 
-	// the actual hash result of the children got extended (or flagged) by their
-	// children's minNs || maxNs; hence the flagLen = 2 * NamespaceLen:
-	flagLen := 2 * n.NamespaceLen
-	leftMinNs, leftMaxNs := left[:n.NamespaceLen], left[n.NamespaceLen:flagLen]
-	rightMinNs, rightMaxNs := right[:n.NamespaceLen], right[n.NamespaceLen:flagLen]
+	// compute the namespace range of the parent node
+	minNs, maxNs := computeNsRange(lRange.Min, lRange.Max, rRange.Min, rRange.Max, n.ignoreMaxNs, n.precomputedMaxNs)
 
-	minNs := min(leftMinNs, rightMinNs)
-	var maxNs []byte
-	if n.ignoreMaxNs && n.precomputedMaxNs.Equal(leftMinNs) {
-		maxNs = n.precomputedMaxNs
-	} else if n.ignoreMaxNs && n.precomputedMaxNs.Equal(rightMinNs) {
-		maxNs = leftMaxNs
-	} else {
-		maxNs = max(leftMaxNs, rightMaxNs)
-	}
-
-	res := make([]byte, 0)
+	res := make([]byte, 0, len(minNs)+len(maxNs)+h.Size())
 	res = append(res, minNs...)
 	res = append(res, maxNs...)
 
-	// Note this seems a little faster than calling several Write()s on the
-	// underlying Hash function (see:
-	// https://github.com/google/trillian/pull/1503):
-	data := make([]byte, 0, 1+len(left)+len(right))
-	data = append(data, NodePrefix)
-	data = append(data, left...)
-	data = append(data, right...)
-	//nolint:errcheck
-	h.Write(data)
+	h.Write([]byte{NodePrefix})
+	h.Write(left)
+	h.Write(right)
 	return h.Sum(res), nil
 }
 
-func max(ns []byte, ns2 []byte) []byte {
-	if bytes.Compare(ns, ns2) >= 0 {
-		return ns
+// computeNsRange computes the namespace range of the parent node based on the namespace ranges of its left and right children.
+func computeNsRange(leftMinNs, leftMaxNs, rightMinNs, rightMaxNs []byte, ignoreMaxNs bool, precomputedMaxNs namespace.ID) (minNs []byte, maxNs []byte) {
+	minNs = leftMinNs
+	maxNs = rightMaxNs
+	if ignoreMaxNs && bytes.Equal(precomputedMaxNs, rightMinNs) {
+		maxNs = leftMaxNs
 	}
-	return ns2
-}
-
-func min(ns []byte, ns2 []byte) []byte {
-	if bytes.Compare(ns, ns2) <= 0 {
-		return ns
-	}
-	return ns2
+	return minNs, maxNs
 }

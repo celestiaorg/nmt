@@ -132,7 +132,6 @@ func TestPathGeneration(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.desc, func(t *testing.T) {
 			paths, err := GetSubrootPaths(tc.input.squareSize, tc.input.startNode, tc.input.length)
 			if !reflect.DeepEqual(pathResult(paths), tc.want) {

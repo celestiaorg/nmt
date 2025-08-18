@@ -16,7 +16,7 @@ var (
 // this is just a quick function to return that representation as a list of ints
 func subdivide(idxStart uint, width uint) []int {
 	var path []int
-	pathlen := int(bits.Len(width) - 1)
+	pathlen := bits.Len(width) - 1
 	for i := pathlen - 1; i >= 0; i-- {
 		if (idxStart & (1 << i)) == 0 {
 			path = append(path, 0)

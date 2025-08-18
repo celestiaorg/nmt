@@ -1,10 +1,8 @@
 # Namespaced Merkle Tree (NMT)
 
-![Go version](https://img.shields.io/badge/go-1.19-blue.svg)
-[![API Reference](https://camo.githubusercontent.com/915b7be44ada53c290eb157634330494ebe3e30a/68747470733a2f2f676f646f632e6f72672f6769746875622e636f6d2f676f6c616e672f6764646f3f7374617475732e737667)](https://pkg.go.dev/github.com/celestiaorg/nmt)
-![golangci-lint](https://github.com/celestiaorg/nmt/workflows/golangci-lint/badge.svg?branch=master)
+[![Go Reference](https://pkg.go.dev/badge/github.com/celestiaorg/nmt.svg)](https://pkg.go.dev/github.com/celestiaorg/nmt)
+![golangci-lint](https://github.com/celestiaorg/nmt/workflows/lint/badge.svg)<!-- it retrieves the lint workflow status badge for the default branch i.e., main, for a different branch, specify the branch parameter in the URL() -->
 ![Go](https://github.com/celestiaorg/nmt/workflows/Go/badge.svg)
-![codecov.io](https://codecov.io/github/celestiaorg/nmt/coverage.svg?branch=master)
 
 A Namespaced Merkle Tree is
 > [...] an ordered Merkle tree that uses a modified hash function
@@ -54,7 +52,10 @@ func main() {
       }
     }
     // compute the root
-    root := tree.Root()
+    root, err := tree.Root()
+    if err != nil {
+      panic(fmt.Sprintf("unexpected error: %v", err))
+    }
     // the root's min/max namespace is the min and max namespace of all leaves:
     minNS := nmt.MinNamespace(root, tree.NamespaceSize())
     maxNS := nmt.MaxNamespace(root, tree.NamespaceSize())
@@ -95,14 +96,17 @@ Where `nid_0 = nid_1 = 0` and `nid_2 = nid_3 = 1` and `data_i = "leaf_i"` for `i
 
 ## Related
 
-This implementation was heavily inspired by the initial implementation in the celestiaorg [prototype].
+This implementation was heavily inspired by the initial implementation in [celestiaorg/lazyledger-prototype](https://github.com/celestiaorg/lazyledger-prototype).
+
+Non-endorsed implementations of NMT exist in other languages:
+
+Language | Repo
+---------|------------------------------------------------------------------
+Rust     | [Sovereign-Labs/nmt-rs](https://github.com/Sovereign-Labs/nmt-rs)
 
 <!--- TODO references --->
 [academic paper]: https://arxiv.org/abs/1905.09274
 [@musalbas]: https://github.com/musalbas
-
-[prototype]: https://github.com/celestiaorg/lazyledger-prototype
-[NebulousLabs']: https://gitlab.com/NebulousLabs/merkletree
 
 ## Contributing
 
@@ -110,3 +114,9 @@ Markdown files must conform to [GitHub Flavored Markdown](https://github.github.
 
 - [markdownlint](https://github.com/DavidAnson/markdownlint)
 - [Markdown Table Prettifier](https://github.com/darkriszty/MarkdownTablePrettify-VSCodeExt)
+
+## Audits
+
+Date      | Auditor                                       | Report
+----------|-----------------------------------------------|--------------------------------------------------------
+2023/8/18 | [Informal Systems](https://informal.systems/) | [informal-systems.pdf](docs/audit/informal-systems.pdf)

@@ -45,12 +45,14 @@ idSize := tree.NamespaceSize() // outputs 1
 ### Ignore Max Namespace
 
 If the NMT is configured with `IgnoreMaxNamespace` set to true (the flag is explained [here](#nmt-initialization-and-configuration)), then the calculation of the namespace ID range of non-leaf nodes in the [namespace hash function](./spec/nmt.md#namespaced-hash) will change slightly.
-That is, when determining the upper limit of the namespace ID range for a tree node, the maximum possible namespace `maxPossibleNamespace` should not be taken into account.
-(In the preceding code example with the ID size of `1` byte, the value of `maxPossibleNamespace` is $2^8-1 = 0xFF$.)
+That is, if the right child of a node is entirely filled with leaves with the maximum possible namespace `maxPossibleNamespace`, i.e., its minimum and maximum namespace are equal to the `maxPossibleNamespace`, then the right child is excluded from the calculation of the namespace ID range of the parent node, and the parent node inherits the namespace range of the left child.
+In the preceding code example with the ID size of `1` byte, the value of `maxPossibleNamespace` is $2^8-1 = 0xFF$.
+Concretely, consider a node `n` with children `l` and `r`. If `r.minNs` and `r.maxNs` are both equal to `maxPossibleNamespace` (indicating that it represents the root of a subtree whose leaves all have the namespace ID of `maxPossibleNamespace`), then the namespace ID range of `n` is set to the namespace range of `l`, i.e., `n.MinNs = l.MinNs` and `n.MaxNs = l.MaxNs`.
+Otherwise, the namespace ID range of `n` is set as normal i.e., `n.minNs = min(l.minNs, r.minNs)` and `n.maxNs = max(l.maxNs, r.maxNs)`.
 
-Concretely, for a node `n` with children `l` and `r`, the namespace ID is the largest namespace value from `l` and `r` smaller than  `maxPossibleNamespace`, if such a namespace ID exists.
-Otherwise, if all candidate values are equal to `maxPossibleNamespace`, the namespace ID of `n` is set to `maxPossibleNamespace`.
-Precisely, if a set `C` $= \bigl \lbrace$ `ns` $\in \lbrace$`l.minNs`, `l.maxNs`, `r.minNs`, `r.maxNs` $\rbrace:$ `ns` $<$ `maxPossibleNamespace` $\bigr \rbrace$ is not empty, `n.maxNs = max(C)`. If `C` is empty, `n.maxNs = maxPossibleNamespace`.
+Note that the `IgnoreMaxNamespace` flag is Celestia-specific and is motivated by the fact that half of the data items in the NMT are associated with reserved namespace IDs (i.e., the highest possible value within the ID size) and do not need to be queried using their namespace IDs.
+
+[//]: # (Precisely, if a set `C` $= \bigl \lbrace$ `ns` $\in \lbrace$`l.minNs`, `l.maxNs`, `r.minNs`, `r.maxNs` $\rbrace:$ `ns` $<$ `maxPossibleNamespace` $\bigr \rbrace$ is not empty, `n.maxNs = max&#40;C&#41;`. If `C` is empty, `n.maxNs = maxPossibleNamespace`.)
 
 ## Add Leaves
 
@@ -65,22 +67,22 @@ func (n *NamespacedMerkleTree) Push(namespacedData namespace.PrefixedData) error
 E.g.,
 
 ```go
-d := append(namespace.ID{0}, []byte("leaf_0")...) // the first `tree.NamespaceSize()` bytes of each data item is treated as its namespace ID.
+d := namespace.PrefixedData(append(namespace.ID{0}, []byte("leaf_0")...)) // the first `tree.NamespaceSize()` bytes of each data item is treated as its namespace.
 if err := tree.Push(d); err != nil {
-	// something went wrong
+// something went wrong
 }
 // add a few more data items
-d1 := append(namespace.ID{0}, []byte("leaf_1")...)
+d1 := namespace.PrefixedData(append(namespace.ID{0}, []byte("leaf_1")...))
 if err := tree.Push(d1); err != nil {
-    // something went wrong
+// something went wrong
 }
-d2 := append(namespace.ID{1}, []byte("leaf_2")...)
+d2 := namespace.PrefixedData(append(namespace.ID{1}, []byte("leaf_2")...))
 if err := tree.Push(d2); err != nil {
-    // something went wrong
+// something went wrong
 }
-d3 := append(namespace.ID{3}, []byte("leaf_3")...)
+d3 := namespace.PrefixedData(append(namespace.ID{3}, []byte("leaf_3")...))
 if err := tree.Push(d3); err != nil {
-    // something went wrong
+// something went wrong
 }
 ```
 
@@ -114,16 +116,17 @@ Figure 1.
 ## Get Root
 
 The `Root()` method calculates the NMT root based on the data that has been added through the use of the `Push` method.
+The root value is valid if the method does not return an error.
 
 ```go
-func (n *NamespacedMerkleTree) Root() []byte
+func (n *NamespacedMerkleTree) Root() ([]byte, error)
 ```
 
 For example:
 
 ```go
 // compute the root
-root := tree.Root()
+root, err := tree.Root()
 ```
 
 In the provided code example, the root would be `00 03 b1c2cc5` (as also illustrated in Figure 1).
@@ -183,7 +186,7 @@ In the example given earlier, each node is `34` bytes in length and takes the fo
 
 ## Verify Namespace Proof
 
-The correctness of a namespace `Proof` for a specific namespace ID `nID` can be verified using the [`VerifyNamespace`](https://github.com/celestiaorg/nmt/blob/master/proof.go) method.
+The correctness of a namespace `Proof` for a specific namespace ID `nID` can be verified using the [`VerifyNamespace`](https://github.com/celestiaorg/nmt/blob/main/proof.go) method.
 
 ```go
 func (proof Proof) VerifyNamespace(h hash.Hash, nID namespace.ID, leaves [][]byte, root []byte) bool
