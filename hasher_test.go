@@ -283,56 +283,6 @@ func TestHashNode_Error(t *testing.T) {
 	}
 }
 
-func TestValidateSiblings(t *testing.T) {
-	// create a dummy hash to use as the digest of the left and right child
-	randHash := createByteSlice(sha256.Size, 0x01)
-
-	type children struct {
-		l []byte // namespace hash of the left child with the format of MinNs||MaxNs||h
-		r []byte // namespace hash of the right child with the format of MinNs||MaxNs||h
-	}
-
-	tests := []struct {
-		name     string
-		nidLen   namespace.IDSize
-		children children
-		wantErr  bool
-	}{
-		{
-			"wrong left node format", 2,
-			children{concat([]byte{0, 0, 1, 1}, randHash[:len(randHash)-1]), concat([]byte{0, 0, 1, 1}, randHash)},
-			true,
-		},
-		{
-			"wrong right node format", 2,
-			children{concat([]byte{0, 0, 1, 1}, randHash), concat([]byte{0, 0, 1, 1}, randHash[:len(randHash)-1])},
-			true,
-		},
-		{
-			"left.maxNs>right.minNs", 2,
-			children{concat([]byte{0, 0, 1, 1}, randHash), concat([]byte{0, 0, 1, 1}, randHash)},
-			true,
-		},
-		{
-			"left.maxNs=right.minNs", 2,
-			children{concat([]byte{0, 0, 1, 1}, randHash), concat([]byte{1, 1, 2, 2}, randHash)},
-			false,
-		},
-		{
-			"left.maxNs<right.minNs", 2,
-			children{concat([]byte{0, 0, 1, 1}, randHash), concat([]byte{2, 2, 3, 3}, randHash)},
-			false,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			n := NewNmtHasher(sha256.New(), tt.nidLen, false)
-			err := n.validateSiblingsNamespaceOrder(tt.children.l, tt.children.r)
-			assert.Equal(t, tt.wantErr, err != nil)
-		})
-	}
-}
-
 func TestValidateNodeFormat(t *testing.T) {
 	hashValue := createByteSlice(sha256.Size, 0x01)
 	minNID := createByteSlice(2, 0x00)
@@ -799,7 +749,7 @@ func TestMax(t *testing.T) {
 
 	for _, ts := range tt {
 		t.Run(ts.name, func(t *testing.T) {
-			maxResult := max(ts.ns, ts.ns2)
+			maxResult := maxNs(ts.ns, ts.ns2)
 			assert.Equal(t, ts.expected, maxResult)
 		})
 	}
@@ -834,7 +784,7 @@ func TestMin(t *testing.T) {
 
 	for _, ts := range tt {
 		t.Run(ts.name, func(t *testing.T) {
-			minResult := min(ts.ns, ts.ns2)
+			minResult := minNs(ts.ns, ts.ns2)
 			assert.Equal(t, ts.expected, minResult)
 		})
 	}
@@ -950,17 +900,43 @@ func TestComputeNsRange(t *testing.T) {
 
 // TestEmptyRoot ensures that the empty root is always the same, under the same configuration, regardless of the state of the Hasher.
 func TestEmptyRoot(t *testing.T) {
-	nIDSzie := 1
-	ignoreMaxNS := true
+	t.Run("the empty root should match a hard-coded empty root", func(t *testing.T) {
+		nIDSize := 1
+		ignoreMaxNs := true
 
-	hasher := NewNmtHasher(sha256.New(), namespace.IDSize(nIDSzie), ignoreMaxNS)
-	expectedEmptyRoot := hasher.EmptyRoot()
+		hasher := NewNmtHasher(sha256.New(), namespace.IDSize(nIDSize), ignoreMaxNs)
+		got := hasher.EmptyRoot()
+		want := []byte{0x0, 0x0, 0xe3, 0xb0, 0xc4, 0x42, 0x98, 0xfc, 0x1c, 0x14, 0x9a, 0xfb, 0xf4, 0xc8, 0x99, 0x6f, 0xb9, 0x24, 0x27, 0xae, 0x41, 0xe4, 0x64, 0x9b, 0x93, 0x4c, 0xa4, 0x95, 0x99, 0x1b, 0x78, 0x52, 0xb8, 0x55}
+		assert.Equal(t, want, got)
+	})
 
-	// perform some operation with the hasher
-	_, err := hasher.HashNode(createByteSlice(hasher.Size(), 1), createByteSlice(hasher.Size(), 1))
-	assert.NoError(t, err)
-	gotEmptyRoot := hasher.EmptyRoot()
+	t.Run("empty root should return the same root even if the hasher is modified", func(t *testing.T) {
+		nIDSize := 1
+		ignoreMaxNs := true
 
-	// the empty root should be the same before and after the operation
-	assert.True(t, bytes.Equal(gotEmptyRoot, expectedEmptyRoot))
+		hasher := NewNmtHasher(sha256.New(), namespace.IDSize(nIDSize), ignoreMaxNs)
+		want := hasher.EmptyRoot()
+
+		// perform some operation with the hasher
+		_, err := hasher.HashNode(createByteSlice(hasher.Size(), 1), createByteSlice(hasher.Size(), 1))
+		assert.NoError(t, err)
+		got := hasher.EmptyRoot()
+
+		// the empty root should be the same before and after the operation
+		assert.Equal(t, want, got)
+	})
+}
+
+func maxNs(ns []byte, ns2 []byte) []byte {
+	if bytes.Compare(ns, ns2) >= 0 {
+		return ns
+	}
+	return ns2
+}
+
+func minNs(ns []byte, ns2 []byte) []byte {
+	if bytes.Compare(ns, ns2) <= 0 {
+		return ns
+	}
+	return ns2
 }

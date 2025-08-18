@@ -704,6 +704,7 @@ func BenchmarkComputeRoot(b *testing.B) {
 		{"64-leaves", 64, 8, 256},
 		{"128-leaves", 128, 8, 256},
 		{"256-leaves", 256, 8, 256},
+		{"20k-leaves", 20000, 8, 512},
 	}
 
 	for _, tt := range tests {
@@ -877,9 +878,7 @@ func exampleNMT2(nidSize int, ignoreMaxNamespace bool, leavesNIDs ...byte) *Name
 }
 
 func swap(slice [][]byte, i int, j int) {
-	temp := slice[i]
-	slice[i] = slice[j]
-	slice[j] = temp
+	slice[i], slice[j] = slice[j], slice[i]
 }
 
 // Test_buildRangeProof_Err tests that buildRangeProof returns an error when the underlying tree has an invalid state e.g., leaves are not ordered by namespace ID or a leaf hash is corrupted.

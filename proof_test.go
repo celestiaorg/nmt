@@ -514,9 +514,7 @@ func TestVerifyNamespace_False(t *testing.T) {
 	require.True(t, absenceProof9_2.IsOfAbsence())
 
 	// swap leafHashes of the absence proofs
-	buffer := absenceProof9_2.leafHash
-	absenceProof9_2.leafHash = absenceProof9_1.leafHash
-	absenceProof9_1.leafHash = buffer
+	absenceProof9_2.leafHash, absenceProof9_1.leafHash = absenceProof9_1.leafHash, absenceProof9_2.leafHash
 
 	hasher := sha256.New()
 
@@ -1489,7 +1487,7 @@ func TestMinInt(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(fmt.Sprintf("val1=%d, val2=%d", tt.val1, tt.val2), func(t *testing.T) {
-			result := minInt(tt.val1, tt.val2)
+			result := min(tt.val1, tt.val2)
 			if result != tt.expected {
 				t.Errorf("expected %d, got %d", tt.expected, result)
 			}
@@ -1866,4 +1864,126 @@ func TestVerifySubtreeRootInclusion_infiniteRecursion(t *testing.T) {
 		_, err = proof.VerifySubtreeRootInclusion(hasher, subtreeRoots, subtreeWidth, root)
 		require.Error(t, err)
 	})
+}
+
+func TestComputeRootWithBasicValidation(t *testing.T) {
+	tree := exampleNMT(1, true, 1, 2, 3, 3, 3, 4, 5, 6, 7, 8)
+	hasher := tree.treeHasher.(*NmtHasher)
+
+	nid := namespace.ID{3}
+	proof, err := tree.ProveNamespace(nid)
+	require.NoError(t, err)
+
+	leaves := tree.Get(nid)
+	require.GreaterOrEqual(t, len(leaves), 2, "not enough leaves for completeness test")
+
+	namespacedLeaves := make([][]byte, len(leaves))
+	copy(namespacedLeaves, leaves)
+
+	leafHashes, err := ComputeAndValidateLeafHashes(hasher, nid, namespacedLeaves)
+	require.NoError(t, err)
+
+	root, err := tree.Root()
+	require.NoError(t, err)
+
+	t.Run("valid namespace validation", func(t *testing.T) {
+		gotRoot, err := proof.ComputeRootWithBasicValidation(hasher, nid, leafHashes, true)
+		require.NoError(t, err)
+		assert.Equal(t, root, gotRoot)
+	})
+
+	t.Run("fails on wrong leaf hashes", func(t *testing.T) {
+		corrupted := append([][]byte(nil), leafHashes...)
+		corrupted[0] = []byte("invalid") // invalid hash
+		_, err := proof.ComputeRootWithBasicValidation(hasher, nid, corrupted, true)
+		assert.ErrorContains(t, err, "leaf hash does not match the NMT hasher's hash format")
+	})
+
+	t.Run("fails on mismatched namespace ID", func(t *testing.T) {
+		wrongNID := namespace.ID{4}
+		_, err := proof.ComputeRootWithBasicValidation(hasher, wrongNID, leafHashes, true)
+		require.ErrorContains(t, err, "failed namespace check")
+	})
+
+	t.Run("fails on proof structure violation", func(t *testing.T) {
+		badProof := proof
+		badProof.start = badProof.end + 1 // invalid range
+		_, err := badProof.ComputeRootWithBasicValidation(hasher, nid, leafHashes, true)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "proof range")
+	})
+
+	t.Run("fails completeness check for partial namespace", func(t *testing.T) {
+		incomplete := leafHashes[:len(leafHashes)-1]
+		// Keep the original proof range but provide fewer leaf hashes
+		_, err := proof.ComputeRootWithBasicValidation(hasher, nid, incomplete, true)
+		require.ErrorContains(t, err, "wrong leafHashes size")
+	})
+}
+
+func TestComputeAndValidateLeafHashes_WithTree(t *testing.T) {
+	tree := exampleNMT(1, true, 1, 2, 3, 3, 3, 4, 5, 6, 7, 8)
+	hasher := tree.treeHasher.(*NmtHasher)
+
+	nid := namespace.ID{3}
+	leaves := tree.Get(nid)
+	require.NotEmpty(t, leaves, "expected non-empty leaves for namespace")
+
+	hashes, err := ComputeAndValidateLeafHashes(hasher, nid, leaves)
+	require.NoError(t, err)
+	require.Len(t, hashes, len(leaves))
+
+	for i, leaf := range leaves {
+		hash, err := hasher.HashLeaf(leaf)
+		require.NoError(t, err)
+		require.Equal(t, hash, hashes[i])
+	}
+}
+
+func TestComputeAndValidateLeafHashes_WithErrors(t *testing.T) {
+	nid := namespace.ID([]byte("namespace1"))
+	hasher := NewNmtHasher(sha256.New(), nid.Size(), false)
+
+	t.Run("invalid leaf format", func(t *testing.T) {
+		leaves := [][]byte{[]byte("invalid")}
+		_, err := ComputeAndValidateLeafHashes(hasher, nid, leaves)
+		require.ErrorContains(t, err, "invalid leaf data")
+	})
+
+	t.Run("mismatched namespace", func(t *testing.T) {
+		leaves := [][]byte{append([]byte("wrongNS"), []byte("leaf")...)}
+		_, err := ComputeAndValidateLeafHashes(hasher, nid, leaves)
+		require.ErrorContains(t, err, "does not belong to expected namespace")
+	})
+}
+
+func TestComputePrefixedLeafHashes_WithHasher(t *testing.T) {
+	h := sha256.New()
+	nid := namespace.ID([]byte("namespace1"))
+	nth := NewNmtHasher(h, nid.Size(), false)
+
+	leaves := [][]byte{
+		[]byte("leaf1"),
+		[]byte("leaf2"),
+	}
+
+	hashes, err := ComputePrefixedLeafHashes(nth, nid, leaves)
+	require.NoError(t, err)
+	require.Len(t, hashes, len(leaves))
+
+	for i, leaf := range leaves {
+		hash, err := nth.HashLeaf(append(nid, leaf...))
+		require.NoError(t, err)
+		require.Equal(t, hash, hashes[i])
+	}
+}
+
+func TestComputePrefixedLeafHashes_EmptyInput(t *testing.T) {
+	h := sha256.New()
+	nid := namespace.ID([]byte("namespace1"))
+	nth := NewNmtHasher(h, nid.Size(), false)
+
+	hashes, err := ComputePrefixedLeafHashes(nth, nid, [][]byte{})
+	require.NoError(t, err)
+	require.Empty(t, hashes)
 }
