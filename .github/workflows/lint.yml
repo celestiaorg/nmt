@@ -11,7 +11,6 @@ jobs:
   golangci:
     name: golangci-lint
     runs-on: ubuntu-latest
-    timeout-minutes: 4
     steps:
       - uses: actions/checkout@v4
       - uses: technote-space/get-diff-action@v6
@@ -20,9 +19,9 @@ jobs:
             .go
             .mod
             .sum
-      - uses: golangci/golangci-lint-action@v6
+      - uses: golangci/golangci-lint-action@v8
         with:
-          version: v1.61.0
+          version: v2.1.6
           args: --timeout 10m
         if: env.GIT_DIFF
 
