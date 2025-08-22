@@ -46,12 +46,12 @@ type Option func(*Options)
 
 // InitialCapacity sets the capacity of the internally used slice(s) to the
 // passed in initial value (defaults is 128).
-func InitialCapacity(cap int) Option {
-	if cap < 0 {
+func InitialCapacity(capacity int) Option {
+	if capacity < 0 {
 		panic("Got invalid capacity. Expected int greater or equal to 0.")
 	}
 	return func(opts *Options) {
-		opts.InitialCapacity = cap
+		opts.InitialCapacity = capacity
 	}
 }
 
