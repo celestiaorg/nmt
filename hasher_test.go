@@ -104,7 +104,7 @@ func Test_namespacedTreeHasher_HashNode(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			n := NewNmtHasher(sha256.New(), tt.nidLen, false)
-			got, err := n.HashNode(tt.children.l, tt.children.r)
+			got, err := n.HashNode(tt.children.l, tt.children.r, false)
 			require.NoError(t, err)
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("HashNode() = %v, want %v", got, tt.want)
@@ -274,7 +274,7 @@ func TestHashNode_Error(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			n := NewNmtHasher(sha256.New(), tt.nidLen, false)
-			_, err := n.HashNode(tt.children.l, tt.children.r)
+			_, err := n.HashNode(tt.children.l, tt.children.r, false)
 			assert.Equal(t, tt.wantErr, err != nil)
 			if tt.wantErr {
 				assert.True(t, errors.Is(err, tt.errType))
@@ -533,7 +533,7 @@ func TestHashNode_ErrorsCheck(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			n := NewNmtHasher(sha256.New(), tt.nidLen, false)
-			_, err := n.HashNode(tt.children.l, tt.children.r)
+			_, err := n.HashNode(tt.children.l, tt.children.r, false)
 			assert.Equal(t, tt.wantErr, err != nil)
 			if tt.wantErr {
 				assert.True(t, errors.Is(err, tt.errType))
@@ -918,7 +918,7 @@ func TestEmptyRoot(t *testing.T) {
 		want := hasher.EmptyRoot()
 
 		// perform some operation with the hasher
-		_, err := hasher.HashNode(createByteSlice(hasher.Size(), 1), createByteSlice(hasher.Size(), 1))
+		_, err := hasher.HashNode(createByteSlice(hasher.Size(), 1), createByteSlice(hasher.Size(), 1), false)
 		assert.NoError(t, err)
 		got := hasher.EmptyRoot()
 

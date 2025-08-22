@@ -2,6 +2,7 @@ package nmt
 
 import (
 	"bytes"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"hash"
@@ -12,6 +13,11 @@ import (
 const (
 	LeafPrefix = 0
 	NodePrefix = 1
+)
+
+var (
+	nodePrefixBytes = []byte{NodePrefix}
+	leafPrefixBytes = []byte{LeafPrefix}
 )
 
 var _ hash.Hash = (*NmtHasher)(nil)
@@ -32,7 +38,8 @@ type Hasher interface {
 	IsMaxNamespaceIDIgnored() bool
 	NamespaceSize() namespace.IDSize
 	HashLeaf(data []byte) ([]byte, error)
-	HashNode(leftChild, rightChild []byte) ([]byte, error)
+	HashNode(leftChild, rightChild []byte, reuse bool) ([]byte, error)
+	HashNodeTrusted(leftChild, rightChild []byte, reuse bool, trusted bool) ([]byte, error)
 	EmptyRoot() []byte
 }
 
@@ -131,7 +138,7 @@ func (n *NmtHasher) Sum([]byte) []byte {
 		sha256Len := n.baseHasher.Size()
 		leftChild := n.data[:flagLen+sha256Len]
 		rightChild := n.data[flagLen+sha256Len:]
-		res, err := n.HashNode(leftChild, rightChild)
+		res, err := n.HashNode(leftChild, rightChild, false)
 		if err != nil {
 			panic(err) // this should never happen since the data is already validated in the Write method
 		}
@@ -190,7 +197,7 @@ func (n *NmtHasher) HashLeaf(ndata []byte) ([]byte, error) {
 	minMaxNIDs = append(minMaxNIDs, nID...) // nID
 	minMaxNIDs = append(minMaxNIDs, nID...) // nID || nID
 
-	h.Write([]byte{LeafPrefix})
+	h.Write(leafPrefixBytes)
 	h.Write(ndata)
 
 	// compute h(LeafPrefix || ndata) and append it to the minMaxNIDs
@@ -217,15 +224,21 @@ type nsIDRange struct {
 // It will return an ErrInvalidNodeLen | ErrInvalidNodeNamespaceOrder
 // if the supplied node does not conform to the namespaced hash format.
 func (n *NmtHasher) tryFetchNodeNSRange(node []byte) (nsIDRange, error) {
-	expectedNodeLen := n.Size()
-	nodeLen := len(node)
-	if nodeLen != expectedNodeLen {
-		return nsIDRange{}, fmt.Errorf("%w: got: %v, want %v", ErrInvalidNodeLen, nodeLen, expectedNodeLen)
+	return n.tryFetchNodeNSRangeTrusted(node, false)
+}
+
+func (n *NmtHasher) tryFetchNodeNSRangeTrusted(node []byte, trusted bool) (nsIDRange, error) {
+	if !trusted {
+		expectedNodeLen := n.Size()
+		nodeLen := len(node)
+		if nodeLen != expectedNodeLen {
+			return nsIDRange{}, fmt.Errorf("%w: got: %v, want %v", ErrInvalidNodeLen, nodeLen, expectedNodeLen)
+		}
 	}
-	// check the namespace order
+	// Extract namespace range - this is the essential work we always need to do
 	minNID := namespace.ID(MinNamespace(node, n.NamespaceSize()))
 	maxNID := namespace.ID(MaxNamespace(node, n.NamespaceSize()))
-	if maxNID.Less(minNID) {
+	if !trusted && maxNID.Less(minNID) {
 		return nsIDRange{}, fmt.Errorf("%w: max namespace ID %d is less than min namespace ID %d ", ErrInvalidNodeNamespaceOrder, maxNID, minNID)
 	}
 	return nsIDRange{Min: minNID, Max: maxNID}, nil
@@ -247,21 +260,30 @@ func (n *NmtHasher) tryFetchLeftAndRightNSRanges(left, right []byte) (
 	nsIDRange,
 	error,
 ) {
+	return n.tryFetchLeftAndRightNSRangesTrusted(left, right, false)
+}
+
+func (n *NmtHasher) tryFetchLeftAndRightNSRangesTrusted(left, right []byte, trusted bool) (
+	nsIDRange,
+	nsIDRange,
+	error,
+) {
 	var lNsRange nsIDRange
 	var rNsRange nsIDRange
 	var err error
 
-	lNsRange, err = n.tryFetchNodeNSRange(left)
+	lNsRange, err = n.tryFetchNodeNSRangeTrusted(left, trusted)
 	if err != nil {
 		return lNsRange, rNsRange, err
 	}
-	rNsRange, err = n.tryFetchNodeNSRange(right)
+	rNsRange, err = n.tryFetchNodeNSRangeTrusted(right, trusted)
 	if err != nil {
 		return lNsRange, rNsRange, err
 	}
 
 	// check the namespace range of the left and right children
-	if rNsRange.Min.Less(lNsRange.Max) {
+	// Skip this expensive validation when we trust the input
+	if !trusted && rNsRange.Min.Less(lNsRange.Max) {
 		err = fmt.Errorf("%w: the min namespace ID of the right child %d is less than the max namespace ID of the left child %d", ErrUnorderedSiblings, rNsRange.Min, lNsRange.Max)
 	}
 
@@ -290,9 +312,13 @@ func (n *NmtHasher) ValidateNodes(left, right []byte) error {
 // slightly changes. Let MAXNID be the maximum possible namespace ID value i.e., 2^NamespaceIDSize-1.
 // If the namespace range of the right child is start=end=MAXNID, indicating that it represents the root of a subtree whose leaves all have the namespace ID of `MAXNID`, then exclude the right child from the namespace range calculation. Instead,
 // assign the namespace range of the left child as the parent's namespace range.
-func (n *NmtHasher) HashNode(left, right []byte) ([]byte, error) {
+func (n *NmtHasher) HashNode(left, right []byte, reuse bool) ([]byte, error) {
+	return n.HashNodeTrusted(left, right, reuse, false)
+}
+
+func (n *NmtHasher) HashNodeTrusted(left, right []byte, reuse bool, trusted bool) ([]byte, error) {
 	// validate the inputs & fetch the namespace ranges
-	lRange, rRange, err := n.tryFetchLeftAndRightNSRanges(left, right)
+	lRange, rRange, err := n.tryFetchLeftAndRightNSRangesTrusted(left, right, trusted)
 	if err != nil {
 		return nil, err
 	}
@@ -303,22 +329,62 @@ func (n *NmtHasher) HashNode(left, right []byte) ([]byte, error) {
 	// compute the namespace range of the parent node
 	minNs, maxNs := computeNsRange(lRange.Min, lRange.Max, rRange.Min, rRange.Max, n.ignoreMaxNs, n.precomputedMaxNs)
 
-	res := make([]byte, 0, len(minNs)+len(maxNs)+h.Size())
-	res = append(res, minNs...)
-	res = append(res, maxNs...)
+	if reuse {
+		// Write NodePrefix using static byte slice to avoid allocation
+		h.Write(nodePrefixBytes)
+		h.Write(left)
+		h.Write(right)
 
-	h.Write([]byte{NodePrefix})
-	h.Write(left)
-	h.Write(right)
-	return h.Sum(res), nil
+		// Choose the buffer with maximum capacity
+		var buffer []byte
+		if cap(left) >= cap(right) {
+			buffer = left
+		} else {
+			buffer = right
+		}
+
+		// Check if the chosen buffer has sufficient capacity
+		requiredSize := len(minNs) + len(maxNs) + h.Size()
+		if cap(buffer) < requiredSize {
+			// Increase capacity to 2x the required size
+			newCap := 2 * requiredSize
+			buffer = make([]byte, 0, newCap)
+		} else {
+			// Reuse existing buffer, reset length but keep capacity
+			buffer = buffer[:0]
+		}
+
+		// Build the result using appends
+		buffer = append(buffer, minNs...)
+		buffer = append(buffer, maxNs...)
+		return h.Sum(buffer), nil
+	} else {
+		// Allocate new buffer (original behavior)
+		res := make([]byte, 0, len(minNs)+len(maxNs)+h.Size())
+		res = append(res, minNs...)
+		res = append(res, maxNs...)
+
+		h.Write(nodePrefixBytes)
+		h.Write(left)
+		h.Write(right)
+		return h.Sum(res), nil
+	}
 }
 
 // computeNsRange computes the namespace range of the parent node based on the namespace ranges of its left and right children.
 func computeNsRange(leftMinNs, leftMaxNs, rightMinNs, rightMaxNs []byte, ignoreMaxNs bool, precomputedMaxNs namespace.ID) (minNs []byte, maxNs []byte) {
 	minNs = leftMinNs
 	maxNs = rightMaxNs
-	if ignoreMaxNs && bytes.Equal(precomputedMaxNs, rightMinNs) {
+	if ignoreMaxNs && fastEqual8(precomputedMaxNs, rightMinNs) {
 		maxNs = leftMaxNs
 	}
 	return minNs, maxNs
+}
+
+// fastEqual8 optimizes equality comparison for 8-byte namespaces
+func fastEqual8(a, b []byte) bool {
+	if len(a) == 8 && len(b) == 8 {
+		return binary.BigEndian.Uint64(a) == binary.BigEndian.Uint64(b)
+	}
+	return bytes.Equal(a, b)
 }

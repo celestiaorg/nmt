@@ -20,7 +20,6 @@ const (
 var (
 	ErrInvalidRange     = errors.New("invalid proof range")
 	ErrInvalidPushOrder = errors.New("pushed data has to be lexicographically ordered by namespace IDs")
-	noOp                = func(_ []byte, _ ...[]byte) {}
 )
 
 type NodeVisitorFn = func(hash []byte, children ...[]byte)
@@ -130,7 +129,7 @@ func New(h hash.Hash, setters ...Option) *NamespacedMerkleTree {
 		InitialCapacity:    DefaultCapacity,
 		NamespaceIDSize:    DefaultNamespaceIDLen,
 		IgnoreMaxNamespace: true,
-		NodeVisitor:        noOp,
+		NodeVisitor:        nil,
 	}
 
 	for _, setter := range setters {
@@ -358,7 +357,7 @@ func (n *NamespacedMerkleTree) buildRangeProof(proofStart, proofEnd int) ([][]by
 			hash = left
 		} else {
 			var err error
-			hash, err = n.treeHasher.HashNode(left, right)
+			hash, err = n.treeHasher.HashNode(left, right, false)
 			if err != nil { // if HashNode returns an error, it is a bug
 				return nil, err // this should never happen if the Push method is used to add leaves to the tree
 			}
@@ -488,6 +487,75 @@ func (n *NamespacedMerkleTree) Root() ([]byte, error) {
 	return n.rawRoot, nil
 }
 
+// ConsumeRoot computes the root of the tree by reusing internal buffers,
+// specifically modifying the leafHashes buffer in place. This is more efficient
+// than Root() as it avoids allocations, but it destroys the internal state.
+//
+// WARNING: After calling this method, the tree becomes unusable for any other
+// operations. The leafHashes buffer is consumed and modified during computation.
+// This method should only be used when you need to compute the root once and
+// then discard the tree.
+//
+// IMPORTANT: This method currently only works when the number of leaves is a
+// power of 2. It will return an error for other sizes.
+//
+// The returned byte slice is of size 2*n.NamespaceSize + the underlying hash
+// output size, and should be parsed as minND || maxNID || hash.
+// Any error returned by this method is irrecoverable and indicates an illegal
+// state of the tree.
+func (n *NamespacedMerkleTree) ConsumeRoot() ([]byte, error) {
+	if n.rawRoot == nil {
+		// Check if leaf count is power of 2
+		size := n.Size()
+		if size == 0 {
+			n.rawRoot = n.treeHasher.EmptyRoot()
+			return n.rawRoot, nil
+		}
+
+		// Check if size is power of 2
+		if (size & (size - 1)) != 0 {
+			return nil, fmt.Errorf("ConsumeRoot only works with power-of-2 leaf counts, got %d", size)
+		}
+
+		// Sequential iterative approach
+		res, err := n.computeRootSequential()
+		if err != nil {
+			return nil, err
+		}
+		n.rawRoot = res
+	}
+	return n.rawRoot, nil
+}
+
+// computeRootSequential computes the root using a sequential iterative approach,
+// reusing the leafHashes buffer in place. This only works when the number of
+// leaves is a power of 2.
+func (n *NamespacedMerkleTree) computeRootSequential() ([]byte, error) {
+	levelSize := len(n.leafHashes)
+
+	for levelSize > 1 {
+		c := 0
+		for i := 0; i < levelSize; i += 2 {
+			left := n.leafHashes[i]
+			right := n.leafHashes[i+1]
+
+			hash, err := n.treeHasher.HashNodeTrusted(left, right, true, true)
+			if err != nil {
+				return nil, err
+			}
+
+			if n.visit != nil {
+				n.visit(hash, left, right)
+			}
+			n.leafHashes[c] = hash
+
+			c++
+		}
+		levelSize = c
+	}
+	return n.leafHashes[0], nil
+}
+
 // MinNamespace returns the minimum namespace ID in this Namespaced Merkle Tree.
 // Any errors returned by this method are irrecoverable and indicate an illegal state of the tree (n).
 func (n *NamespacedMerkleTree) MinNamespace() (namespace.ID, error) {
@@ -533,6 +601,10 @@ func (n *NamespacedMerkleTree) ForceAddLeaf(leaf namespace.PrefixedData) error {
 // encompasses the leaves within the range of [start, end).
 // Any errors returned by this method are irrecoverable and indicate an illegal state of the tree (n).
 func (n *NamespacedMerkleTree) computeRoot(start, end int) ([]byte, error) {
+	return n.computeRootInner(start, end, false)
+}
+
+func (n *NamespacedMerkleTree) computeRootInner(start, end int, reuse bool) ([]byte, error) {
 	// in computeRoot, start may be equal to end which indicates an empty tree hence empty root.
 	// Due to this, we need to perform custom range check instead of using validateRange() in which start=end is considered invalid.
 	if start < 0 || start > end || end > n.Size() {
@@ -541,28 +613,42 @@ func (n *NamespacedMerkleTree) computeRoot(start, end int) ([]byte, error) {
 	switch end - start {
 	case 0:
 		rootHash := n.treeHasher.EmptyRoot()
-		n.visit(rootHash)
+		if n.visit != nil {
+			n.visit(rootHash)
+		}
 		return rootHash, nil
 	case 1:
-		leafHash := make([]byte, len(n.leafHashes[start]))
-		copy(leafHash, n.leafHashes[start])
-		n.visit(leafHash, n.leaves[start])
-		return leafHash, nil
+		if reuse {
+			// Return the leaf hash directly without copying since we're consuming the tree
+			if n.visit != nil {
+				n.visit(n.leafHashes[start], n.leaves[start])
+			}
+			return n.leafHashes[start], nil
+		} else {
+			leafHash := make([]byte, len(n.leafHashes[start]))
+			copy(leafHash, n.leafHashes[start])
+			if n.visit != nil {
+				n.visit(leafHash, n.leaves[start])
+			}
+			return leafHash, nil
+		}
 	default:
 		k := getSplitPoint(end - start)
-		left, err := n.computeRoot(start, start+k)
+		left, err := n.computeRootInner(start, start+k, reuse)
 		if err != nil { // this should never happen since leaves are added through the Push method, during which leaves formats are validated and their namespace IDs are checked to be sequential.
 			return nil, fmt.Errorf("failed to compute subtree root [%d, %d): %w", start, start+k, err)
 		}
-		right, err := n.computeRoot(start+k, end)
+		right, err := n.computeRootInner(start+k, end, reuse)
 		if err != nil { // this should never happen since leaves are added through the Push method, during which leaves formats are validated and their namespace IDs are checked to be sequential.
 			return nil, fmt.Errorf("failed to compute subtree root [%d, %d): %w", start+k, end, err)
 		}
-		hash, err := n.treeHasher.HashNode(left, right)
+		hash, err := n.treeHasher.HashNodeTrusted(left, right, reuse, true)
 		if err != nil { // this error should never happen since leaves are added through the Push method, during which leaves formats are validated and their namespace IDs are checked to be sequential.
 			return nil, fmt.Errorf("failed to compute subtree root [%d, %d): %w", left, right, err)
 		}
-		n.visit(hash, left, right)
+		if n.visit != nil {
+			n.visit(hash, left, right)
+		}
 		return hash, nil
 	}
 }

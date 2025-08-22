@@ -16,8 +16,9 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/celestiaorg/nmt/namespace"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/celestiaorg/nmt/namespace"
 )
 
 // prefixedData8 like namespace.PrefixedData is just a slice of bytes. It
@@ -732,6 +733,110 @@ func BenchmarkComputeRoot(b *testing.B) {
 	}
 }
 
+func BenchmarkConsumeRootVsRoot(b *testing.B) {
+	tests := []struct {
+		name      string
+		numLeaves int
+		nidSize   int
+		dataSize  int
+	}{
+		{"512-leaves", 512, 8, 256},
+		{"1024-leaves", 1024, 8, 256},
+		{"2048-leaves", 2048, 8, 256},
+		{"16384-leaves", 16384, 8, 256},
+	}
+
+	for _, tt := range tests {
+		data, err := generateRandNamespacedRawData(tt.numLeaves, tt.nidSize, tt.dataSize)
+		require.NoError(b, err)
+
+		b.Run(tt.name+"-Root", func(b *testing.B) {
+			b.ReportAllocs()
+			for i := 0; i < b.N; i++ {
+				n := New(sha256.New())
+				for j := 0; j < tt.numLeaves; j++ {
+					if err := n.Push(data[j]); err != nil {
+						b.Errorf("err: %v", err)
+					}
+				}
+				_, _ = n.Root()
+			}
+		})
+
+		b.Run(tt.name+"-ConsumeRoot", func(b *testing.B) {
+			b.ReportAllocs()
+			for i := 0; i < b.N; i++ {
+				n := New(sha256.New())
+				for j := 0; j < tt.numLeaves; j++ {
+					if err := n.Push(data[j]); err != nil {
+						b.Errorf("err: %v", err)
+					}
+				}
+				_, _ = n.ConsumeRoot()
+			}
+		})
+	}
+}
+
+func BenchmarkRootAllocationsOnly(b *testing.B) {
+	tests := []struct {
+		name      string
+		numLeaves int
+		nidSize   int
+		dataSize  int
+	}{
+		{"512-leaves", 512, 8, 256},
+		{"1024-leaves", 1024, 8, 256},
+		{"2048-leaves", 2048, 8, 256},
+		{"16384-leaves", 16384, 8, 256},
+	}
+
+	for _, tt := range tests {
+		data, err := generateRandNamespacedRawData(tt.numLeaves, tt.nidSize, tt.dataSize)
+		require.NoError(b, err)
+
+		b.Run(tt.name+"-Root", func(b *testing.B) {
+			// Build tree once outside of benchmark
+			n := New(sha256.New())
+			for j := 0; j < tt.numLeaves; j++ {
+				if err := n.Push(data[j]); err != nil {
+					b.Errorf("err: %v", err)
+				}
+			}
+
+			// Now benchmark only the root computation
+			b.ResetTimer()
+			b.ReportAllocs()
+			for i := 0; i < b.N; i++ {
+				// Clear cached root to force recomputation
+				n.rawRoot = nil
+				_, _ = n.Root()
+			}
+		})
+
+		b.Run(tt.name+"-ConsumeRoot", func(b *testing.B) {
+			// Prepare trees with leaf hashes already computed
+			trees := make([]*NamespacedMerkleTree, b.N)
+			for i := 0; i < b.N; i++ {
+				n := New(sha256.New())
+				for j := 0; j < tt.numLeaves; j++ {
+					if err := n.Push(data[j]); err != nil {
+						b.Errorf("err: %v", err)
+					}
+				}
+				trees[i] = n
+			}
+
+			// Benchmark only ConsumeRoot (no Push allocations)
+			b.ResetTimer()
+			b.ReportAllocs()
+			for i := 0; i < b.N; i++ {
+				_, _ = trees[i].ConsumeRoot()
+			}
+		})
+	}
+}
+
 func Test_Root_RaceCondition(t *testing.T) {
 	// this is very similar to: https://github.com/HuobiRDCenter/huobi_Golang/pull/9
 	tree := New(sha256.New())
@@ -753,6 +858,82 @@ func Test_Root_RaceCondition(t *testing.T) {
 	}
 
 	wg.Wait()
+}
+
+func TestConsumeRoot(t *testing.T) {
+	// Test that ConsumeRoot produces the same result as Root for power-of-2 sizes
+	tests := []struct {
+		name        string
+		numLeaves   int
+		nidSize     int
+		leafSize    int
+		shouldError bool
+	}{
+		{"empty tree", 0, 8, 32, false},
+		{"single leaf", 1, 8, 32, false},
+		{"two leaves", 2, 8, 32, false},
+		{"four leaves", 4, 8, 32, false},
+		{"eight leaves", 8, 8, 32, false},
+		{"16 leaves", 16, 8, 32, false},
+		{"32 leaves", 32, 8, 32, false},
+		{"64 leaves", 64, 8, 32, false},
+		{"128 leaves", 128, 8, 32, false},
+		{"256 leaves", 256, 8, 32, false},
+		{"1024 leaves", 1024, 8, 64, false},
+		// Non-power-of-2 should error
+		{"3 leaves - should error", 3, 8, 32, true},
+		{"5 leaves - should error", 5, 8, 32, true},
+		{"11 leaves - should error", 11, 8, 32, true},
+		{"100 leaves - should error", 100, 8, 64, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Generate test data
+			var data [][]byte
+			if tt.numLeaves > 0 {
+				var err error
+				data, err = generateRandNamespacedRawData(tt.numLeaves, tt.nidSize, tt.leafSize)
+				require.NoError(t, err)
+			}
+
+			// Create two identical trees
+			tree1 := New(sha256.New())
+			tree2 := New(sha256.New())
+
+			// Push same data to both trees
+			for _, leaf := range data {
+				err := tree1.Push(leaf)
+				require.NoError(t, err)
+				err = tree2.Push(leaf)
+				require.NoError(t, err)
+			}
+
+			// Compute root using ConsumeRoot
+			root2, err := tree2.ConsumeRoot()
+
+			if tt.shouldError {
+				// Should error for non-power-of-2 sizes
+				require.Error(t, err)
+				require.Contains(t, err.Error(), "power-of-2")
+			} else {
+				// Should succeed for power-of-2 sizes
+				require.NoError(t, err)
+
+				// Compute root using normal method
+				root1, err := tree1.Root()
+				require.NoError(t, err)
+
+				// Roots should be identical
+				assert.Equal(t, root1, root2, "ConsumeRoot should produce same result as Root")
+
+				// Verify that calling Root again on tree2 returns the same cached result
+				root2Again, err := tree2.Root()
+				require.NoError(t, err)
+				assert.Equal(t, root2, root2Again, "Root should return cached result after ConsumeRoot")
+			}
+		})
+	}
 }
 
 func shouldPanic(t *testing.T, f func()) {
