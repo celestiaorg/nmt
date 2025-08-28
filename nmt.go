@@ -544,8 +544,7 @@ func (n *NamespacedMerkleTree) computeRoot(start, end int) ([]byte, error) {
 		n.visit(rootHash)
 		return rootHash, nil
 	case 1:
-		leafHash := make([]byte, len(n.leafHashes[start]))
-		copy(leafHash, n.leafHashes[start])
+		leafHash := n.leafHashes[start]
 		n.visit(leafHash, n.leaves[start])
 		return leafHash, nil
 	default:
