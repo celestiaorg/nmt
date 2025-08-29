@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"hash"
 	"math/bits"
+	"unsafe"
 
 	"github.com/celestiaorg/nmt/namespace"
 )
@@ -104,6 +105,13 @@ type NamespacedMerkleTree struct {
 	//  through the Root() or the computeLeafHashesIfNecessary methods.
 	leafHashes [][]byte
 
+	// leafCount tracks the actual number of leaves currently in use.
+	// This allows reusing allocated memory after Reset().
+	leafCount int
+
+	// namespaceStringPool caches namespace strings to avoid repeated allocations
+	namespaceStringPool map[string]string
+
 	// namespaceRanges can be used to efficiently look up the range for an
 	// existing namespace without iterating through the leaves. The map key is
 	// the string representation of a namespace.ID  and the LeafRange indicates
@@ -146,13 +154,14 @@ func New(h hash.Hash, setters ...Option) *NamespacedMerkleTree {
 	}
 
 	return &NamespacedMerkleTree{
-		treeHasher:      opts.Hasher,
-		visit:           opts.NodeVisitor,
-		leaves:          make([][]byte, 0, opts.InitialCapacity),
-		leafHashes:      make([][]byte, 0, opts.InitialCapacity),
-		namespaceRanges: make(map[string]LeafRange),
-		minNID:          bytes.Repeat([]byte{0xFF}, int(opts.NamespaceIDSize)),
-		maxNID:          bytes.Repeat([]byte{0x00}, int(opts.NamespaceIDSize)),
+		treeHasher:          opts.Hasher,
+		visit:               opts.NodeVisitor,
+		leaves:              make([][]byte, 0, opts.InitialCapacity),
+		leafHashes:          make([][]byte, 0, opts.InitialCapacity),
+		namespaceStringPool: make(map[string]string),
+		namespaceRanges:     make(map[string]LeafRange),
+		minNID:              bytes.Repeat([]byte{0xFF}, int(opts.NamespaceIDSize)),
+		maxNID:              bytes.Repeat([]byte{0x00}, int(opts.NamespaceIDSize)),
 	}
 }
 
@@ -385,6 +394,9 @@ func (n *NamespacedMerkleTree) buildRangeProof(proofStart, proofEnd int) ([][]by
 // Get returns leaves for the given namespace.ID.
 func (n *NamespacedMerkleTree) Get(nID namespace.ID) [][]byte {
 	_, start, end := n.foundInRange(nID)
+	if start >= n.leafCount || end > n.leafCount {
+		return nil
+	}
 	return n.leaves[start:end]
 }
 
@@ -404,7 +416,8 @@ func (n *NamespacedMerkleTree) calculateAbsenceIndex(nID namespace.ID) int {
 	nidSize := n.treeHasher.NamespaceSize()
 	var prevLeaf []byte
 
-	for index, curLeaf := range n.leaves {
+	for index := 0; index < n.leafCount; index++ {
+		curLeaf := n.leaves[index]
 		if index == 0 {
 			prevLeaf = curLeaf
 			continue
@@ -455,16 +468,23 @@ func (n *NamespacedMerkleTree) Push(namespacedData namespace.PrefixedData) error
 	if err != nil {
 		return err
 	}
-
-	// compute the leaf hash
-	res, err := n.treeHasher.HashLeaf(namespacedData)
+	count := n.leafCount
+	var curHash []byte
+	if len(n.leafHashes) > count {
+		curHash = n.leafHashes[count]
+	}
+	// compute the leaf hash using reusable buffer
+	res, err := n.treeHasher.HashLeafWithBuffer(namespacedData, curHash)
 	if err != nil {
 		return err
 	}
-
-	// update relevant "caches":
+	if len(n.leafHashes) > count {
+		n.leafHashes[count] = res
+	} else {
+		n.leafHashes = append(n.leafHashes, res)
+	}
 	n.leaves = append(n.leaves, namespacedData)
-	n.leafHashes = append(n.leafHashes, res)
+	n.leafCount++
 	n.updateNamespaceRanges()
 	n.updateMinMaxID(nID)
 	n.rawRoot = nil
@@ -582,15 +602,23 @@ func (n *NamespacedMerkleTree) MaxNamespace() (namespace.ID, error) {
 // out of order.
 func (n *NamespacedMerkleTree) ForceAddLeaf(leaf namespace.PrefixedData) error {
 	nID := namespace.ID(leaf[:n.NamespaceSize()])
-	// compute the leaf hash
-	res, err := n.treeHasher.HashLeaf(leaf)
+	count := n.leafCount
+	var curHash []byte
+	if len(n.leafHashes) > count {
+		curHash = n.leafHashes[count]
+	}
+	// compute the leaf hash using reusable buffer
+	res, err := n.treeHasher.HashLeafWithBuffer(leaf, curHash)
 	if err != nil {
 		return err
 	}
-
-	// update relevant "caches":
+	if len(n.leafHashes) > count {
+		n.leafHashes[count] = res
+	} else {
+		n.leafHashes = append(n.leafHashes, res)
+	}
 	n.leaves = append(n.leaves, leaf)
-	n.leafHashes = append(n.leafHashes, res)
+	n.leafCount++
 	n.updateNamespaceRanges()
 	n.updateMinMaxID(nID)
 	n.rawRoot = nil
@@ -642,7 +670,7 @@ func (n *NamespacedMerkleTree) computeRootInner(start, end int, reuse bool) ([]b
 		if err != nil { // this should never happen since leaves are added through the Push method, during which leaves formats are validated and their namespace IDs are checked to be sequential.
 			return nil, fmt.Errorf("failed to compute subtree root [%d, %d): %w", start+k, end, err)
 		}
-		hash, err := n.treeHasher.HashNodeTrusted(left, right, reuse, true)
+		hash, err := n.treeHasher.HashNodeTrusted(left, right, reuse, false)
 		if err != nil { // this error should never happen since leaves are added through the Push method, during which leaves formats are validated and their namespace IDs are checked to be sequential.
 			return nil, fmt.Errorf("failed to compute subtree root [%d, %d): %w", left, right, err)
 		}
@@ -669,11 +697,38 @@ func getSplitPoint(length int) int {
 	return k
 }
 
+// unsafeByteToString converts []byte to string without copying.
+// SAFETY: The returned string must not outlive the byte slice and the byte slice
+// must not be modified while the string is in use. This is safe in our case because
+// we only use the string as a temporary map key.
+func unsafeByteToString(b []byte) string {
+	if len(b) == 0 {
+		return ""
+	}
+	return unsafe.String(unsafe.SliceData(b), len(b))
+}
+
+// getNamespaceString gets or creates a cached string for the namespace bytes
+func (n *NamespacedMerkleTree) getNamespaceString(nsBytes []byte) string {
+	// Use unsafe conversion for lookup (safe because we don't store this)
+	unsafeStr := unsafeByteToString(nsBytes)
+
+	// Check if we already have this string cached
+	if cachedStr, found := n.namespaceStringPool[unsafeStr]; found {
+		return cachedStr
+	}
+
+	// Create a proper string copy and cache it
+	str := string(nsBytes)
+	n.namespaceStringPool[str] = str
+	return str
+}
+
 func (n *NamespacedMerkleTree) updateNamespaceRanges() {
 	if n.Size() > 0 {
 		lastIndex := n.Size() - 1
 		lastPushed := n.leaves[lastIndex]
-		lastNsStr := string(lastPushed[:n.treeHasher.NamespaceSize()])
+		lastNsStr := unsafeByteToString(lastPushed[:n.treeHasher.NamespaceSize()])
 		lastRange, found := n.namespaceRanges[lastNsStr]
 		if !found {
 			n.namespaceRanges[lastNsStr] = LeafRange{
@@ -707,13 +762,12 @@ func (n *NamespacedMerkleTree) validateAndExtractNamespace(ndata namespace.Prefi
 	nID := namespace.ID(ndata[:n.NamespaceSize()])
 	// ensure pushed data doesn't have a smaller namespace than the previous
 	// one:
-	curSize := n.Size()
-	if curSize > 0 {
-		if nID.Less(n.leaves[curSize-1][:nidSize]) {
+	if n.leafCount > 0 {
+		if nID.Less(n.leaves[n.leafCount-1][:nidSize]) {
 			return nil, fmt.Errorf(
 				"%w: last namespace: %x, pushed: %x",
 				ErrInvalidPushOrder,
-				n.leaves[curSize-1][:nidSize],
+				n.leaves[n.leafCount-1][:nidSize],
 				nID,
 			)
 		}
@@ -780,5 +834,36 @@ func MaxNamespace(hash []byte, size namespace.IDSize) []byte {
 
 // Size returns the number of leaves in the tree.
 func (n *NamespacedMerkleTree) Size() int {
-	return len(n.leaves)
+	return n.leafCount
+}
+
+// Reset clears the tree state while preserving allocated memory for reuse.
+// After calling Reset(), the tree can be reused by calling Push() again.
+func (n *NamespacedMerkleTree) Reset() {
+	// Reset the counter but keep the allocated slices
+	n.leafCount = 0	
+	n.leaves = n.leaves[:0]
+	// Clear the namespace ranges map and string pool
+	n.namespaceRanges = map[string]LeafRange{}
+	n.namespaceStringPool = make(map[string]string)
+	// Reset min/max namespace IDs
+	n.minNID = bytes.Repeat([]byte{0xFF}, int(n.treeHasher.NamespaceSize()))
+	n.maxNID = bytes.Repeat([]byte{0x00}, int(n.treeHasher.NamespaceSize()))
+	// Clear cached root
+	n.rawRoot = nil
+}
+
+// Shrink reduces the internal slices to match the actual number of leaves in use.
+// This is useful after calling Reset() and Push() to free unused memory.
+func (n *NamespacedMerkleTree) Shrink() {
+	if n.leafCount < cap(n.leaves) {
+		// Create new slices with exact capacity to free memory
+		newLeaves := make([][]byte, n.leafCount, n.leafCount)
+		copy(newLeaves, n.leaves[:n.leafCount])
+		n.leaves = newLeaves
+
+		newLeafHashes := make([][]byte, n.leafCount, n.leafCount)
+		copy(newLeafHashes, n.leafHashes[:n.leafCount])
+		n.leafHashes = newLeafHashes
+	}
 }

@@ -709,10 +709,10 @@ func BenchmarkComputeRoot(b *testing.B) {
 		nidSize   int
 		dataSize  int
 	}{
-		{"64-leaves", 64, 8, 256},
-		{"128-leaves", 128, 8, 256},
-		{"256-leaves", 256, 8, 256},
-		{"20k-leaves", 20000, 8, 512},
+		{"512-leaves", 512, 8, 256},
+		{"1024-leaves", 1024, 8, 256},
+		{"2048-leaves", 2048, 8, 256},
+		{"16384-leaves", 16384, 8, 256},
 	}
 
 	for _, tt := range tests {
@@ -1375,6 +1375,405 @@ func TestForcedOutOfOrderNamespacedMerkleTree(t *testing.T) {
 		err := tree.ForceAddLeaf(d)
 		assert.NoError(t, err)
 	}
+}
+
+func TestResetAndShrink(t *testing.T) {
+	// Test that Reset() preserves allocated memory and allows reuse
+	t.Run("Reset preserves capacity and allows reuse", func(t *testing.T) {
+		tree := New(sha256.New(), NamespaceIDSize(8))
+
+		// First push some data
+		data1 := append([]byte{0, 0, 0, 0, 0, 0, 0, 1}, []byte("data1")...)
+		data2 := append([]byte{0, 0, 0, 0, 0, 0, 0, 2}, []byte("data2")...)
+		data3 := append([]byte{0, 0, 0, 0, 0, 0, 0, 3}, []byte("data3")...)
+
+		require.NoError(t, tree.Push(data1))
+		require.NoError(t, tree.Push(data2))
+		require.NoError(t, tree.Push(data3))
+
+		// Get the root before reset
+		root1, err := tree.Root()
+		require.NoError(t, err)
+		require.Equal(t, 3, tree.Size())
+
+		// Check capacity before reset
+		initialLeafCap := cap(tree.leaves)
+		initialHashCap := cap(tree.leafHashes)
+		require.GreaterOrEqual(t, initialLeafCap, 3)
+		require.GreaterOrEqual(t, initialHashCap, 3)
+
+		// Reset the tree
+		tree.Reset()
+
+		// Verify tree is empty but capacity is preserved
+		require.Equal(t, 0, tree.Size())
+		require.Equal(t, initialLeafCap, cap(tree.leaves))
+		require.Equal(t, initialHashCap, cap(tree.leafHashes))
+
+		// Verify namespace ranges are cleared
+		require.Len(t, tree.namespaceRanges, 0)
+
+		// Push the same data again
+		require.NoError(t, tree.Push(data1))
+		require.NoError(t, tree.Push(data2))
+		require.NoError(t, tree.Push(data3))
+
+		// Verify the root is the same
+		root2, err := tree.Root()
+		require.NoError(t, err)
+		require.Equal(t, root1, root2)
+		require.Equal(t, 3, tree.Size())
+
+		// Capacity should still be the same (no new allocations)
+		require.Equal(t, initialLeafCap, cap(tree.leaves))
+		require.Equal(t, initialHashCap, cap(tree.leafHashes))
+	})
+
+	t.Run("Shrink reduces slice capacity", func(t *testing.T) {
+		tree := New(sha256.New(), NamespaceIDSize(8))
+
+		// Push many items
+		for i := 0; i < 10; i++ {
+			data := append([]byte{0, 0, 0, 0, 0, 0, 0, byte(i)}, []byte(fmt.Sprintf("data%d", i))...)
+			require.NoError(t, tree.Push(data))
+		}
+
+		// Verify we have 10 items
+		require.Equal(t, 10, tree.Size())
+		require.GreaterOrEqual(t, cap(tree.leaves), 10)
+
+		// Reset and push fewer items
+		tree.Reset()
+		for i := 0; i < 3; i++ {
+			data := append([]byte{0, 0, 0, 0, 0, 0, 0, byte(i)}, []byte(fmt.Sprintf("data%d", i))...)
+			require.NoError(t, tree.Push(data))
+		}
+
+		require.Equal(t, 3, tree.Size())
+		require.GreaterOrEqual(t, cap(tree.leaves), 10) // Still has original capacity
+
+		// Shrink should reduce to actual size
+		tree.Shrink()
+		require.Equal(t, 3, tree.Size())
+		require.Equal(t, 3, len(tree.leaves))
+		require.Equal(t, 3, len(tree.leafHashes))
+		require.Equal(t, 3, cap(tree.leaves))
+		require.Equal(t, 3, cap(tree.leafHashes))
+	})
+
+	t.Run("Reset clears root cache", func(t *testing.T) {
+		tree := New(sha256.New(), NamespaceIDSize(8))
+
+		data := append([]byte{0, 0, 0, 0, 0, 0, 0, 1}, []byte("data")...)
+		require.NoError(t, tree.Push(data))
+
+		// Compute root to cache it
+		_, err := tree.Root()
+		require.NoError(t, err)
+		require.NotNil(t, tree.rawRoot)
+
+		// Reset should clear the cached root
+		tree.Reset()
+		require.Nil(t, tree.rawRoot)
+
+		// Root of empty tree should be different
+		emptyRoot, err := tree.Root()
+		require.NoError(t, err)
+		require.NotNil(t, emptyRoot)
+	})
+
+	t.Run("Memory reuse with different sized data", func(t *testing.T) {
+		tree := New(sha256.New(), NamespaceIDSize(8))
+
+		// Push data of varying sizes
+		smallData := append([]byte{0, 0, 0, 0, 0, 0, 0, 1}, []byte("small")...)
+		mediumData := append([]byte{0, 0, 0, 0, 0, 0, 0, 2}, []byte("medium data here")...)
+		largeData := append([]byte{0, 0, 0, 0, 0, 0, 0, 3}, []byte("this is a much larger piece of data")...)
+
+		require.NoError(t, tree.Push(smallData))
+		require.NoError(t, tree.Push(mediumData))
+		require.NoError(t, tree.Push(largeData))
+
+		// Reset and push different sized data
+		tree.Reset()
+
+		// Push larger data first to test reallocation
+		newLargeData := append([]byte{0, 0, 0, 0, 0, 0, 0, 1}, []byte("this is an even larger piece of data than before")...)
+		newSmallData := append([]byte{0, 0, 0, 0, 0, 0, 0, 2}, []byte("tiny")...)
+
+		require.NoError(t, tree.Push(newLargeData))
+		require.NoError(t, tree.Push(newSmallData))
+
+		// Verify data is correctly stored
+		require.Equal(t, 2, tree.Size())
+		require.Equal(t, newLargeData, tree.leaves[0])
+		require.Equal(t, newSmallData, tree.leaves[1])
+	})
+}
+
+func BenchmarkNMTReuseWithConsumeRoot(b *testing.B) {
+	tests := []struct {
+		name      string
+		numLeaves int
+		nidSize   int
+		dataSize  int
+	}{
+		{"128-leaves", 128, 8, 256},
+		{"256-leaves", 256, 8, 256},
+		{"512-leaves", 512, 8, 256},
+		{"1024-leaves", 1024, 8, 256},
+	}
+
+	for _, tt := range tests {
+		// Generate random data once for fair comparison
+		data, err := generateRandNamespacedRawData(tt.numLeaves, tt.nidSize, tt.dataSize)
+		if err != nil {
+			b.Fatalf("Failed to generate data: %v", err)
+		}
+
+		b.Run(tt.name+"-Root-NewTreeEachTime", func(b *testing.B) {
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				tree := New(sha256.New(), NamespaceIDSize(tt.nidSize))
+				for j := 0; j < tt.numLeaves; j++ {
+					if err := tree.Push(data[j]); err != nil {
+						b.Fatalf("Push error: %v", err)
+					}
+				}
+				_, _ = tree.Root()
+			}
+		})
+
+		b.Run(tt.name+"-Root-ReuseTree", func(b *testing.B) {
+			b.ReportAllocs()
+			tree := New(sha256.New(), NamespaceIDSize(tt.nidSize), InitialCapacity(tt.numLeaves))
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				tree.Reset()
+				for j := 0; j < tt.numLeaves; j++ {
+					if err := tree.Push(data[j]); err != nil {
+						b.Fatalf("Push error: %v", err)
+					}
+				}
+				_, _ = tree.Root()
+			}
+		})
+
+		b.Run(tt.name+"-ConsumeRoot-NewTreeEachTime", func(b *testing.B) {
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				tree := New(sha256.New(), NamespaceIDSize(tt.nidSize))
+				for j := 0; j < tt.numLeaves; j++ {
+					if err := tree.Push(data[j]); err != nil {
+						b.Fatalf("Push error: %v", err)
+					}
+				}
+				_, _ = tree.ConsumeRoot()
+			}
+		})
+
+		b.Run(tt.name+"-ConsumeRoot-ReuseTree", func(b *testing.B) {
+			b.ReportAllocs()
+			tree := New(sha256.New(), NamespaceIDSize(tt.nidSize), InitialCapacity(tt.numLeaves))
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				tree.Reset()
+				for j := 0; j < tt.numLeaves; j++ {
+					if err := tree.Push(data[j]); err != nil {
+						b.Fatalf("Push error: %v", err)
+					}
+				}
+				_, _ = tree.ConsumeRoot()
+			}
+		})
+		
+		// Benchmark with pre-warmed buffers (after first usage)
+		b.Run(tt.name+"-Root-ReuseTreeWarmed", func(b *testing.B) {
+			b.ReportAllocs()
+			tree := New(sha256.New(), NamespaceIDSize(tt.nidSize), InitialCapacity(tt.numLeaves))
+			
+			// Warm up the buffers by doing one full cycle first
+			for j := 0; j < tt.numLeaves; j++ {
+				if err := tree.Push(data[j]); err != nil {
+					b.Fatalf("Warmup Push error: %v", err)
+				}
+			}
+			_, _ = tree.Root()
+			
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				tree.Reset()
+				for j := 0; j < tt.numLeaves; j++ {
+					if err := tree.Push(data[j]); err != nil {
+						b.Fatalf("Push error: %v", err)
+					}
+				}
+				_, _ = tree.Root()
+			}
+		})
+		
+		b.Run(tt.name+"-ConsumeRoot-ReuseTreeWarmed", func(b *testing.B) {
+			b.ReportAllocs()
+			tree := New(sha256.New(), NamespaceIDSize(tt.nidSize), InitialCapacity(tt.numLeaves))
+			
+			// Warm up the buffers by doing one full cycle first
+			for j := 0; j < tt.numLeaves; j++ {
+				if err := tree.Push(data[j]); err != nil {
+					b.Fatalf("Warmup Push error: %v", err)
+				}
+			}
+			_, _ = tree.ConsumeRoot()
+			
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				tree.Reset()
+				for j := 0; j < tt.numLeaves; j++ {
+					if err := tree.Push(data[j]); err != nil {
+						b.Fatalf("Push error: %v", err)
+					}
+				}
+				_, _ = tree.ConsumeRoot()
+			}
+		})
+	}
+}
+
+// BenchmarkAllocationBreakdown analyzes where allocations come from in warmed reuse
+func BenchmarkAllocationBreakdown(b *testing.B) {
+	const numLeaves = 128
+	const nidSize = 8
+	const dataSize = 256
+	
+	data, err := generateRandNamespacedRawData(numLeaves, nidSize, dataSize)
+	if err != nil {
+		b.Fatalf("Failed to generate data: %v", err)
+	}
+	
+	b.Run("OnlyPushOperations", func(b *testing.B) {
+		b.ReportAllocs()
+		tree := New(sha256.New(), NamespaceIDSize(nidSize), InitialCapacity(numLeaves))
+		
+		// Warm up
+		for j := 0; j < numLeaves; j++ {
+			tree.Push(data[j])
+		}
+		tree.Root()
+		
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			tree.Reset()
+			for j := 0; j < numLeaves; j++ {
+				tree.Push(data[j])
+			}
+		}
+	})
+	
+	b.Run("OnlyRootComputation", func(b *testing.B) {
+		b.ReportAllocs()
+		trees := make([]*NamespacedMerkleTree, b.N)
+		
+		// Pre-populate all trees
+		for i := 0; i < b.N; i++ {
+			tree := New(sha256.New(), NamespaceIDSize(nidSize), InitialCapacity(numLeaves))
+			for j := 0; j < numLeaves; j++ {
+				tree.Push(data[j])
+			}
+			trees[i] = tree
+		}
+		
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			_, _ = trees[i].Root()
+		}
+	})
+	
+	b.Run("OnlyConsumeRootComputation", func(b *testing.B) {
+		b.ReportAllocs()
+		trees := make([]*NamespacedMerkleTree, b.N)
+		
+		// Pre-populate all trees
+		for i := 0; i < b.N; i++ {
+			tree := New(sha256.New(), NamespaceIDSize(nidSize), InitialCapacity(numLeaves))
+			for j := 0; j < numLeaves; j++ {
+				tree.Push(data[j])
+			}
+			trees[i] = tree
+		}
+		
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			_, _ = trees[i].ConsumeRoot()
+		}
+	})
+	
+	b.Run("OnlyReset", func(b *testing.B) {
+		b.ReportAllocs()
+		tree := New(sha256.New(), NamespaceIDSize(nidSize), InitialCapacity(numLeaves))
+		
+		// Warm up
+		for j := 0; j < numLeaves; j++ {
+			tree.Push(data[j])
+		}
+		tree.Root()
+		
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			tree.Reset()
+		}
+	})
+}
+
+// BenchmarkDetailedAllocationBreakdown analyzes exactly where remaining allocations come from
+func BenchmarkDetailedAllocationBreakdown(b *testing.B) {
+	const numLeaves = 128
+	const nidSize = 8
+	const dataSize = 256
+	
+	data, err := generateRandNamespacedRawData(numLeaves, nidSize, dataSize)
+	if err != nil {
+		b.Fatalf("Failed to generate data: %v", err)
+	}
+	
+	b.Run("OnlyHashLeafOperations", func(b *testing.B) {
+		b.ReportAllocs()
+		tree := New(sha256.New(), NamespaceIDSize(nidSize), InitialCapacity(numLeaves))
+		
+		// Create a buffer for hash operations
+		// Buffer size needs to be: 2*NamespaceSize + hash.Size (32 for sha256)
+		bufferSize := 2*nidSize + sha256.Size
+		hashBuffer := make([]byte, 0, bufferSize)
+		
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			for j := 0; j < numLeaves; j++ {
+				// Only call HashLeafWithBuffer, no other operations
+				_, _ = tree.treeHasher.HashLeafWithBuffer(data[j], hashBuffer)
+			}
+		}
+	})
+	
+	b.Run("OnlyNamespaceRangeUpdates", func(b *testing.B) {
+		b.ReportAllocs()
+		tree := New(sha256.New(), NamespaceIDSize(nidSize), InitialCapacity(numLeaves))
+		
+		// Simulate the state after pushes
+		for j := 0; j < numLeaves; j++ {
+			tree.leaves = append(tree.leaves, data[j])
+			tree.leafCount++
+		}
+		
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			tree.namespaceRanges = make(map[string]LeafRange) // Reset map
+			tree.leafCount = 0
+			for j := 0; j < numLeaves; j++ {
+				tree.leafCount++
+				tree.updateNamespaceRanges()
+			}
+		}
+	})
 }
 
 func TestComputeSubtreeRoot(t *testing.T) {

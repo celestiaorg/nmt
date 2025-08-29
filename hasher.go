@@ -38,6 +38,7 @@ type Hasher interface {
 	IsMaxNamespaceIDIgnored() bool
 	NamespaceSize() namespace.IDSize
 	HashLeaf(data []byte) ([]byte, error)
+	HashLeafWithBuffer(data []byte, buffer []byte) ([]byte, error)
 	HashNode(leftChild, rightChild []byte, reuse bool) ([]byte, error)
 	HashNodeTrusted(leftChild, rightChild []byte, reuse bool, trusted bool) ([]byte, error)
 	EmptyRoot() []byte
@@ -184,6 +185,12 @@ func (n *NmtHasher) ValidateLeaf(data []byte) (err error) {
 // namespaceID inside the data item namely leaf[:n.NamespaceLen]). Note that for
 // leaves minNs = maxNs = ns(leaf) = leaf[:NamespaceLen]. HashLeaf can return the ErrInvalidNodeLen error if the input is not namespaced.
 func (n *NmtHasher) HashLeaf(ndata []byte) ([]byte, error) {
+	return n.HashLeafWithBuffer(ndata, nil)
+}
+
+// HashLeafWithBuffer computes namespace hash using a provided buffer to reduce allocations.
+// If buffer is nil or has insufficient capacity, a new buffer is allocated.
+func (n *NmtHasher) HashLeafWithBuffer(ndata []byte, buffer []byte) ([]byte, error) {
 	h := n.baseHasher
 	h.Reset()
 
@@ -193,7 +200,14 @@ func (n *NmtHasher) HashLeaf(ndata []byte) ([]byte, error) {
 
 	nID := ndata[:n.NamespaceLen]
 	resLen := int(2*n.NamespaceLen) + n.baseHasher.Size()
-	minMaxNIDs := make([]byte, 0, resLen)
+	
+	var minMaxNIDs []byte
+	if cap(buffer) >= resLen {
+		minMaxNIDs = buffer[:0]
+	} else {
+		minMaxNIDs = make([]byte, 0, resLen)
+	}
+	
 	minMaxNIDs = append(minMaxNIDs, nID...) // nID
 	minMaxNIDs = append(minMaxNIDs, nID...) // nID || nID
 
