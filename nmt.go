@@ -91,8 +91,9 @@ func CustomHasher(h Hasher) Option {
 }
 
 type NamespacedMerkleTree struct {
-	treeHasher Hasher
-	visit      NodeVisitorFn
+	treeHasher     Hasher
+	extendedHasher ExtendedHasher
+	visit          NodeVisitorFn
 
 	// just cache stuff until we pass in a store and keep all nodes in there
 	// currently, only leaves and leafHashes are stored:
@@ -152,9 +153,13 @@ func New(h hash.Hash, setters ...Option) *NamespacedMerkleTree {
 	for _, setter := range setters {
 		setter(opts)
 	}
-
+	var extHasher ExtendedHasher
+	if convHasher, ok := opts.Hasher.(ExtendedHasher); ok {
+		extHasher = convHasher
+	}
 	return &NamespacedMerkleTree{
 		treeHasher:          opts.Hasher,
+		extendedHasher:      extHasher,
 		visit:               opts.NodeVisitor,
 		leaves:              make([][]byte, 0, opts.InitialCapacity),
 		leafHashes:          make([][]byte, 0, opts.InitialCapacity),
@@ -366,7 +371,7 @@ func (n *NamespacedMerkleTree) buildRangeProof(proofStart, proofEnd int) ([][]by
 			hash = left
 		} else {
 			var err error
-			hash, err = n.treeHasher.HashNode(left, right, false)
+			hash, err = n.treeHasher.HashNode(left, right)
 			if err != nil { // if HashNode returns an error, it is a bug
 				return nil, err // this should never happen if the Push method is used to add leaves to the tree
 			}
@@ -473,8 +478,13 @@ func (n *NamespacedMerkleTree) Push(namespacedData namespace.PrefixedData) error
 	if len(n.leafHashes) > count {
 		curHash = n.leafHashes[count]
 	}
-	// compute the leaf hash using reusable buffer
-	res, err := n.treeHasher.HashLeafWithBuffer(namespacedData, curHash)
+	// compute the leaf hash using reusable buffer if extended hasher is available
+	var res []byte
+	if n.extendedHasher != nil {
+		res, err = n.extendedHasher.HashLeafWithBuffer(namespacedData, curHash)
+	} else {
+		res, err = n.treeHasher.HashLeaf(namespacedData)
+	}
 	if err != nil {
 		return err
 	}
@@ -524,6 +534,11 @@ func (n *NamespacedMerkleTree) Root() ([]byte, error) {
 // Any error returned by this method is irrecoverable and indicates an illegal
 // state of the tree.
 func (n *NamespacedMerkleTree) ConsumeRoot() ([]byte, error) {
+	// ConsumeRoot requires ExtendedHasher for performance optimizations
+	if n.extendedHasher == nil {
+		return nil, fmt.Errorf("ConsumeRoot requires ExtendedHasher, use Root() instead")
+	}
+	
 	if n.rawRoot == nil {
 		// Check if leaf count is power of 2
 		size := n.Size()
@@ -552,6 +567,9 @@ func (n *NamespacedMerkleTree) ConsumeRoot() ([]byte, error) {
 // leaves is a power of 2.
 func (n *NamespacedMerkleTree) computeRootSequential() ([]byte, error) {
 	levelSize := len(n.leafHashes)
+	if n.extendedHasher == nil {
+		return nil, fmt.Errorf("ConsumeRoot requires ExtendedHasher, use Root() instead")
+	}
 
 	for levelSize > 1 {
 		c := 0
@@ -559,7 +577,7 @@ func (n *NamespacedMerkleTree) computeRootSequential() ([]byte, error) {
 			left := n.leafHashes[i]
 			right := n.leafHashes[i+1]
 
-			hash, err := n.treeHasher.HashNodeTrusted(left, right, true, true)
+			hash, err := n.extendedHasher.HashNodeReuse(left, right)
 			if err != nil {
 				return nil, err
 			}
@@ -607,8 +625,14 @@ func (n *NamespacedMerkleTree) ForceAddLeaf(leaf namespace.PrefixedData) error {
 	if len(n.leafHashes) > count {
 		curHash = n.leafHashes[count]
 	}
-	// compute the leaf hash using reusable buffer
-	res, err := n.treeHasher.HashLeafWithBuffer(leaf, curHash)
+	// compute the leaf hash using reusable buffer if extended hasher is available
+	var res []byte
+	var err error
+	if n.extendedHasher != nil {
+		res, err = n.extendedHasher.HashLeafWithBuffer(leaf, curHash)
+	} else {
+		res, err = n.treeHasher.HashLeaf(leaf)
+	}
 	if err != nil {
 		return err
 	}
@@ -629,10 +653,6 @@ func (n *NamespacedMerkleTree) ForceAddLeaf(leaf namespace.PrefixedData) error {
 // encompasses the leaves within the range of [start, end).
 // Any errors returned by this method are irrecoverable and indicate an illegal state of the tree (n).
 func (n *NamespacedMerkleTree) computeRoot(start, end int) ([]byte, error) {
-	return n.computeRootInner(start, end, false)
-}
-
-func (n *NamespacedMerkleTree) computeRootInner(start, end int, reuse bool) ([]byte, error) {
 	// in computeRoot, start may be equal to end which indicates an empty tree hence empty root.
 	// Due to this, we need to perform custom range check instead of using validateRange() in which start=end is considered invalid.
 	if start < 0 || start > end || end > n.Size() {
@@ -646,31 +666,23 @@ func (n *NamespacedMerkleTree) computeRootInner(start, end int, reuse bool) ([]b
 		}
 		return rootHash, nil
 	case 1:
-		if reuse {
-			// Return the leaf hash directly without copying since we're consuming the tree
-			if n.visit != nil {
-				n.visit(n.leafHashes[start], n.leaves[start])
-			}
-			return n.leafHashes[start], nil
-		} else {
-			leafHash := make([]byte, len(n.leafHashes[start]))
-			copy(leafHash, n.leafHashes[start])
-			if n.visit != nil {
-				n.visit(leafHash, n.leaves[start])
-			}
-			return leafHash, nil
+		leafHash := make([]byte, len(n.leafHashes[start]))
+		copy(leafHash, n.leafHashes[start])
+		if n.visit != nil {
+			n.visit(leafHash, n.leaves[start])
 		}
+		return leafHash, nil
 	default:
 		k := getSplitPoint(end - start)
-		left, err := n.computeRootInner(start, start+k, reuse)
+		left, err := n.computeRoot(start, start+k)
 		if err != nil { // this should never happen since leaves are added through the Push method, during which leaves formats are validated and their namespace IDs are checked to be sequential.
 			return nil, fmt.Errorf("failed to compute subtree root [%d, %d): %w", start, start+k, err)
 		}
-		right, err := n.computeRootInner(start+k, end, reuse)
+		right, err := n.computeRoot(start+k, end)
 		if err != nil { // this should never happen since leaves are added through the Push method, during which leaves formats are validated and their namespace IDs are checked to be sequential.
 			return nil, fmt.Errorf("failed to compute subtree root [%d, %d): %w", start+k, end, err)
 		}
-		hash, err := n.treeHasher.HashNodeTrusted(left, right, reuse, false)
+		hash, err := n.treeHasher.HashNode(left, right)
 		if err != nil { // this error should never happen since leaves are added through the Push method, during which leaves formats are validated and their namespace IDs are checked to be sequential.
 			return nil, fmt.Errorf("failed to compute subtree root [%d, %d): %w", left, right, err)
 		}
@@ -841,7 +853,7 @@ func (n *NamespacedMerkleTree) Size() int {
 // After calling Reset(), the tree can be reused by calling Push() again.
 func (n *NamespacedMerkleTree) Reset() {
 	// Reset the counter but keep the allocated slices
-	n.leafCount = 0	
+	n.leafCount = 0
 	n.leaves = n.leaves[:0]
 	// Clear the namespace ranges map and string pool
 	n.namespaceRanges = map[string]LeafRange{}

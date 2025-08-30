@@ -418,7 +418,7 @@ func (proof Proof) computeRoot(nth *NmtHasher, leafHashes [][]byte) ([]byte, err
 		if right == nil {
 			return left, nil
 		}
-		hash, err := nth.HashNode(left, right, false)
+		hash, err := nth.HashNode(left, right)
 		if err != nil {
 			return nil, fmt.Errorf("failed to hash node: %w", err)
 		}
@@ -432,7 +432,7 @@ func (proof Proof) computeRoot(nth *NmtHasher, leafHashes [][]byte) ([]byte, err
 		return nil, fmt.Errorf("failed to compute root [%d, %d): %w", 0, proofRangeSubtreeEstimate, err)
 	}
 	for _, node := range proof.nodes {
-		rootHash, err = nth.HashNode(rootHash, node, false)
+		rootHash, err = nth.HashNode(rootHash, node)
 		if err != nil {
 			return nil, fmt.Errorf("failed to hash node: %w", err)
 		}
@@ -593,7 +593,7 @@ func (proof Proof) VerifySubtreeRootInclusion(nth *NmtHasher, subtreeRoots [][]b
 		if right == nil {
 			return left, nil
 		}
-		hash, err := nth.HashNode(left, right, false)
+		hash, err := nth.HashNode(left, right)
 		if err != nil {
 			return nil, fmt.Errorf("failed to hash node: %w", err)
 		}
@@ -610,7 +610,7 @@ func (proof Proof) VerifySubtreeRootInclusion(nth *NmtHasher, subtreeRoots [][]b
 		return false, fmt.Errorf("failed to compute root [%d, %d): %w", 0, proofRangeSubtreeEstimate, err)
 	}
 	for i := 0; i < len(proof.Nodes()); i++ {
-		rootHash, err = nth.HashNode(rootHash, proof.Nodes()[i], false)
+		rootHash, err = nth.HashNode(rootHash, proof.Nodes()[i])
 		if err != nil {
 			return false, fmt.Errorf("failed to hash node: %w", err)
 		}

@@ -1588,55 +1588,6 @@ func BenchmarkNMTReuseWithConsumeRoot(b *testing.B) {
 				_, _ = tree.ConsumeRoot()
 			}
 		})
-		
-		// Benchmark with pre-warmed buffers (after first usage)
-		b.Run(tt.name+"-Root-ReuseTreeWarmed", func(b *testing.B) {
-			b.ReportAllocs()
-			tree := New(sha256.New(), NamespaceIDSize(tt.nidSize), InitialCapacity(tt.numLeaves))
-			
-			// Warm up the buffers by doing one full cycle first
-			for j := 0; j < tt.numLeaves; j++ {
-				if err := tree.Push(data[j]); err != nil {
-					b.Fatalf("Warmup Push error: %v", err)
-				}
-			}
-			_, _ = tree.Root()
-			
-			b.ResetTimer()
-			for i := 0; i < b.N; i++ {
-				tree.Reset()
-				for j := 0; j < tt.numLeaves; j++ {
-					if err := tree.Push(data[j]); err != nil {
-						b.Fatalf("Push error: %v", err)
-					}
-				}
-				_, _ = tree.Root()
-			}
-		})
-		
-		b.Run(tt.name+"-ConsumeRoot-ReuseTreeWarmed", func(b *testing.B) {
-			b.ReportAllocs()
-			tree := New(sha256.New(), NamespaceIDSize(tt.nidSize), InitialCapacity(tt.numLeaves))
-			
-			// Warm up the buffers by doing one full cycle first
-			for j := 0; j < tt.numLeaves; j++ {
-				if err := tree.Push(data[j]); err != nil {
-					b.Fatalf("Warmup Push error: %v", err)
-				}
-			}
-			_, _ = tree.ConsumeRoot()
-			
-			b.ResetTimer()
-			for i := 0; i < b.N; i++ {
-				tree.Reset()
-				for j := 0; j < tt.numLeaves; j++ {
-					if err := tree.Push(data[j]); err != nil {
-						b.Fatalf("Push error: %v", err)
-					}
-				}
-				_, _ = tree.ConsumeRoot()
-			}
-		})
 	}
 }
 
@@ -1749,7 +1700,11 @@ func BenchmarkDetailedAllocationBreakdown(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			for j := 0; j < numLeaves; j++ {
 				// Only call HashLeafWithBuffer, no other operations
-				_, _ = tree.treeHasher.HashLeafWithBuffer(data[j], hashBuffer)
+				if tree.extendedHasher != nil {
+					_, _ = tree.extendedHasher.HashLeafWithBuffer(data[j], hashBuffer)
+				} else {
+					_, _ = tree.treeHasher.HashLeaf(data[j])
+				}
 			}
 		}
 	})
