@@ -139,6 +139,7 @@ type NamespacedMerkleTree struct {
 	treeHasher     Hasher
 	extendedHasher ExtendedHasher
 	visit          NodeVisitorFn
+	isDone         bool
 
 	// just cache stuff until we pass in a store and keep all nodes in there
 	// currently, only leaves and leafHashes are stored:
@@ -569,6 +570,12 @@ func (n *NamespacedMerkleTree) Root() ([]byte, error) {
 // Any error returned by this method is irrecoverable and indicates an illegal
 // state of the tree.
 func (n *NamespacedMerkleTree) ConsumeRoot() ([]byte, error) {
+	// for each visit we need to retain the original data, which we lose due to reuse
+	// we can probably still write an optimal algorithm with visits even in this case
+	// but let's skip it for now
+	if n.visit != nil {
+		return nil, fmt.Errorf("should not call ConsumeRoot with a visitor")
+	}
 	// ConsumeRoot requires ExtendedHasher for performance optimizations
 	if n.extendedHasher == nil {
 		return nil, fmt.Errorf("ConsumeRoot requires ExtendedHasher, use Root() instead")
@@ -605,7 +612,6 @@ func (n *NamespacedMerkleTree) computeRootSequential() ([]byte, error) {
 	if n.extendedHasher == nil {
 		return nil, fmt.Errorf("ConsumeRoot requires ExtendedHasher, use Root() instead")
 	}
-
 	for levelSize > 1 {
 		c := 0
 		for i := 0; i < levelSize; i += 2 {
@@ -616,12 +622,8 @@ func (n *NamespacedMerkleTree) computeRootSequential() ([]byte, error) {
 			if err != nil {
 				return nil, err
 			}
-
-			if n.visit != nil {
-				n.visit(hash, left, right)
-			}
+			n.bytePool.Put(right)
 			n.leafHashes[c] = hash
-
 			c++
 		}
 		levelSize = c
@@ -629,6 +631,7 @@ func (n *NamespacedMerkleTree) computeRootSequential() ([]byte, error) {
 	// Return a copy to avoid memory aliasing issues
 	result := make([]byte, len(n.leafHashes[0]))
 	copy(result, n.leafHashes[0])
+	n.leafHashes = n.leafHashes[0:]
 	return result, nil
 }
 
@@ -889,9 +892,6 @@ func (n *NamespacedMerkleTree) Reset() {
 	// Clear the namespace ranges map and string pool
 	n.namespaceRanges = map[string]LeafRange{}
 	n.namespaceStringPool = make(map[string]string)
-	for _, buf := range n.leafHashes {
-		n.bytePool.Put(buf)
-	}
 	n.leafHashes = n.leafHashes[:0]
 	// Reset min/max namespace IDs
 	n.minNID = bytes.Repeat([]byte{0xFF}, int(n.treeHasher.NamespaceSize()))

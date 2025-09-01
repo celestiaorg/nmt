@@ -368,13 +368,7 @@ func (n *NmtHasher) HashNodeReuse(left, right []byte) ([]byte, error) {
 	h.Write(left)
 	h.Write(right)
 
-	var buffer []byte
-	if cap(left) >= cap(right) {
-		buffer = left
-	} else {
-		buffer = right
-	}
-
+	buffer := left
 	requiredSize := len(minNs) + len(maxNs) + h.Size()
 	if cap(buffer) < requiredSize {
 		newCap := 2 * requiredSize
