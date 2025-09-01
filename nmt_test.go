@@ -1429,38 +1429,6 @@ func TestResetAndShrink(t *testing.T) {
 		require.Equal(t, initialHashCap, cap(tree.leafHashes))
 	})
 
-	t.Run("Shrink reduces slice capacity", func(t *testing.T) {
-		tree := New(sha256.New(), NamespaceIDSize(8))
-
-		// Push many items
-		for i := 0; i < 10; i++ {
-			data := append([]byte{0, 0, 0, 0, 0, 0, 0, byte(i)}, []byte(fmt.Sprintf("data%d", i))...)
-			require.NoError(t, tree.Push(data))
-		}
-
-		// Verify we have 10 items
-		require.Equal(t, 10, tree.Size())
-		require.GreaterOrEqual(t, cap(tree.leaves), 10)
-
-		// Reset and push fewer items
-		tree.Reset()
-		for i := 0; i < 3; i++ {
-			data := append([]byte{0, 0, 0, 0, 0, 0, 0, byte(i)}, []byte(fmt.Sprintf("data%d", i))...)
-			require.NoError(t, tree.Push(data))
-		}
-
-		require.Equal(t, 3, tree.Size())
-		require.GreaterOrEqual(t, cap(tree.leaves), 10) // Still has original capacity
-
-		// Shrink should reduce to actual size
-		tree.Shrink()
-		require.Equal(t, 3, tree.Size())
-		require.Equal(t, 3, len(tree.leaves))
-		require.Equal(t, 3, len(tree.leafHashes))
-		require.Equal(t, 3, cap(tree.leaves))
-		require.Equal(t, 3, cap(tree.leafHashes))
-	})
-
 	t.Run("Reset clears root cache", func(t *testing.T) {
 		tree := New(sha256.New(), NamespaceIDSize(8))
 
@@ -1596,22 +1564,22 @@ func BenchmarkAllocationBreakdown(b *testing.B) {
 	const numLeaves = 128
 	const nidSize = 8
 	const dataSize = 256
-	
+
 	data, err := generateRandNamespacedRawData(numLeaves, nidSize, dataSize)
 	if err != nil {
 		b.Fatalf("Failed to generate data: %v", err)
 	}
-	
+
 	b.Run("OnlyPushOperations", func(b *testing.B) {
 		b.ReportAllocs()
 		tree := New(sha256.New(), NamespaceIDSize(nidSize), InitialCapacity(numLeaves))
-		
+
 		// Warm up
 		for j := 0; j < numLeaves; j++ {
 			tree.Push(data[j])
 		}
 		tree.Root()
-		
+
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
 			tree.Reset()
@@ -1620,11 +1588,11 @@ func BenchmarkAllocationBreakdown(b *testing.B) {
 			}
 		}
 	})
-	
+
 	b.Run("OnlyRootComputation", func(b *testing.B) {
 		b.ReportAllocs()
 		trees := make([]*NamespacedMerkleTree, b.N)
-		
+
 		// Pre-populate all trees
 		for i := 0; i < b.N; i++ {
 			tree := New(sha256.New(), NamespaceIDSize(nidSize), InitialCapacity(numLeaves))
@@ -1633,17 +1601,17 @@ func BenchmarkAllocationBreakdown(b *testing.B) {
 			}
 			trees[i] = tree
 		}
-		
+
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
 			_, _ = trees[i].Root()
 		}
 	})
-	
+
 	b.Run("OnlyConsumeRootComputation", func(b *testing.B) {
 		b.ReportAllocs()
 		trees := make([]*NamespacedMerkleTree, b.N)
-		
+
 		// Pre-populate all trees
 		for i := 0; i < b.N; i++ {
 			tree := New(sha256.New(), NamespaceIDSize(nidSize), InitialCapacity(numLeaves))
@@ -1652,23 +1620,23 @@ func BenchmarkAllocationBreakdown(b *testing.B) {
 			}
 			trees[i] = tree
 		}
-		
+
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
 			_, _ = trees[i].ConsumeRoot()
 		}
 	})
-	
+
 	b.Run("OnlyReset", func(b *testing.B) {
 		b.ReportAllocs()
 		tree := New(sha256.New(), NamespaceIDSize(nidSize), InitialCapacity(numLeaves))
-		
+
 		// Warm up
 		for j := 0; j < numLeaves; j++ {
 			tree.Push(data[j])
 		}
 		tree.Root()
-		
+
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
 			tree.Reset()
@@ -1681,21 +1649,21 @@ func BenchmarkDetailedAllocationBreakdown(b *testing.B) {
 	const numLeaves = 128
 	const nidSize = 8
 	const dataSize = 256
-	
+
 	data, err := generateRandNamespacedRawData(numLeaves, nidSize, dataSize)
 	if err != nil {
 		b.Fatalf("Failed to generate data: %v", err)
 	}
-	
+
 	b.Run("OnlyHashLeafOperations", func(b *testing.B) {
 		b.ReportAllocs()
 		tree := New(sha256.New(), NamespaceIDSize(nidSize), InitialCapacity(numLeaves))
-		
+
 		// Create a buffer for hash operations
 		// Buffer size needs to be: 2*NamespaceSize + hash.Size (32 for sha256)
 		bufferSize := 2*nidSize + sha256.Size
 		hashBuffer := make([]byte, 0, bufferSize)
-		
+
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
 			for j := 0; j < numLeaves; j++ {
@@ -1705,27 +1673,6 @@ func BenchmarkDetailedAllocationBreakdown(b *testing.B) {
 				} else {
 					_, _ = tree.treeHasher.HashLeaf(data[j])
 				}
-			}
-		}
-	})
-	
-	b.Run("OnlyNamespaceRangeUpdates", func(b *testing.B) {
-		b.ReportAllocs()
-		tree := New(sha256.New(), NamespaceIDSize(nidSize), InitialCapacity(numLeaves))
-		
-		// Simulate the state after pushes
-		for j := 0; j < numLeaves; j++ {
-			tree.leaves = append(tree.leaves, data[j])
-			tree.leafCount++
-		}
-		
-		b.ResetTimer()
-		for i := 0; i < b.N; i++ {
-			tree.namespaceRanges = make(map[string]LeafRange) // Reset map
-			tree.leafCount = 0
-			for j := 0; j < numLeaves; j++ {
-				tree.leafCount++
-				tree.updateNamespaceRanges()
 			}
 		}
 	})
