@@ -574,7 +574,7 @@ func (n *NamespacedMerkleTree) ConsumeRoot() ([]byte, error) {
 	// we can probably still write an optimal algorithm with visits even in this case
 	// but let's skip it for now
 	if n.visit != nil {
-		return nil, fmt.Errorf("should not call ConsumeRoot with a visitor")
+		return n.Root()
 	}
 	// ConsumeRoot requires ExtendedHasher for performance optimizations
 	if n.extendedHasher == nil {
