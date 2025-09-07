@@ -45,7 +45,7 @@ type Hasher interface {
 type ExtendedHasher interface {
 	Hasher
 	HashLeafWithBuffer(data []byte, buffer []byte) ([]byte, error)
-	HashNodeReuse(leftChild, rightChild []byte) ([]byte, error)
+	HashNodeReuseLeft(leftChild, rightChild []byte) ([]byte, error)
 }
 
 var _ Hasher = &NmtHasher{}
@@ -353,7 +353,8 @@ func (n *NmtHasher) HashNode(left, right []byte) ([]byte, error) {
 	return h.Sum(res), nil
 }
 
-func (n *NmtHasher) HashNodeReuse(left, right []byte) ([]byte, error) {
+func (n *NmtHasher) HashNodeReuseLeft(left, right []byte) ([]byte, error) {
+	// we don't need to verify the ranges when computing root, because they were already verified on push
 	lRange, rRange, err := n.tryFetchLeftAndRightNSRangesVerify(left, right, false)
 	if err != nil {
 		return nil, err
