@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"hash"
 	"math/bits"
-	"unsafe"
 
 	"github.com/celestiaorg/nmt/namespace"
 )
@@ -162,9 +161,10 @@ type NamespacedMerkleTree struct {
 
 	// namespaceRanges can be used to efficiently look up the range for an
 	// existing namespace without iterating through the leaves. The map key is
-	// the string representation of a namespace.ID  and the LeafRange indicates
+	// the string representation of a namespace.ID and the LeafRange indicates
 	// the range of the leaves matching that namespace ID in the tree
 	namespaceRanges map[string]LeafRange
+	uintRanges      map[uint64]LeafRange
 	// minNID is the minimum namespace ID of the leaves
 	minNID namespace.ID
 	// maxNID is the maximum namespace ID of the leaves
@@ -213,6 +213,7 @@ func New(h hash.Hash, setters ...Option) *NamespacedMerkleTree {
 		namespaceStringPool: make(map[string]string),
 		bytePool:            NewBytePool(),
 		namespaceRanges:     make(map[string]LeafRange),
+		uintRanges:          make(map[uint64]LeafRange),
 		minNID:              bytes.Repeat([]byte{0xFF}, int(opts.NamespaceIDSize)),
 		maxNID:              bytes.Repeat([]byte{0x00}, int(opts.NamespaceIDSize)),
 	}
@@ -496,6 +497,14 @@ func (n *NamespacedMerkleTree) calculateAbsenceIndex(nID namespace.ID) int {
 func (n *NamespacedMerkleTree) foundInRange(nID namespace.ID) (found bool, startIndex int, endIndex int) {
 	// This is a faster version of this code snippet:
 	// https://github.com/celestiaorg/celestiaorg-prototype/blob/2aeca6f55ad389b9d68034a0a7038f80a8d2982e/simpleblock.go#L106-L117
+
+	// Use uintRanges for small namespace sizes (<=8 bytes) for better performance
+	if n.NamespaceSize() <= 8 {
+		uint64Key := namespaceToUint64(nID)
+		foundRng, found := n.uintRanges[uint64Key]
+		return found, foundRng.Start, foundRng.End
+	}
+
 	foundRng, found := n.namespaceRanges[string(nID)]
 	return found, foundRng.Start, foundRng.End
 }
@@ -743,48 +752,55 @@ func getSplitPoint(length int) int {
 	return k
 }
 
-// unsafeByteToString converts []byte to string without copying.
-// SAFETY: The returned string must not outlive the byte slice and the byte slice
-// must not be modified while the string is in use. This is safe in our case because
-// we only use the string as a temporary map key.
-func unsafeByteToString(b []byte) string {
-	if len(b) == 0 {
-		return ""
+// namespaceToUint64 converts a namespace ID to uint64.
+// This is only safe when the namespace size is <= 8 bytes.
+func namespaceToUint64(nID namespace.ID) uint64 {
+	var result uint64
+	n := len(nID)
+	if n > 8 {
+		n = 8
 	}
-	return unsafe.String(unsafe.SliceData(b), len(b))
-}
-
-// getNamespaceString gets or creates a cached string for the namespace bytes
-func (n *NamespacedMerkleTree) getNamespaceString(nsBytes []byte) string {
-	// Use unsafe conversion for lookup (safe because we don't store this)
-	unsafeStr := unsafeByteToString(nsBytes)
-
-	// Check if we already have this string cached
-	if cachedStr, found := n.namespaceStringPool[unsafeStr]; found {
-		return cachedStr
+	for i := 0; i < n; i++ {
+		result = (result << 8) | uint64(nID[i])
 	}
-
-	// Create a proper string copy and cache it
-	str := string(nsBytes)
-	n.namespaceStringPool[str] = str
-	return str
+	return result
 }
 
 func (n *NamespacedMerkleTree) updateNamespaceRanges() {
 	if n.Size() > 0 {
 		lastIndex := n.Size() - 1
 		lastPushed := n.leaves[lastIndex]
-		lastNsStr := unsafeByteToString(lastPushed[:n.treeHasher.NamespaceSize()])
-		lastRange, found := n.namespaceRanges[lastNsStr]
-		if !found {
-			n.namespaceRanges[lastNsStr] = LeafRange{
-				Start: lastIndex,
-				End:   lastIndex + 1,
+		namespaceSize := n.treeHasher.NamespaceSize()
+		lastNs := namespace.ID(lastPushed[:namespaceSize])
+
+		// Use uintRanges for small namespace sizes (<=8 bytes) for better performance
+		if namespaceSize <= 8 {
+			uint64Key := namespaceToUint64(lastNs)
+			lastRange, found := n.uintRanges[uint64Key]
+			if !found {
+				n.uintRanges[uint64Key] = LeafRange{
+					Start: lastIndex,
+					End:   lastIndex + 1,
+				}
+			} else {
+				n.uintRanges[uint64Key] = LeafRange{
+					Start: lastRange.Start,
+					End:   lastRange.End + 1,
+				}
 			}
 		} else {
-			n.namespaceRanges[lastNsStr] = LeafRange{
-				Start: lastRange.Start,
-				End:   lastRange.End + 1,
+			lastNsStr := string(lastNs)
+			lastRange, found := n.namespaceRanges[lastNsStr]
+			if !found {
+				n.namespaceRanges[lastNsStr] = LeafRange{
+					Start: lastIndex,
+					End:   lastIndex + 1,
+				}
+			} else {
+				n.namespaceRanges[lastNsStr] = LeafRange{
+					Start: lastRange.Start,
+					End:   lastRange.End + 1,
+				}
 			}
 		}
 	}
@@ -889,8 +905,12 @@ func (n *NamespacedMerkleTree) Size() int {
 func (n *NamespacedMerkleTree) Reset() {
 	// Reset the counter but keep the allocated slices
 	n.leaves = n.leaves[:0]
-	// Clear the namespace ranges map and string pool
-	n.namespaceRanges = map[string]LeafRange{}
+	// Clear the appropriate namespace ranges map based on namespace size
+	if n.treeHasher.NamespaceSize() <= 8 {
+		n.uintRanges = map[uint64]LeafRange{}
+	} else {
+		n.namespaceRanges = map[string]LeafRange{}
+	}
 	n.namespaceStringPool = make(map[string]string)
 	n.leafHashes = n.leafHashes[:0]
 	// Reset min/max namespace IDs
