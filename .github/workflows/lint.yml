@@ -11,23 +11,22 @@ jobs:
   golangci:
     name: golangci-lint
     runs-on: ubuntu-latest
-    timeout-minutes: 4
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: technote-space/get-diff-action@v6
         with:
           SUFFIX_FILTER: |
             .go
             .mod
             .sum
-      - uses: golangci/golangci-lint-action@v6
+      - uses: golangci/golangci-lint-action@v8
         with:
-          version: v1.61.0
+          version: v2.1.6
           args: --timeout 10m
         if: env.GIT_DIFF
 
   markdown-lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: celestiaorg/.github/.github/actions/markdown-lint@main

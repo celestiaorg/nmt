@@ -16,8 +16,8 @@ const (
 )
 
 var (
-	nodePrefixBytes = []byte{NodePrefix}
-	leafPrefixBytes = []byte{LeafPrefix}
+	leafPrefixSlice = []byte{LeafPrefix}
+	nodePrefixSlice = []byte{NodePrefix}
 )
 
 var _ hash.Hash = (*NmtHasher)(nil)
@@ -215,7 +215,7 @@ func (n *NmtHasher) HashLeafWithBuffer(ndata []byte, buffer []byte) ([]byte, err
 	minMaxNIDs = append(minMaxNIDs, nID...) // nID
 	minMaxNIDs = append(minMaxNIDs, nID...) // nID || nID
 
-	h.Write(leafPrefixBytes)
+	h.Write(leafPrefixSlice)
 	h.Write(ndata)
 
 	// compute h(LeafPrefix || ndata) and append it to the minMaxNIDs
@@ -347,7 +347,7 @@ func (n *NmtHasher) HashNode(left, right []byte) ([]byte, error) {
 	res = append(res, minNs...)
 	res = append(res, maxNs...)
 
-	h.Write(nodePrefixBytes)
+	h.Write(nodePrefixSlice)
 	h.Write(left)
 	h.Write(right)
 	return h.Sum(res), nil
@@ -365,7 +365,7 @@ func (n *NmtHasher) HashNodeReuseLeft(left, right []byte) ([]byte, error) {
 
 	minNs, maxNs := computeNsRange(lRange.Min, lRange.Max, rRange.Min, rRange.Max, n.ignoreMaxNs, n.precomputedMaxNs)
 
-	h.Write(nodePrefixBytes)
+	h.Write(nodePrefixSlice)
 	h.Write(left)
 	h.Write(right)
 
