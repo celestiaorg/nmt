@@ -569,7 +569,7 @@ func (n *NamespacedMerkleTree) ConsumeRoot() ([]byte, error) {
 	}
 	// ConsumeRoot requires ExtendedHasher for performance optimizations
 	if n.extendedHasher == nil {
-		return nil, fmt.Errorf("ConsumeRoot requires ExtendedHasher, use Root() instead")
+		return n.Root()
 	}
 
 	if n.rawRoot == nil {
@@ -581,7 +581,7 @@ func (n *NamespacedMerkleTree) ConsumeRoot() ([]byte, error) {
 
 		// Check if size is power of 2
 		if (size & (size - 1)) != 0 {
-			return nil, fmt.Errorf("ConsumeRoot only works with power-of-2 leaf counts, got %d", size)
+			return n.Root()
 		}
 
 		// Sequential iterative approach for buffer reuse
