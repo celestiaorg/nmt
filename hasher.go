@@ -42,7 +42,7 @@ type Hasher interface {
 	EmptyRoot() []byte
 }
 
-type ExtendedHasher interface {
+type memoryReuseHasher interface {
 	Hasher
 	HashLeafWithBuffer(data []byte, buffer []byte) ([]byte, error)
 	HashNodeReuseLeft(leftChild, rightChild []byte) ([]byte, error)
@@ -242,21 +242,15 @@ type nsIDRange struct {
 // It will return an ErrInvalidNodeLen | ErrInvalidNodeNamespaceOrder
 // if the supplied node does not conform to the namespaced hash format.
 func (n *NmtHasher) tryFetchNodeNSRange(node []byte) (nsIDRange, error) {
-	return n.tryFetchNodeNSRangeVerify(node, true)
-}
-
-func (n *NmtHasher) tryFetchNodeNSRangeVerify(node []byte, verify bool) (nsIDRange, error) {
-	if verify {
-		expectedNodeLen := n.Size()
-		nodeLen := len(node)
-		if nodeLen != expectedNodeLen {
-			return nsIDRange{}, fmt.Errorf("%w: got: %v, want %v", ErrInvalidNodeLen, nodeLen, expectedNodeLen)
-		}
+	expectedNodeLen := n.Size()
+	nodeLen := len(node)
+	if nodeLen != expectedNodeLen {
+		return nsIDRange{}, fmt.Errorf("%w: got: %v, want %v", ErrInvalidNodeLen, nodeLen, expectedNodeLen)
 	}
-	// Extract namespace range - this is the essential work we always need to do
+	// check the namespace order
 	minNID := namespace.ID(MinNamespace(node, n.NamespaceSize()))
 	maxNID := namespace.ID(MaxNamespace(node, n.NamespaceSize()))
-	if verify && maxNID.Less(minNID) {
+	if maxNID.Less(minNID) {
 		return nsIDRange{}, fmt.Errorf("%w: max namespace ID %d is less than min namespace ID %d ", ErrInvalidNodeNamespaceOrder, maxNID, minNID)
 	}
 	return nsIDRange{Min: minNID, Max: maxNID}, nil
@@ -278,30 +272,21 @@ func (n *NmtHasher) tryFetchLeftAndRightNSRanges(left, right []byte) (
 	nsIDRange,
 	error,
 ) {
-	return n.tryFetchLeftAndRightNSRangesVerify(left, right, true)
-}
-
-func (n *NmtHasher) tryFetchLeftAndRightNSRangesVerify(left, right []byte, verify bool) (
-	nsIDRange,
-	nsIDRange,
-	error,
-) {
 	var lNsRange nsIDRange
 	var rNsRange nsIDRange
 	var err error
 
-	lNsRange, err = n.tryFetchNodeNSRangeVerify(left, verify)
+	lNsRange, err = n.tryFetchNodeNSRange(left)
 	if err != nil {
 		return lNsRange, rNsRange, err
 	}
-	rNsRange, err = n.tryFetchNodeNSRangeVerify(right, verify)
+	rNsRange, err = n.tryFetchNodeNSRange(right)
 	if err != nil {
 		return lNsRange, rNsRange, err
 	}
 
 	// check the namespace range of the left and right children
-	// Skip this expensive validation when we trust the input
-	if verify && rNsRange.Min.Less(lNsRange.Max) {
+	if rNsRange.Min.Less(lNsRange.Max) {
 		err = fmt.Errorf("%w: the min namespace ID of the right child %d is less than the max namespace ID of the left child %d", ErrUnorderedSiblings, rNsRange.Min, lNsRange.Max)
 	}
 
@@ -332,7 +317,7 @@ func (n *NmtHasher) ValidateNodes(left, right []byte) error {
 // assign the namespace range of the left child as the parent's namespace range.
 func (n *NmtHasher) HashNode(left, right []byte) ([]byte, error) {
 	// validate the inputs & fetch the namespace ranges
-	lRange, rRange, err := n.tryFetchLeftAndRightNSRangesVerify(left, right, true)
+	lRange, rRange, err := n.tryFetchLeftAndRightNSRanges(left, right)
 	if err != nil {
 		return nil, err
 	}
@@ -342,7 +327,7 @@ func (n *NmtHasher) HashNode(left, right []byte) ([]byte, error) {
 
 	// compute the namespace range of the parent node
 	minNs, maxNs := computeNsRange(lRange.Min, lRange.Max, rRange.Min, rRange.Max, n.ignoreMaxNs, n.precomputedMaxNs)
-	// Allocate new buffer (original behavior)
+
 	res := make([]byte, 0, len(minNs)+len(maxNs)+h.Size())
 	res = append(res, minNs...)
 	res = append(res, maxNs...)
@@ -354,8 +339,7 @@ func (n *NmtHasher) HashNode(left, right []byte) ([]byte, error) {
 }
 
 func (n *NmtHasher) HashNodeReuseLeft(left, right []byte) ([]byte, error) {
-	// we don't need to verify the ranges when computing root, because they were already verified on push
-	lRange, rRange, err := n.tryFetchLeftAndRightNSRangesVerify(left, right, false)
+	lRange, rRange, err := n.tryFetchLeftAndRightNSRanges(left, right)
 	if err != nil {
 		return nil, err
 	}
