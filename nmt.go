@@ -828,11 +828,13 @@ func (n *NamespacedMerkleTree) Size() int {
 
 // Reset clears the tree state while preserving allocated memory for reuse.
 // After calling Reset(), the tree can be reused by calling Push() again.
-func (n *NamespacedMerkleTree) Reset() {
+func (n *NamespacedMerkleTree) Reset() [][]byte {
+	leaves := n.leaves
 	n.leaves = n.leaves[:0]
 	n.namespaceRanges = map[string]LeafRange{}
 	n.leafHashes = n.leafHashes[:0]
 	n.minNID = bytes.Repeat([]byte{0xFF}, int(n.treeHasher.NamespaceSize()))
 	n.maxNID = bytes.Repeat([]byte{0x00}, int(n.treeHasher.NamespaceSize()))
 	n.rawRoot = nil
+	return leaves
 }
