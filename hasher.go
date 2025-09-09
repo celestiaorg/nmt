@@ -2,7 +2,6 @@ package nmt
 
 import (
 	"bytes"
-	"encoding/binary"
 	"errors"
 	"fmt"
 	"hash"
@@ -370,16 +369,8 @@ func (n *NmtHasher) HashNodeReuseLeft(left, right []byte) ([]byte, error) {
 func computeNsRange(leftMinNs, leftMaxNs, rightMinNs, rightMaxNs []byte, ignoreMaxNs bool, precomputedMaxNs namespace.ID) (minNs []byte, maxNs []byte) {
 	minNs = leftMinNs
 	maxNs = rightMaxNs
-	if ignoreMaxNs && fastEqual8(precomputedMaxNs, rightMinNs) {
+	if ignoreMaxNs && bytes.Equal(precomputedMaxNs, rightMinNs) {
 		maxNs = leftMaxNs
 	}
 	return minNs, maxNs
-}
-
-// fastEqual8 optimizes equality comparison for 8-byte namespaces
-func fastEqual8(a, b []byte) bool {
-	if len(a) == 8 && len(b) == 8 {
-		return binary.BigEndian.Uint64(a) == binary.BigEndian.Uint64(b)
-	}
-	return bytes.Equal(a, b)
 }
