@@ -14,10 +14,10 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/celestiaorg/nmt/namespace"
-	"github.com/stretchr/testify/assert"
 )
 
 // prefixedData8 like namespace.PrefixedData is just a slice of bytes. It
@@ -906,7 +906,6 @@ func TestConsumeRoot(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Generate test data
 			var data [][]byte
 			if tt.numLeaves > 0 {
 				var err error
@@ -914,11 +913,9 @@ func TestConsumeRoot(t *testing.T) {
 				require.NoError(t, err)
 			}
 
-			// Create two identical trees
 			tree1 := New(sha256.New())
 			tree2 := New(sha256.New())
 
-			// Push same data to both trees
 			for _, leaf := range data {
 				err := tree1.Push(leaf)
 				require.NoError(t, err)
@@ -926,29 +923,19 @@ func TestConsumeRoot(t *testing.T) {
 				require.NoError(t, err)
 			}
 
-			// Compute root using ConsumeRoot
 			root2, err := tree2.ConsumeRoot()
 
-			if tt.shouldError {
-				// Should error for non-power-of-2 sizes
-				require.Error(t, err)
-				require.Contains(t, err.Error(), "power-of-2")
-			} else {
-				// Should succeed for power-of-2 sizes
-				require.NoError(t, err)
+			require.NoError(t, err)
+			root1, err := tree1.Root()
+			require.NoError(t, err)
 
-				// Compute root using normal method
-				root1, err := tree1.Root()
-				require.NoError(t, err)
+			// Roots should be identical
+			assert.Equal(t, root1, root2, "ConsumeRoot should produce same result as Root")
 
-				// Roots should be identical
-				assert.Equal(t, root1, root2, "ConsumeRoot should produce same result as Root")
-
-				// Verify that calling Root again on tree2 returns the same cached result
-				root2Again, err := tree2.Root()
-				require.NoError(t, err)
-				assert.Equal(t, root2, root2Again, "Root should return cached result after ConsumeRoot")
-			}
+			// Verify that calling Root again on tree2 returns the same cached result
+			root2Again, err := tree2.Root()
+			require.NoError(t, err)
+			assert.Equal(t, root2, root2Again, "Root should return cached result after ConsumeRoot")
 		})
 	}
 }
