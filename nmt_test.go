@@ -1484,6 +1484,34 @@ func TestReset(t *testing.T) {
 		require.Equal(t, secondBatchData[0], tree.leaves[0])
 		require.Equal(t, secondBatchData[1], tree.leaves[1])
 	})
+
+	t.Run("Reset with ConsumeRoot", func(t *testing.T) {
+		data, err := generateRandNamespacedRawData(128, 8, 64)
+		require.NoError(t, err)
+
+		tree := New(sha256.New(), InitialCapacity(128))
+
+		for _, leaf := range data {
+			err := tree.Push(leaf)
+			require.NoError(t, err)
+		}
+
+		root1, err := tree.ConsumeRoot()
+		require.NoError(t, err)
+
+		tree.Reset()
+		require.Equal(t, 0, tree.Size())
+
+		for _, leaf := range data {
+			err := tree.Push(leaf)
+			require.NoError(t, err)
+		}
+
+		root2, err := tree.ConsumeRoot()
+		require.NoError(t, err)
+
+		require.Equal(t, root1, root2)
+	})
 }
 
 func TestComputeSubtreeRoot(t *testing.T) {
