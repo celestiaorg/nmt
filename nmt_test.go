@@ -733,7 +733,7 @@ func BenchmarkComputeRoot(b *testing.B) {
 	}
 }
 
-func BenchmarkConsumeRootVsRoot(b *testing.B) {
+func BenchmarkFastRootVsRoot(b *testing.B) {
 	tests := []struct {
 		name      string
 		numLeaves int
@@ -763,7 +763,7 @@ func BenchmarkConsumeRootVsRoot(b *testing.B) {
 			}
 		})
 
-		b.Run(tt.name+"-ConsumeRoot", func(b *testing.B) {
+		b.Run(tt.name+"-FastRoot", func(b *testing.B) {
 			b.ReportAllocs()
 			for i := 0; i < b.N; i++ {
 				n := New(sha256.New())
@@ -772,13 +772,13 @@ func BenchmarkConsumeRootVsRoot(b *testing.B) {
 						b.Errorf("err: %v", err)
 					}
 				}
-				_, _ = n.ConsumeRoot()
+				_, _ = n.FastRoot()
 			}
 		})
 	}
 }
 
-func BenchmarkNMTReuseWithConsumeRoot(b *testing.B) {
+func BenchmarkNMTReuseWithFastRoot(b *testing.B) {
 	tests := []struct {
 		name      string
 		numLeaves int
@@ -828,7 +828,7 @@ func BenchmarkNMTReuseWithConsumeRoot(b *testing.B) {
 			}
 		})
 
-		b.Run(tt.name+"-ConsumeRoot-NewTreeEachTime", func(b *testing.B) {
+		b.Run(tt.name+"-FastRoot-NewTreeEachTime", func(b *testing.B) {
 			b.ReportAllocs()
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
@@ -838,11 +838,11 @@ func BenchmarkNMTReuseWithConsumeRoot(b *testing.B) {
 						b.Fatalf("Push error: %v", err)
 					}
 				}
-				_, _ = tree.ConsumeRoot()
+				_, _ = tree.FastRoot()
 			}
 		})
 
-		b.Run(tt.name+"-ConsumeRoot-ReuseTree", func(b *testing.B) {
+		b.Run(tt.name+"-FastRoot-ReuseTree", func(b *testing.B) {
 			b.ReportAllocs()
 			b.ResetTimer()
 			tree := New(sha256.New(), NamespaceIDSize(tt.nidSize), InitialCapacity(tt.numLeaves))
@@ -853,7 +853,7 @@ func BenchmarkNMTReuseWithConsumeRoot(b *testing.B) {
 						b.Fatalf("Push error: %v", err)
 					}
 				}
-				_, _ = tree.ConsumeRoot()
+				_, _ = tree.FastRoot()
 			}
 		})
 	}
@@ -882,8 +882,8 @@ func Test_Root_RaceCondition(t *testing.T) {
 	wg.Wait()
 }
 
-func TestConsumeRoot(t *testing.T) {
-	// Test that ConsumeRoot produces the same result as Root for power-of-2 sizes
+func TestFastRoot(t *testing.T) {
+	// Test that FastRoot produces the same result as Root for power-of-2 sizes
 	tests := []struct {
 		name        string
 		numLeaves   int
@@ -923,19 +923,19 @@ func TestConsumeRoot(t *testing.T) {
 				require.NoError(t, err)
 			}
 
-			root2, err := tree2.ConsumeRoot()
+			root2, err := tree2.FastRoot()
 
 			require.NoError(t, err)
 			root1, err := tree1.Root()
 			require.NoError(t, err)
 
 			// Roots should be identical
-			assert.Equal(t, root1, root2, "ConsumeRoot should produce same result as Root")
+			assert.Equal(t, root1, root2, "FastRoot should produce same result as Root")
 
 			// Verify that calling Root again on tree2 returns the same cached result
 			root2Again, err := tree2.Root()
 			require.NoError(t, err)
-			assert.Equal(t, root2, root2Again, "Root should return cached result after ConsumeRoot")
+			assert.Equal(t, root2, root2Again, "Root should return cached result after FastRoot")
 		})
 	}
 }
@@ -1485,7 +1485,7 @@ func TestReset(t *testing.T) {
 		require.Equal(t, secondBatchData[1], tree.leaves[1])
 	})
 
-	t.Run("Reset with ConsumeRoot", func(t *testing.T) {
+	t.Run("Reset with FastRoot", func(t *testing.T) {
 		data, err := generateRandNamespacedRawData(128, 8, 64)
 		require.NoError(t, err)
 
@@ -1496,7 +1496,7 @@ func TestReset(t *testing.T) {
 			require.NoError(t, err)
 		}
 
-		root1, err := tree.ConsumeRoot()
+		root1, err := tree.FastRoot()
 		require.NoError(t, err)
 
 		tree.Reset()
@@ -1507,7 +1507,7 @@ func TestReset(t *testing.T) {
 			require.NoError(t, err)
 		}
 
-		root2, err := tree.ConsumeRoot()
+		root2, err := tree.FastRoot()
 		require.NoError(t, err)
 
 		require.Equal(t, root1, root2)

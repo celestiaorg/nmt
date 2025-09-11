@@ -534,7 +534,7 @@ func (n *NamespacedMerkleTree) Root() ([]byte, error) {
 	return n.rawRoot, nil
 }
 
-// ConsumeRoot computes the root of the tree by reusing internal buffers,
+// FastRoot computes the root of the tree by reusing internal buffers,
 // specifically modifying the leafHashes buffer in place. This is more efficient
 // than Root() as it avoids allocations, because we reuse all the buffers at each intermediate step
 // but it destroys the internal state.
@@ -551,7 +551,7 @@ func (n *NamespacedMerkleTree) Root() ([]byte, error) {
 // output size, and should be parsed as minND || maxNID || hash.
 // Any error returned by this method is irrecoverable and indicates an illegal
 // state of the tree.
-func (n *NamespacedMerkleTree) ConsumeRoot() ([]byte, error) {
+func (n *NamespacedMerkleTree) FastRoot() ([]byte, error) {
 	if n.visit != nil {
 		return n.Root()
 	}
@@ -587,21 +587,19 @@ func (n *NamespacedMerkleTree) ConsumeRoot() ([]byte, error) {
 func (n *NamespacedMerkleTree) computeRootSequential() ([]byte, error) {
 	levelSize := len(n.leafHashes)
 	for levelSize > 1 {
-		c := 0
 		for i := 0; i < levelSize; i += 2 {
 			left := n.leafHashes[i]
 			right := n.leafHashes[i+1]
 
-			hash, err := n.reuseHasher.HashNodeReuseLeft(left, right)
+			res, err := n.reuseHasher.HashNodeReuseLeft(left, right)
 			if err != nil {
 				return nil, err
 			}
 			// we always reuse the left part, so we can put the right part into the pool
 			n.pool.put(right)
-			n.leafHashes[c] = hash
-			c++
+			n.leafHashes[i/2] = res
 		}
-		levelSize = c
+		levelSize /= 2
 	}
 	result := make([]byte, len(n.leafHashes[0]))
 	copy(result, n.leafHashes[0])
