@@ -13,6 +13,7 @@ import (
 	"sort"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -752,28 +753,56 @@ func BenchmarkFastRootVsRoot(b *testing.B) {
 
 		b.Run(tt.name+"-Root", func(b *testing.B) {
 			b.ReportAllocs()
+			var pushTime, rootTime time.Duration
+
 			for i := 0; i < b.N; i++ {
 				n := New(sha256.New())
+
+				// Measure push time
+				start := time.Now()
 				for j := 0; j < tt.numLeaves; j++ {
 					if err := n.Push(data[j]); err != nil {
 						b.Errorf("err: %v", err)
 					}
 				}
+				pushTime += time.Since(start)
+
+				// Measure root time
+				start = time.Now()
 				_, _ = n.Root()
+				rootTime += time.Since(start)
 			}
+
+			b.ReportMetric(float64(pushTime.Nanoseconds())/float64(b.N), "ns/push")
+			b.ReportMetric(float64(rootTime.Nanoseconds())/float64(b.N), "ns/root")
+			b.ReportMetric(float64(pushTime.Nanoseconds())/float64(rootTime.Nanoseconds()), "push/root-ratio")
 		})
 
 		b.Run(tt.name+"-FastRoot", func(b *testing.B) {
 			b.ReportAllocs()
+			var pushTime, rootTime time.Duration
+
 			for i := 0; i < b.N; i++ {
 				n := New(sha256.New())
+
+				// Measure push time
+				start := time.Now()
 				for j := 0; j < tt.numLeaves; j++ {
 					if err := n.Push(data[j]); err != nil {
 						b.Errorf("err: %v", err)
 					}
 				}
+				pushTime += time.Since(start)
+
+				// Measure FastRoot time
+				start = time.Now()
 				_, _ = n.FastRoot()
+				rootTime += time.Since(start)
 			}
+
+			b.ReportMetric(float64(pushTime.Nanoseconds())/float64(b.N), "ns/push")
+			b.ReportMetric(float64(rootTime.Nanoseconds())/float64(b.N), "ns/root")
+			b.ReportMetric(float64(pushTime.Nanoseconds())/float64(rootTime.Nanoseconds()), "push/fastroot-ratio")
 		})
 	}
 }
