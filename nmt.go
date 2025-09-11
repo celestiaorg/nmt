@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"hash"
 	"math/bits"
+	"unsafe"
 
 	"github.com/celestiaorg/nmt/namespace"
 )
@@ -604,7 +605,7 @@ func (n *NamespacedMerkleTree) computeRootSequential() ([]byte, error) {
 	}
 	result := make([]byte, len(n.leafHashes[0]))
 	copy(result, n.leafHashes[0])
-	n.leafHashes = n.leafHashes[0:]
+	n.leafHashes = n.leafHashes[:0]
 	return result, nil
 }
 
@@ -708,23 +709,29 @@ func getSplitPoint(length int) int {
 	return k
 }
 
+func unsafeBytesToString(b []byte) string {
+	if len(b) == 0 {
+		return ""
+	}
+	return unsafe.String(&b[0], len(b))
+}
 
 func (n *NamespacedMerkleTree) updateNamespaceRanges() {
 	if n.Size() > 0 {
 		lastIndex := n.Size() - 1
 		lastPushed := n.leaves[lastIndex]
 		namespaceSize := n.treeHasher.NamespaceSize()
-		lastNs := namespace.ID(lastPushed[:namespaceSize])
+		// don't allocate memory to copy strings
+		lastNs := unsafeBytesToString(lastPushed[:namespaceSize])
 
-		lastNsStr := string(lastNs)
-		lastRange, found := n.namespaceRanges[lastNsStr]
+		lastRange, found := n.namespaceRanges[lastNs]
 		if !found {
-			n.namespaceRanges[lastNsStr] = LeafRange{
+			n.namespaceRanges[lastNs] = LeafRange{
 				Start: lastIndex,
 				End:   lastIndex + 1,
 			}
 		} else {
-			n.namespaceRanges[lastNsStr] = LeafRange{
+			n.namespaceRanges[lastNs] = LeafRange{
 				Start: lastRange.Start,
 				End:   lastRange.End + 1,
 			}
