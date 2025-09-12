@@ -127,7 +127,7 @@ type memoryReuseHasherWrapper struct {
 	Hasher
 }
 
-func (m memoryReuseHasherWrapper) HashLeafWithBuffer(data []byte, buffer []byte) ([]byte, error) {
+func (m memoryReuseHasherWrapper) HashLeafWithBuffer(data []byte, _ []byte) ([]byte, error) {
 	return m.HashLeaf(data)
 }
 
