@@ -476,7 +476,6 @@ func (n *NamespacedMerkleTree) calculateAbsenceIndex(nID namespace.ID) int {
 func (n *NamespacedMerkleTree) foundInRange(nID namespace.ID) (found bool, startIndex int, endIndex int) {
 	// This is a faster version of this code snippet:
 	// https://github.com/celestiaorg/celestiaorg-prototype/blob/2aeca6f55ad389b9d68034a0a7038f80a8d2982e/simpleblock.go#L106-L117
-
 	foundRng, found := n.namespaceRanges[string(nID)]
 	return found, foundRng.Start, foundRng.End
 }
@@ -552,17 +551,16 @@ func (n *NamespacedMerkleTree) Root() ([]byte, error) {
 // Any error returned by this method is irrecoverable and indicates an illegal
 // state of the tree.
 func (n *NamespacedMerkleTree) FastRoot() ([]byte, error) {
-	if n.visit != nil {
-		return n.Root()
-	}
 	if n.reuseHasher == nil {
 		return n.Root()
 	}
-
 	if n.rawRoot == nil {
 		size := n.Size()
 		if size == 0 {
 			n.rawRoot = n.treeHasher.EmptyRoot()
+			if n.visit != nil {
+				n.visit(n.rawRoot)
+			}
 			return n.rawRoot, nil
 		}
 
@@ -586,14 +584,44 @@ func (n *NamespacedMerkleTree) FastRoot() ([]byte, error) {
 // leaves is a power of 2.
 func (n *NamespacedMerkleTree) computeRootSequential() ([]byte, error) {
 	levelSize := len(n.leafHashes)
+	var leftCopy []byte
+	if n.visit != nil && levelSize > 0 {
+		leftCopy = make([]byte, 0, len(n.leafHashes[0]))
+	}
+
+	if levelSize == 1 {
+		if n.visit != nil {
+			n.visit(n.leafHashes[0], n.leaves[0])
+		}
+		result := make([]byte, len(n.leafHashes[0]))
+		copy(result, n.leafHashes[0])
+		n.leafHashes = n.leafHashes[:0]
+		return result, nil
+	}
+
 	for levelSize > 1 {
 		for i := 0; i < levelSize; i += 2 {
 			left := n.leafHashes[i]
 			right := n.leafHashes[i+1]
 
+			if n.visit != nil && levelSize == len(n.leaves) {
+				n.visit(left, n.leaves[i])
+				n.visit(right, n.leaves[i+1])
+			}
+			if n.visit != nil {
+				if cap(leftCopy) < len(left) {
+					leftCopy = make([]byte, len(left))
+				} else {
+					leftCopy = leftCopy[:len(left)]
+				}
+				copy(leftCopy, left)
+			}
 			res, err := n.reuseHasher.HashNodeReuseLeft(left, right)
 			if err != nil {
 				return nil, err
+			}
+			if n.visit != nil {
+				n.visit(res, leftCopy, right)
 			}
 			// we always reuse the left part, so we can put the right part into the pool
 			n.pool.put(right)

@@ -562,6 +562,102 @@ func TestNodeVisitor(t *testing.T) {
 	}
 }
 
+// TestRootAndFastRootVisitSameNodes verifies that both Root() and FastRoot()
+// visit the same set of nodes, regardless of order
+func TestRootAndFastRootVisitSameNodes(t *testing.T) {
+	type visitCall struct {
+		hash     string
+		children []string
+	}
+
+	collectVisitsAsSet := func(visits *map[string]visitCall) NodeVisitorFn {
+		return func(hash []byte, children ...[]byte) {
+			call := visitCall{
+				hash:     fmt.Sprintf("%x", hash),
+				children: make([]string, len(children)),
+			}
+			for i, child := range children {
+				call.children[i] = fmt.Sprintf("%x", child)
+			}
+			(*visits)[call.hash] = call
+		}
+	}
+
+	testCases := []struct {
+		name      string
+		numLeaves int
+		nidSize   int
+		leafSize  int
+	}{
+		{"empty tree", 0, 8, 32},
+		{"single leaf", 1, 8, 32},
+		{"two leaves", 2, 8, 32},
+		{"four leaves", 4, 8, 32},
+		{"eight leaves", 8, 8, 32},
+		{"16 leaves", 16, 8, 32},
+		{"32 leaves", 32, 8, 32},
+		{"64 leaves", 64, 8, 32},
+		{"128 leaves", 128, 8, 32},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			var data [][]byte
+			if tc.numLeaves > 0 {
+				var err error
+				data, err = generateRandNamespacedRawData(tc.numLeaves, tc.nidSize, tc.leafSize)
+				require.NoError(t, err)
+			}
+
+			// Collect visits from Root()
+			rootVisits := make(map[string]visitCall)
+			tree1 := New(sha256.New(),
+				NamespaceIDSize(tc.nidSize),
+				NodeVisitor(collectVisitsAsSet(&rootVisits)))
+			for _, leaf := range data {
+				err := tree1.Push(leaf)
+				require.NoError(t, err)
+			}
+			root1, err := tree1.Root()
+			require.NoError(t, err)
+
+			// Collect visits from FastRoot()
+			fastRootVisits := make(map[string]visitCall)
+			tree2 := New(sha256.New(),
+				NamespaceIDSize(tc.nidSize),
+				NodeVisitor(collectVisitsAsSet(&fastRootVisits)))
+			for _, leaf := range data {
+				err := tree2.Push(leaf)
+				require.NoError(t, err)
+			}
+			root2, err := tree2.FastRoot()
+			require.NoError(t, err)
+
+			// Verify roots are identical
+			assert.Equal(t, root1, root2, "Root and FastRoot should produce same result")
+
+			// Verify the same set of nodes was visited (order doesn't matter)
+			assert.Equal(t, len(rootVisits), len(fastRootVisits),
+				"Should visit the same number of unique nodes")
+
+			// Check that every node visited by Root was also visited by FastRoot
+			for hash, rootCall := range rootVisits {
+				fastCall, found := fastRootVisits[hash]
+				assert.True(t, found, "Node %s visited by Root should also be visited by FastRoot", hash[:16])
+				if found {
+					assert.Equal(t, rootCall.children, fastCall.children)
+				}
+			}
+
+			// Check that every node visited by FastRoot was also visited by Root
+			for hash := range fastRootVisits {
+				_, found := rootVisits[hash]
+				assert.True(t, found, "Node %s visited by FastRoot should also be visited by Root", hash[:16])
+			}
+		})
+	}
+}
+
 func TestCustomHasher(t *testing.T) {
 	type customHasher struct {
 		*NmtHasher
