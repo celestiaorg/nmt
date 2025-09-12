@@ -123,10 +123,21 @@ func CustomHasher(h Hasher) Option {
 	}
 }
 
+type memoryReuseHasherWrapper struct {
+	Hasher
+}
+
+func (m memoryReuseHasherWrapper) HashLeafWithBuffer(data []byte, buffer []byte) ([]byte, error) {
+	return m.HashLeaf(data)
+}
+
+func (m memoryReuseHasherWrapper) HashNodeReuseLeft(leftChild, rightChild []byte) ([]byte, error) {
+	return m.HashNode(leftChild, rightChild)
+}
+
 type NamespacedMerkleTree struct {
-	treeHasher  Hasher
-	reuseHasher memoryReuseHasher
-	visit       NodeVisitorFn
+	treeHasher memoryReuseHasher
+	visit      NodeVisitorFn
 
 	// just cache stuff until we pass in a store and keep all nodes in there
 	// currently, only leaves and leafHashes are stored:
@@ -184,10 +195,11 @@ func New(h hash.Hash, setters ...Option) *NamespacedMerkleTree {
 	// in case we provide the NMTHasher, we can use buffers for hashing
 	if convHasher, ok := opts.Hasher.(memoryReuseHasher); ok {
 		reuseHasher = convHasher
+	} else {
+		reuseHasher = memoryReuseHasherWrapper{opts.Hasher}
 	}
 	return &NamespacedMerkleTree{
-		treeHasher:      opts.Hasher,
-		reuseHasher:     reuseHasher,
+		treeHasher:      reuseHasher,
 		visit:           opts.NodeVisitor,
 		leaves:          make([][]byte, 0, opts.InitialCapacity),
 		leafHashes:      make([][]byte, 0, opts.InitialCapacity),
@@ -501,11 +513,7 @@ func (n *NamespacedMerkleTree) Push(namespacedData namespace.PrefixedData) error
 		res     []byte
 		curHash = n.pool.get()
 	)
-	if n.reuseHasher != nil {
-		res, err = n.reuseHasher.HashLeafWithBuffer(namespacedData, curHash)
-	} else {
-		res, err = n.treeHasher.HashLeaf(namespacedData)
-	}
+	res, err = n.treeHasher.HashLeafWithBuffer(namespacedData, curHash)
 	if err != nil {
 		return err
 	}
@@ -548,9 +556,6 @@ func (n *NamespacedMerkleTree) Root() ([]byte, error) {
 // Any error returned by this method is irrecoverable and indicates an illegal
 // state of the tree.
 func (n *NamespacedMerkleTree) FastRoot() ([]byte, error) {
-	if n.reuseHasher == nil {
-		return n.Root()
-	}
 	if n.rawRoot == nil {
 		size := n.Size()
 		if size == 0 {
@@ -610,7 +615,7 @@ func (n *NamespacedMerkleTree) computeRootSequential() ([]byte, error) {
 				}
 				copy(leftCopy, left)
 			}
-			res, err := n.reuseHasher.HashNodeReuseLeft(left, right)
+			res, err := n.treeHasher.HashNodeReuseLeft(left, right)
 			if err != nil {
 				return nil, err
 			}
