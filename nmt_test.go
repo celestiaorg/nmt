@@ -590,10 +590,10 @@ func TestRootAndFastRootVisitSameNodes(t *testing.T) {
 		leafSize  int
 	}{
 		{"empty tree", 0, 8, 32},
-		{"single leaf", 1, 8, 32},
-		{"two leaves", 2, 8, 32},
-		{"four leaves", 4, 8, 32},
-		{"eight leaves", 8, 8, 32},
+		{"1 leaf", 1, 8, 32},
+		{"2 leaves", 2, 8, 32},
+		{"4 leaves", 4, 8, 32},
+		{"8 leaves", 8, 8, 32},
 		{"16 leaves", 16, 8, 32},
 		{"32 leaves", 32, 8, 32},
 		{"64 leaves", 64, 8, 32},
@@ -1008,25 +1008,33 @@ func Test_Root_RaceCondition(t *testing.T) {
 }
 
 func TestFastRoot(t *testing.T) {
-	// Test that FastRoot produces the same result as Root for power-of-2 sizes
+	// Test that FastRoot produces the same result as Root for all sizes
 	tests := []struct {
-		name        string
-		numLeaves   int
-		nidSize     int
-		leafSize    int
-		shouldError bool
+		name      string
+		numLeaves int
+		nidSize   int
+		leafSize  int
 	}{
-		{"empty tree", 0, 8, 32, false},
-		{"single leaf", 1, 8, 32, false},
-		{"two leaves", 2, 8, 32, false},
-		{"four leaves", 4, 8, 32, false},
-		{"eight leaves", 8, 8, 32, false},
-		{"16 leaves", 16, 8, 32, false},
-		{"32 leaves", 32, 8, 32, false},
-		{"64 leaves", 64, 8, 32, false},
-		{"128 leaves", 128, 8, 32, false},
-		{"256 leaves", 256, 8, 32, false},
-		{"1024 leaves", 1024, 8, 64, false},
+		{"empty tree", 0, 8, 32},
+		{"1 leaf", 1, 8, 32},
+		{"2 leaves", 2, 8, 32},
+		{"4 leaves", 4, 8, 32},
+		{"8 leaves", 8, 8, 32},
+		{"16 leaves", 16, 8, 32},
+		{"32 leaves", 32, 8, 32},
+		{"64 leaves", 64, 8, 32},
+		{"128 leaves", 128, 8, 32},
+		{"256 leaves", 256, 8, 32},
+		{"1024 leaves", 1024, 8, 64},
+		{"3 leaves", 3, 8, 32},
+		{"5 leaves", 5, 8, 32},
+		{"6 leaves", 6, 8, 32},
+		{"7 leaves", 7, 8, 32},
+		{"9 leaves", 9, 8, 32},
+		{"15 leaves", 15, 8, 32},
+		{"31 leaves", 31, 8, 32},
+		{"33 leaves", 33, 8, 32},
+		{"127 leaves", 127, 8, 32},
 	}
 
 	for _, tt := range tests {

@@ -543,9 +543,6 @@ func (n *NamespacedMerkleTree) Root() ([]byte, error) {
 // This method should only be used when you need to compute the root once and
 // then discard the tree.
 //
-// IMPORTANT: This method currently only works when the number of leaves is a
-// power of 2. It will return an error for other sizes.
-//
 // The returned byte slice is of size 2*n.NamespaceSize + the underlying hash
 // output size, and should be parsed as minND || maxNID || hash.
 // Any error returned by this method is irrecoverable and indicates an illegal
@@ -563,12 +560,6 @@ func (n *NamespacedMerkleTree) FastRoot() ([]byte, error) {
 			}
 			return n.rawRoot, nil
 		}
-
-		// Check if size is power of 2
-		if (size & (size - 1)) != 0 {
-			return n.Root()
-		}
-
 		// Sequential iterative approach for buffer reuse
 		res, err := n.computeRootSequential()
 		if err != nil {
@@ -583,7 +574,7 @@ func (n *NamespacedMerkleTree) FastRoot() ([]byte, error) {
 // reusing the leafHashes buffer in place. This only works when the number of
 // leaves is a power of 2.
 func (n *NamespacedMerkleTree) computeRootSequential() ([]byte, error) {
-	levelSize := len(n.leafHashes)
+	levelSize := len(n.leaves)
 	var leftCopy []byte
 	if n.visit != nil && levelSize > 0 {
 		leftCopy = make([]byte, 0, len(n.leafHashes[0]))
@@ -599,15 +590,18 @@ func (n *NamespacedMerkleTree) computeRootSequential() ([]byte, error) {
 		return result, nil
 	}
 
+	// visit leaves
+	if n.visit != nil {
+		for i := 0; i < levelSize; i++ {
+			n.visit(n.leafHashes[i], n.leaves[i])
+		}
+	}
+
 	for levelSize > 1 {
-		for i := 0; i < levelSize; i += 2 {
+		nextLevelSize := 0
+		for i := 0; i < levelSize-1; i += 2 {
 			left := n.leafHashes[i]
 			right := n.leafHashes[i+1]
-
-			if n.visit != nil && levelSize == len(n.leaves) {
-				n.visit(left, n.leaves[i])
-				n.visit(right, n.leaves[i+1])
-			}
 			if n.visit != nil {
 				if cap(leftCopy) < len(left) {
 					leftCopy = make([]byte, len(left))
@@ -620,14 +614,21 @@ func (n *NamespacedMerkleTree) computeRootSequential() ([]byte, error) {
 			if err != nil {
 				return nil, err
 			}
+			// visit intermediate node
 			if n.visit != nil {
 				n.visit(res, leftCopy, right)
 			}
 			// we always reuse the left part, so we can put the right part into the pool
 			n.pool.put(right)
-			n.leafHashes[i/2] = res
+			n.leafHashes[nextLevelSize] = res
+			nextLevelSize++
 		}
-		levelSize /= 2
+		// handle odd node - just move it to the next level position
+		if levelSize%2 == 1 {
+			n.leafHashes[nextLevelSize] = n.leafHashes[levelSize-1]
+			nextLevelSize++
+		}
+		levelSize = nextLevelSize
 	}
 	result := make([]byte, len(n.leafHashes[0]))
 	copy(result, n.leafHashes[0])
