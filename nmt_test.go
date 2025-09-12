@@ -13,11 +13,12 @@ import (
 	"sort"
 	"sync"
 	"testing"
+	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/celestiaorg/nmt/namespace"
-	"github.com/stretchr/testify/assert"
 )
 
 // prefixedData8 like namespace.PrefixedData is just a slice of bytes. It
@@ -561,6 +562,102 @@ func TestNodeVisitor(t *testing.T) {
 	}
 }
 
+// TestRootAndFastRootVisitSameNodes verifies that both Root() and FastRoot()
+// visit the same set of nodes, regardless of order
+func TestRootAndFastRootVisitSameNodes(t *testing.T) {
+	type visitCall struct {
+		hash     string
+		children []string
+	}
+
+	collectVisitsAsSet := func(visits *map[string]visitCall) NodeVisitorFn {
+		return func(hash []byte, children ...[]byte) {
+			call := visitCall{
+				hash:     fmt.Sprintf("%x", hash),
+				children: make([]string, len(children)),
+			}
+			for i, child := range children {
+				call.children[i] = fmt.Sprintf("%x", child)
+			}
+			(*visits)[call.hash] = call
+		}
+	}
+
+	testCases := []struct {
+		name      string
+		numLeaves int
+		nidSize   int
+		leafSize  int
+	}{
+		{"empty tree", 0, 8, 32},
+		{"1 leaf", 1, 8, 32},
+		{"2 leaves", 2, 8, 32},
+		{"4 leaves", 4, 8, 32},
+		{"8 leaves", 8, 8, 32},
+		{"16 leaves", 16, 8, 32},
+		{"32 leaves", 32, 8, 32},
+		{"64 leaves", 64, 8, 32},
+		{"128 leaves", 128, 8, 32},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			var data [][]byte
+			if tc.numLeaves > 0 {
+				var err error
+				data, err = generateRandNamespacedRawData(tc.numLeaves, tc.nidSize, tc.leafSize)
+				require.NoError(t, err)
+			}
+
+			// Collect visits from Root()
+			rootVisits := make(map[string]visitCall)
+			tree1 := New(sha256.New(),
+				NamespaceIDSize(tc.nidSize),
+				NodeVisitor(collectVisitsAsSet(&rootVisits)))
+			for _, leaf := range data {
+				err := tree1.Push(leaf)
+				require.NoError(t, err)
+			}
+			root1, err := tree1.Root()
+			require.NoError(t, err)
+
+			// Collect visits from FastRoot()
+			fastRootVisits := make(map[string]visitCall)
+			tree2 := New(sha256.New(),
+				NamespaceIDSize(tc.nidSize),
+				NodeVisitor(collectVisitsAsSet(&fastRootVisits)))
+			for _, leaf := range data {
+				err := tree2.Push(leaf)
+				require.NoError(t, err)
+			}
+			root2, err := tree2.FastRoot()
+			require.NoError(t, err)
+
+			// Verify roots are identical
+			assert.Equal(t, root1, root2, "Root and FastRoot should produce same result")
+
+			// Verify the same set of nodes was visited (order doesn't matter)
+			assert.Equal(t, len(rootVisits), len(fastRootVisits),
+				"Should visit the same number of unique nodes")
+
+			// Check that every node visited by Root was also visited by FastRoot
+			for hash, rootCall := range rootVisits {
+				fastCall, found := fastRootVisits[hash]
+				assert.True(t, found, "Node %s visited by Root should also be visited by FastRoot", hash[:16])
+				if found {
+					assert.Equal(t, rootCall.children, fastCall.children)
+				}
+			}
+
+			// Check that every node visited by FastRoot was also visited by Root
+			for hash := range fastRootVisits {
+				_, found := rootVisits[hash]
+				assert.True(t, found, "Node %s visited by FastRoot should also be visited by Root", hash[:16])
+			}
+		})
+	}
+}
+
 func TestCustomHasher(t *testing.T) {
 	type customHasher struct {
 		*NmtHasher
@@ -708,10 +805,11 @@ func BenchmarkComputeRoot(b *testing.B) {
 		nidSize   int
 		dataSize  int
 	}{
-		{"64-leaves", 64, 8, 256},
 		{"128-leaves", 128, 8, 256},
 		{"256-leaves", 256, 8, 256},
-		{"20k-leaves", 20000, 8, 512},
+		{"512-leaves", 512, 8, 256},
+		{"1024-leaves", 1024, 8, 256},
+		{"16384-leaves", 16384, 8, 512},
 	}
 
 	for _, tt := range tests {
@@ -727,6 +825,160 @@ func BenchmarkComputeRoot(b *testing.B) {
 					}
 				}
 				_, _ = n.Root()
+			}
+		})
+	}
+}
+
+func BenchmarkFastRootVsRoot(b *testing.B) {
+	tests := []struct {
+		name      string
+		numLeaves int
+		nidSize   int
+		dataSize  int
+	}{
+		{"512-leaves", 512, 8, 256},
+		{"1024-leaves", 1024, 8, 256},
+		{"2048-leaves", 2048, 8, 256},
+		{"16384-leaves", 16384, 8, 512},
+	}
+
+	for _, tt := range tests {
+		data, err := generateRandNamespacedRawData(tt.numLeaves, tt.nidSize, tt.dataSize)
+		require.NoError(b, err)
+
+		b.Run(tt.name+"-Root", func(b *testing.B) {
+			b.ReportAllocs()
+			var pushTime, rootTime time.Duration
+
+			for i := 0; i < b.N; i++ {
+				n := New(sha256.New())
+
+				// Measure push time
+				start := time.Now()
+				for j := 0; j < tt.numLeaves; j++ {
+					if err := n.Push(data[j]); err != nil {
+						b.Errorf("err: %v", err)
+					}
+				}
+				pushTime += time.Since(start)
+
+				// Measure root time
+				start = time.Now()
+				_, _ = n.Root()
+				rootTime += time.Since(start)
+			}
+
+			b.ReportMetric(float64(pushTime.Nanoseconds())/float64(b.N), "ns/push")
+			b.ReportMetric(float64(rootTime.Nanoseconds())/float64(b.N), "ns/root")
+			b.ReportMetric(float64(pushTime.Nanoseconds())/float64(rootTime.Nanoseconds()), "push/root-ratio")
+		})
+
+		b.Run(tt.name+"-FastRoot", func(b *testing.B) {
+			b.ReportAllocs()
+			var pushTime, rootTime time.Duration
+
+			for i := 0; i < b.N; i++ {
+				n := New(sha256.New())
+
+				// Measure push time
+				start := time.Now()
+				for j := 0; j < tt.numLeaves; j++ {
+					if err := n.Push(data[j]); err != nil {
+						b.Errorf("err: %v", err)
+					}
+				}
+				pushTime += time.Since(start)
+
+				// Measure FastRoot time
+				start = time.Now()
+				_, _ = n.FastRoot()
+				rootTime += time.Since(start)
+			}
+
+			b.ReportMetric(float64(pushTime.Nanoseconds())/float64(b.N), "ns/push")
+			b.ReportMetric(float64(rootTime.Nanoseconds())/float64(b.N), "ns/root")
+			b.ReportMetric(float64(pushTime.Nanoseconds())/float64(rootTime.Nanoseconds()), "push/fastroot-ratio")
+		})
+	}
+}
+
+func BenchmarkNMTReuseWithFastRoot(b *testing.B) {
+	tests := []struct {
+		name      string
+		numLeaves int
+		nidSize   int
+		dataSize  int
+	}{
+		{"128-leaves", 128, 8, 256},
+		{"256-leaves", 256, 8, 256},
+		{"512-leaves", 512, 8, 256},
+		{"1024-leaves", 1024, 8, 256},
+		{"16384-leaves", 16384, 8, 512},
+	}
+
+	for _, tt := range tests {
+		// Generate random data once for fair comparison
+		data, err := generateRandNamespacedRawData(tt.numLeaves, tt.nidSize, tt.dataSize)
+		if err != nil {
+			b.Fatalf("Failed to generate data: %v", err)
+		}
+
+		b.Run(tt.name+"-Root-NewTreeEachTime", func(b *testing.B) {
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				tree := New(sha256.New(), NamespaceIDSize(tt.nidSize))
+				for j := 0; j < tt.numLeaves; j++ {
+					if err := tree.Push(data[j]); err != nil {
+						b.Fatalf("Push error: %v", err)
+					}
+				}
+				_, _ = tree.Root()
+			}
+		})
+
+		b.Run(tt.name+"-Root-ReuseTree", func(b *testing.B) {
+			b.ReportAllocs()
+			b.ResetTimer()
+			tree := New(sha256.New(), NamespaceIDSize(tt.nidSize), InitialCapacity(tt.numLeaves))
+			for i := 0; i < b.N; i++ {
+				tree.Reset()
+				for j := 0; j < tt.numLeaves; j++ {
+					if err := tree.Push(data[j]); err != nil {
+						b.Fatalf("Push error: %v", err)
+					}
+				}
+				_, _ = tree.Root()
+			}
+		})
+
+		b.Run(tt.name+"-FastRoot-NewTreeEachTime", func(b *testing.B) {
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				tree := New(sha256.New(), NamespaceIDSize(tt.nidSize))
+				for j := 0; j < tt.numLeaves; j++ {
+					if err := tree.Push(data[j]); err != nil {
+						b.Fatalf("Push error: %v", err)
+					}
+				}
+				_, _ = tree.FastRoot()
+			}
+		})
+
+		b.Run(tt.name+"-FastRoot-ReuseTree", func(b *testing.B) {
+			b.ReportAllocs()
+			b.ResetTimer()
+			tree := New(sha256.New(), NamespaceIDSize(tt.nidSize), InitialCapacity(tt.numLeaves))
+			for i := 0; i < b.N; i++ {
+				tree.Reset()
+				for j := 0; j < tt.numLeaves; j++ {
+					if err := tree.Push(data[j]); err != nil {
+						b.Fatalf("Push error: %v", err)
+					}
+				}
+				_, _ = tree.FastRoot()
 			}
 		})
 	}
@@ -753,6 +1005,74 @@ func Test_Root_RaceCondition(t *testing.T) {
 	}
 
 	wg.Wait()
+}
+
+func TestFastRoot(t *testing.T) {
+	// Test that FastRoot produces the same result as Root for all sizes
+	tests := []struct {
+		name      string
+		numLeaves int
+		nidSize   int
+		leafSize  int
+	}{
+		{"empty tree", 0, 8, 32},
+		{"1 leaf", 1, 8, 32},
+		{"2 leaves", 2, 8, 32},
+		{"4 leaves", 4, 8, 32},
+		{"8 leaves", 8, 8, 32},
+		{"16 leaves", 16, 8, 32},
+		{"32 leaves", 32, 8, 32},
+		{"64 leaves", 64, 8, 32},
+		{"128 leaves", 128, 8, 32},
+		{"256 leaves", 256, 8, 32},
+		{"512 leaves", 512, 8, 32},
+		{"1024 leaves", 1024, 8, 64},
+		{"2048 leaves", 2048, 8, 64},
+		{"3 leaves", 3, 8, 32},
+		{"5 leaves", 5, 8, 32},
+		{"6 leaves", 6, 8, 32},
+		{"7 leaves", 7, 8, 32},
+		{"9 leaves", 9, 8, 32},
+		{"15 leaves", 15, 8, 32},
+		{"31 leaves", 31, 8, 32},
+		{"33 leaves", 33, 8, 32},
+		{"127 leaves", 127, 8, 32},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var data [][]byte
+			if tt.numLeaves > 0 {
+				var err error
+				data, err = generateRandNamespacedRawData(tt.numLeaves, tt.nidSize, tt.leafSize)
+				require.NoError(t, err)
+			}
+
+			tree1 := New(sha256.New())
+			tree2 := New(sha256.New())
+
+			for _, leaf := range data {
+				err := tree1.Push(leaf)
+				require.NoError(t, err)
+				err = tree2.Push(leaf)
+				require.NoError(t, err)
+			}
+
+			root2, err := tree2.FastRoot()
+
+			require.NoError(t, err)
+			root1, err := tree1.Root()
+			require.NoError(t, err)
+
+			// Roots should be identical
+			assert.Equal(t, root1, root2, "FastRoot should produce same result as Root")
+
+			// Verify that calling Root again on tree2 returns the same cached result
+			root2Again, err := tree2.Root()
+			require.NoError(t, err)
+			assert.Equal(t, root2, root2Again, "Root should return cached result after FastRoot")
+		})
+	}
 }
 
 func shouldPanic(t *testing.T, f func()) {
@@ -1194,6 +1514,139 @@ func TestForcedOutOfOrderNamespacedMerkleTree(t *testing.T) {
 		err := tree.ForceAddLeaf(d)
 		assert.NoError(t, err)
 	}
+}
+
+func TestReset(t *testing.T) {
+	// Test that Reset() preserves allocated memory and allows reuse
+	t.Run("Reset preserves capacity and allows reuse", func(t *testing.T) {
+		tree := New(sha256.New(), NamespaceIDSize(8))
+
+		// Generate test data using generateRandNamespacedRawData
+		data, err := generateRandNamespacedRawData(3, 8, 32)
+		require.NoError(t, err)
+
+		// Push the generated data
+		for _, d := range data {
+			require.NoError(t, tree.Push(d))
+		}
+
+		// Get the root before reset
+		root1, err := tree.Root()
+		require.NoError(t, err)
+		require.Equal(t, 3, tree.Size())
+
+		// Check capacity before reset
+		initialLeafCap := cap(tree.leaves)
+		initialHashCap := cap(tree.leafHashes)
+		require.GreaterOrEqual(t, initialLeafCap, 3)
+		require.GreaterOrEqual(t, initialHashCap, 3)
+
+		// Reset the tree
+		tree.Reset()
+
+		// Verify tree is empty but capacity is preserved
+		require.Equal(t, 0, tree.Size())
+		require.Equal(t, initialLeafCap, cap(tree.leaves))
+		require.Equal(t, initialHashCap, cap(tree.leafHashes))
+
+		// Verify namespace ranges are cleared
+		require.Len(t, tree.namespaceRanges, 0)
+
+		// Push the same data again
+		for _, d := range data {
+			require.NoError(t, tree.Push(d))
+		}
+
+		// Verify the root is the same
+		root2, err := tree.Root()
+		require.NoError(t, err)
+		require.Equal(t, root1, root2)
+		require.Equal(t, 3, tree.Size())
+
+		// Capacity should still be the same (no new allocations)
+		require.Equal(t, initialLeafCap, cap(tree.leaves))
+		require.Equal(t, initialHashCap, cap(tree.leafHashes))
+	})
+
+	t.Run("Reset clears root cache", func(t *testing.T) {
+		tree := New(sha256.New(), NamespaceIDSize(8))
+
+		// Generate test data using generateRandNamespacedRawData
+		data, err := generateRandNamespacedRawData(1, 8, 16)
+		require.NoError(t, err)
+		require.NoError(t, tree.Push(data[0]))
+
+		// Compute root to cache it
+		_, err = tree.Root()
+		require.NoError(t, err)
+		require.NotNil(t, tree.rawRoot)
+
+		// Reset should clear the cached root
+		tree.Reset()
+		require.Nil(t, tree.rawRoot)
+
+		// Root of empty tree should be different
+		emptyRoot, err := tree.Root()
+		require.NoError(t, err)
+		require.NotNil(t, emptyRoot)
+	})
+
+	t.Run("Memory reuse with different sized data", func(t *testing.T) {
+		tree := New(sha256.New(), NamespaceIDSize(8))
+
+		// Generate initial data with varying leaf sizes
+		firstBatchData, err := generateRandNamespacedRawData(3, 8, 64)
+		require.NoError(t, err)
+
+		// Push the generated data
+		for _, d := range firstBatchData {
+			require.NoError(t, tree.Push(d))
+		}
+
+		// Reset and push different sized data
+		tree.Reset()
+
+		// Generate second batch with different leaf sizes
+		secondBatchData, err := generateRandNamespacedRawData(2, 8, 128)
+		require.NoError(t, err)
+
+		for _, d := range secondBatchData {
+			require.NoError(t, tree.Push(d))
+		}
+
+		// Verify data is correctly stored
+		require.Equal(t, 2, tree.Size())
+		require.Equal(t, secondBatchData[0], tree.leaves[0])
+		require.Equal(t, secondBatchData[1], tree.leaves[1])
+	})
+
+	t.Run("Reset with FastRoot", func(t *testing.T) {
+		data, err := generateRandNamespacedRawData(128, 8, 64)
+		require.NoError(t, err)
+
+		tree := New(sha256.New(), InitialCapacity(128))
+
+		for _, leaf := range data {
+			err := tree.Push(leaf)
+			require.NoError(t, err)
+		}
+
+		root1, err := tree.FastRoot()
+		require.NoError(t, err)
+
+		tree.Reset()
+		require.Equal(t, 0, tree.Size())
+
+		for _, leaf := range data {
+			err := tree.Push(leaf)
+			require.NoError(t, err)
+		}
+
+		root2, err := tree.FastRoot()
+		require.NoError(t, err)
+
+		require.Equal(t, root1, root2)
+	})
 }
 
 func TestComputeSubtreeRoot(t *testing.T) {

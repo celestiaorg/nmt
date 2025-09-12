@@ -41,6 +41,12 @@ type Hasher interface {
 	EmptyRoot() []byte
 }
 
+type memoryReuseHasher interface {
+	Hasher
+	HashLeafWithBuffer(data []byte, buffer []byte) ([]byte, error)
+	HashNodeReuseLeft(leftChild, rightChild []byte) ([]byte, error)
+}
+
 var _ Hasher = &NmtHasher{}
 
 // NmtHasher is the default hasher. It follows the description of the original
@@ -182,6 +188,12 @@ func (n *NmtHasher) ValidateLeaf(data []byte) (err error) {
 // namespaceID inside the data item namely leaf[:n.NamespaceLen]). Note that for
 // leaves minNs = maxNs = ns(leaf) = leaf[:NamespaceLen]. HashLeaf can return the ErrInvalidNodeLen error if the input is not namespaced.
 func (n *NmtHasher) HashLeaf(ndata []byte) ([]byte, error) {
+	return n.HashLeafWithBuffer(ndata, nil)
+}
+
+// HashLeafWithBuffer computes namespace hash using a provided buffer to reduce allocations.
+// If buffer is nil or has insufficient capacity, a new buffer is allocated.
+func (n *NmtHasher) HashLeafWithBuffer(ndata []byte, buffer []byte) ([]byte, error) {
 	h := n.baseHasher
 	h.Reset()
 
@@ -191,7 +203,14 @@ func (n *NmtHasher) HashLeaf(ndata []byte) ([]byte, error) {
 
 	nID := ndata[:n.NamespaceLen]
 	resLen := int(2*n.NamespaceLen) + n.baseHasher.Size()
-	minMaxNIDs := make([]byte, 0, resLen)
+
+	var minMaxNIDs []byte
+	if cap(buffer) >= resLen {
+		minMaxNIDs = buffer[:0]
+	} else {
+		minMaxNIDs = make([]byte, 0, resLen)
+	}
+
 	minMaxNIDs = append(minMaxNIDs, nID...) // nID
 	minMaxNIDs = append(minMaxNIDs, nID...) // nID || nID
 
@@ -316,6 +335,34 @@ func (n *NmtHasher) HashNode(left, right []byte) ([]byte, error) {
 	h.Write(left)
 	h.Write(right)
 	return h.Sum(res), nil
+}
+
+func (n *NmtHasher) HashNodeReuseLeft(left, right []byte) ([]byte, error) {
+	lRange, rRange, err := n.tryFetchLeftAndRightNSRanges(left, right)
+	if err != nil {
+		return nil, err
+	}
+
+	h := n.baseHasher
+	h.Reset()
+
+	minNs, maxNs := computeNsRange(lRange.Min, lRange.Max, rRange.Min, rRange.Max, n.ignoreMaxNs, n.precomputedMaxNs)
+
+	h.Write(nodePrefixSlice)
+	h.Write(left)
+	h.Write(right)
+
+	buffer := left
+	requiredSize := len(minNs) + len(maxNs) + h.Size()
+	if cap(buffer) < requiredSize {
+		newCap := 2 * requiredSize
+		buffer = make([]byte, 0, newCap)
+	} else {
+		buffer = buffer[:0]
+	}
+	buffer = append(buffer, minNs...)
+	buffer = append(buffer, maxNs...)
+	return h.Sum(buffer), nil
 }
 
 // computeNsRange computes the namespace range of the parent node based on the namespace ranges of its left and right children.
