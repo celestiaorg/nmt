@@ -566,7 +566,7 @@ func (n *NamespacedMerkleTree) FastRoot() ([]byte, error) {
 			return n.rawRoot, nil
 		}
 		// Sequential iterative approach for buffer reuse
-		res, err := n.computeRootSequential()
+		res, err := n.computeRootIterative()
 		if err != nil {
 			return nil, err
 		}
@@ -575,10 +575,10 @@ func (n *NamespacedMerkleTree) FastRoot() ([]byte, error) {
 	return n.rawRoot, nil
 }
 
-// computeRootSequential computes the root using a sequential iterative approach,
+// computeRootIterative computes the root using a sequential iterative approach,
 // reusing the leafHashes buffer in place. This only works when the number of
 // leaves is a power of 2.
-func (n *NamespacedMerkleTree) computeRootSequential() ([]byte, error) {
+func (n *NamespacedMerkleTree) computeRootIterative() ([]byte, error) {
 	levelSize := len(n.leaves)
 	var leftCopy []byte
 	if n.visit != nil && levelSize > 0 {
