@@ -14,10 +14,9 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/stretchr/testify/require"
-
 	"github.com/celestiaorg/nmt/namespace"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // prefixedData8 like namespace.PrefixedData is just a slice of bytes. It
@@ -968,6 +967,59 @@ func Test_ProveRange_Err(t *testing.T) {
 			assert.Equal(t, tt.wantErr, err != nil)
 			if tt.wantErr {
 				assert.True(t, errors.Is(err, tt.errType))
+			}
+		})
+	}
+}
+
+func BenchmarkNMTReuse(b *testing.B) {
+	tests := []struct {
+		name      string
+		numLeaves int
+		nidSize   int
+		dataSize  int
+	}{
+		{"128-leaves", 128, 29, 512},
+		{"256-leaves", 256, 29, 512},
+		{"512-leaves", 512, 29, 512},
+		{"1024-leaves", 1024, 29, 512},
+	}
+
+	for _, tt := range tests {
+		// Generate random data once for fair comparison
+		data, err := generateRandNamespacedRawData(tt.numLeaves, tt.nidSize, tt.dataSize)
+		if err != nil {
+			b.Fatalf("Failed to generate data: %v", err)
+		}
+
+		b.Run(tt.name+"-Root-NewTreeEachTime", func(b *testing.B) {
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				tree := New(sha256.New(), NamespaceIDSize(tt.nidSize))
+				for j := 0; j < tt.numLeaves; j++ {
+					if err := tree.Push(data[j]); err != nil {
+						b.Fatalf("Push error: %v", err)
+					}
+				}
+				_, err := tree.Root()
+				require.NoError(b, err)
+			}
+		})
+
+		b.Run(tt.name+"-Root-ReuseTree", func(b *testing.B) {
+			b.ReportAllocs()
+			b.ResetTimer()
+			tree := New(sha256.New(), NamespaceIDSize(tt.nidSize), InitialCapacity(tt.numLeaves), ReuseBuffer(true))
+			for i := 0; i < b.N; i++ {
+				tree.Reset()
+				for j := 0; j < tt.numLeaves; j++ {
+					if err := tree.Push(data[j]); err != nil {
+						b.Fatalf("Push error: %v", err)
+					}
+				}
+				_, err := tree.Root()
+				require.NoError(b, err)
 			}
 		})
 	}
