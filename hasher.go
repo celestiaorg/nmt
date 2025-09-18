@@ -189,6 +189,7 @@ func (n *NmtHasher) HashLeaf(ndata []byte) ([]byte, error) {
 	if err := n.ValidateLeaf(ndata); err != nil {
 		return nil, err
 	}
+
 	nID := ndata[:n.NamespaceLen]
 	resLen := int(2*n.NamespaceLen) + n.baseHasher.Size()
 	minMaxNIDs := n.getBytes(resLen)
@@ -318,16 +319,16 @@ func (n *NmtHasher) HashNode(left, right []byte) ([]byte, error) {
 	return h.Sum(res), nil
 }
 
-func (n *NmtHasher) initBuffer() {
-	n.buffer = newBuffer()
-}
-
+// resetBuffer resets the buffer or creates it if it is not set.
 func (n *NmtHasher) resetBuffer() {
 	if n.buffer != nil {
 		n.buffer.reset()
+	} else {
+		n.buffer = newBuffer()
 	}
 }
 
+// getBytes gets bytes from the buffer or allocates them.
 func (n *NmtHasher) getBytes(size int) []byte {
 	if n.buffer != nil {
 		return n.buffer.get(size)
@@ -345,19 +346,19 @@ func computeNsRange(leftMinNs, leftMaxNs, rightMinNs, rightMaxNs []byte, ignoreM
 	return minNs, maxNs
 }
 
-// byteBuffer is a simple non-thread-safe buffer of byte slices
+// byteBuffer is a simple non-thread-safe buffer of byte slices.
 type byteBuffer struct {
-	free      [][]byte // available buffers
-	allocated [][]byte // buffers currently in use
+	free [][]byte // available buffers
+	used [][]byte // buffers currently in use
 }
 
-// newBuffer creates a new byte buffer
+// newBuffer creates a new byte buffer.
 func newBuffer() *byteBuffer {
 	return &byteBuffer{}
 }
 
-// get retrieves a byte slice from the buffer
-// If no free buffers available, allocates a new one
+// get retrieves a byte slice from the buffer,
+// If no free buffers available, allocates a new one.
 func (p *byteBuffer) get(size int) []byte {
 	var b []byte
 
@@ -373,12 +374,12 @@ func (p *byteBuffer) get(size int) []byte {
 		b = make([]byte, size)
 	}
 	b = b[:0]
-	p.allocated = append(p.allocated, b)
+	p.used = append(p.used, b)
 	return b
 }
 
-// reset moves all allocated buffers back to free buffer
+// reset moves all used buffers back to the free buffer.
 func (p *byteBuffer) reset() {
-	p.free = append(p.free, p.allocated...)
-	p.allocated = p.allocated[:0]
+	p.free = append(p.free, p.used...)
+	p.used = p.used[:0]
 }

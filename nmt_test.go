@@ -14,9 +14,10 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/celestiaorg/nmt/namespace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/celestiaorg/nmt/namespace"
 )
 
 // prefixedData8 like namespace.PrefixedData is just a slice of bytes. It
@@ -972,7 +973,7 @@ func Test_ProveRange_Err(t *testing.T) {
 	}
 }
 
-func BenchmarkNMTReuse(b *testing.B) {
+func BenchmarkNMTReuseVsNoReuse(b *testing.B) {
 	tests := []struct {
 		name      string
 		numLeaves int
@@ -983,16 +984,16 @@ func BenchmarkNMTReuse(b *testing.B) {
 		{"256-leaves", 256, 29, 512},
 		{"512-leaves", 512, 29, 512},
 		{"1024-leaves", 1024, 29, 512},
+		{"2048-leaves", 2048, 29, 512},
 	}
 
 	for _, tt := range tests {
-		// Generate random data once for fair comparison
 		data, err := generateRandNamespacedRawData(tt.numLeaves, tt.nidSize, tt.dataSize)
 		if err != nil {
 			b.Fatalf("Failed to generate data: %v", err)
 		}
 
-		b.Run(tt.name+"-Root-NewTreeEachTime", func(b *testing.B) {
+		b.Run(tt.name+"-Root-NoReuse", func(b *testing.B) {
 			b.ReportAllocs()
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
@@ -1010,7 +1011,7 @@ func BenchmarkNMTReuse(b *testing.B) {
 		b.Run(tt.name+"-Root-ReuseTree", func(b *testing.B) {
 			b.ReportAllocs()
 			b.ResetTimer()
-			tree := New(sha256.New(), NamespaceIDSize(tt.nidSize), InitialCapacity(tt.numLeaves), ReuseBuffer(true))
+			tree := New(sha256.New(), NamespaceIDSize(tt.nidSize), InitialCapacity(tt.numLeaves), ReuseBuffers(true))
 			for i := 0; i < b.N; i++ {
 				tree.Reset()
 				for j := 0; j < tt.numLeaves; j++ {
@@ -1023,6 +1024,145 @@ func BenchmarkNMTReuse(b *testing.B) {
 			}
 		})
 	}
+}
+
+type nonBufferedHasher struct {
+	hasher *NmtHasher
+}
+
+func (n nonBufferedHasher) IsMaxNamespaceIDIgnored() bool {
+	return n.hasher.IsMaxNamespaceIDIgnored()
+}
+
+func (n nonBufferedHasher) NamespaceSize() namespace.IDSize {
+	return n.hasher.NamespaceSize()
+}
+
+func (n nonBufferedHasher) HashLeaf(data []byte) ([]byte, error) {
+	return n.hasher.HashLeaf(data)
+}
+
+func (n nonBufferedHasher) HashNode(leftChild, rightChild []byte) ([]byte, error) {
+	return n.hasher.HashNode(leftChild, rightChild)
+}
+
+func (n nonBufferedHasher) EmptyRoot() []byte {
+	return n.hasher.EmptyRoot()
+}
+
+var _ Hasher = (*nonBufferedHasher)(nil)
+
+func TestReuseBuffer(t *testing.T) {
+	t.Run("Root reset to EmptyRoot", func(t *testing.T) {
+		tree := New(sha256.New(), NamespaceIDSize(8), ReuseBuffers(true))
+
+		// Generate test data
+		data, err := generateRandNamespacedRawData(10, 8, 32)
+		require.NoError(t, err)
+
+		// Push data and calculate root
+		for _, d := range data {
+			require.NoError(t, tree.Push(d))
+		}
+		root1, err := tree.Root()
+		require.NoError(t, err)
+		require.NotNil(t, root1)
+
+		// Reset and check empty root
+		tree.Reset()
+		emptyRoot, err := tree.Root()
+		require.NoError(t, err)
+		expectedEmpty := tree.treeHasher.EmptyRoot()
+		require.Equal(t, expectedEmpty, emptyRoot)
+
+		// Reset again, push same data and check root matches
+		tree.Reset()
+		for _, d := range data {
+			require.NoError(t, tree.Push(d))
+		}
+		root2, err := tree.Root()
+		require.NoError(t, err)
+		require.Equal(t, root1, root2)
+	})
+
+	t.Run("Multiple datasets with single ReuseBuffers tree", func(t *testing.T) {
+		var (
+			totalSets = 512
+			nidSize   = 29
+			leafSize  = 512
+		)
+		datasets := make([][][]byte, totalSets)
+		expectedRoots := make([][]byte, totalSets)
+
+		for i := 0; i < totalSets; i++ {
+			data, err := generateRandNamespacedRawData(i+1, nidSize, leafSize)
+			require.NoError(t, err)
+			datasets[i] = data
+
+			// Calculate expected root with fresh tree
+			freshTree := New(sha256.New(), NamespaceIDSize(nidSize))
+			for _, d := range data {
+				require.NoError(t, freshTree.Push(d))
+			}
+			root, err := freshTree.Root()
+			require.NoError(t, err)
+			expectedRoots[i] = root
+		}
+
+		// Now use single tree with ReuseBuffers
+		reuseTree := New(sha256.New(), NamespaceIDSize(nidSize), ReuseBuffers(true))
+
+		for i := 0; i < totalSets; i++ {
+			for _, d := range datasets[i] {
+				require.NoError(t, reuseTree.Push(d))
+			}
+			root, err := reuseTree.Root()
+			require.NoError(t, err)
+			require.Equal(t, expectedRoots[i], root, "Root mismatch for dataset %d", i)
+			reuseTree.Reset()
+		}
+	})
+
+	// this tests that even if there is no buffer involved, reset works correctly
+	// and that absence of buffer doesn't break anything
+	t.Run("Multiple datasets with single non-memory reuse hasher tree", func(t *testing.T) {
+		var (
+			totalSets = 512
+			nidSize   = 29
+			leafSize  = 512
+		)
+		datasets := make([][][]byte, totalSets)
+		expectedRoots := make([][]byte, totalSets)
+		wrapper := &nonBufferedHasher{NewNmtHasher(sha256.New(), namespace.IDSize(nidSize), true)}
+
+		for i := 0; i < totalSets; i++ {
+			data, err := generateRandNamespacedRawData(i+1, nidSize, leafSize)
+			require.NoError(t, err)
+			datasets[i] = data
+
+			// Calculate expected root with fresh tree
+			freshTree := New(sha256.New(), NamespaceIDSize(nidSize), CustomHasher(wrapper))
+			for _, d := range data {
+				require.NoError(t, freshTree.Push(d))
+			}
+			root, err := freshTree.Root()
+			require.NoError(t, err)
+			expectedRoots[i] = root
+		}
+
+		// Now use single tree with non-memory reuse hasher
+		reuseTree := New(sha256.New(), NamespaceIDSize(nidSize), ReuseBuffers(true), CustomHasher(wrapper))
+
+		for i := 0; i < totalSets; i++ {
+			for _, d := range datasets[i] {
+				require.NoError(t, reuseTree.Push(d))
+			}
+			root, err := reuseTree.Root()
+			require.NoError(t, err)
+			require.Equal(t, expectedRoots[i], root, "Root mismatch for dataset %d", i)
+			reuseTree.Reset()
+		}
+	})
 }
 
 // The Test_ProveNamespace_Err function tests that ProveNamespace returns an error when the underlying tree is in an invalid state, such as when the leaves are not ordered by namespace ID or when a leaf hash is corrupt.

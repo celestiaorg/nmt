@@ -21,7 +21,6 @@ const (
 var (
 	ErrInvalidRange     = errors.New("invalid proof range")
 	ErrInvalidPushOrder = errors.New("pushed data has to be lexicographically ordered by namespace IDs")
-	noOp                = func(_ []byte, _ ...[]byte) {}
 )
 
 type NodeVisitorFn = func(hash []byte, children ...[]byte)
@@ -40,8 +39,9 @@ type Options struct {
 	// in the "Hasher.
 	IgnoreMaxNamespace bool
 	NodeVisitor        NodeVisitorFn
-	ReuseBuffer        bool
-	Hasher             Hasher
+	// ReuseBuffers determines whether memory buffers should be reused to optimize performance and reduce allocations.
+	ReuseBuffers bool
+	Hasher       Hasher
 }
 
 type Option func(*Options)
@@ -92,16 +92,19 @@ func CustomHasher(h Hasher) Option {
 	}
 }
 
-func ReuseBuffer(reuse bool) Option {
+// ReuseBuffers option will use default's hasher buffer reuse capabilities
+// and reuse part of leaves' buffers to check if the namespace exists in a map.
+func ReuseBuffers(reuse bool) Option {
 	return func(o *Options) {
-		o.ReuseBuffer = reuse
+		o.ReuseBuffers = reuse
 	}
 }
 
 type NamespacedMerkleTree struct {
-	reuseBuffer bool
-	treeHasher  Hasher
-	visit       NodeVisitorFn
+	// reuseBuffers determines whether buffers should be reused to optimize memory usage and reduce allocations.
+	reuseBuffers bool
+	treeHasher   Hasher
+	visit        NodeVisitorFn
 
 	// just cache stuff until we pass in a store and keep all nodes in there
 	// currently, only leaves and leafHashes are stored:
@@ -130,8 +133,9 @@ type NamespacedMerkleTree struct {
 	rawRoot []byte
 }
 
-type memoryReuseHasher interface {
-	initBuffer()
+// bufferedHasher is the interface to which default hasher conforms, which resets
+// the buffer and enables it to reuse for hashes.
+type bufferedHasher interface {
 	resetBuffer()
 }
 
@@ -158,16 +162,17 @@ func New(h hash.Hash, setters ...Option) *NamespacedMerkleTree {
 	for _, setter := range setters {
 		setter(opts)
 	}
-	if opts.ReuseBuffer {
-		if reuseHasher, ok := opts.Hasher.(memoryReuseHasher); ok {
-			reuseHasher.initBuffer()
+	if opts.ReuseBuffers {
+		if reuseHasher, ok := opts.Hasher.(bufferedHasher); ok {
+			// initializing buffer for first run
+			reuseHasher.resetBuffer()
 		}
 	}
 
 	return &NamespacedMerkleTree{
 		treeHasher:      opts.Hasher,
 		visit:           opts.NodeVisitor,
-		reuseBuffer:     opts.ReuseBuffer,
+		reuseBuffers:    opts.ReuseBuffers,
 		leaves:          make([][]byte, 0, opts.InitialCapacity),
 		leafHashes:      make([][]byte, 0, opts.InitialCapacity),
 		namespaceRanges: make(map[string]LeafRange),
@@ -188,10 +193,10 @@ func (n *NamespacedMerkleTree) Reset() {
 	n.leaves = n.leaves[:0]
 	n.leafHashes = n.leafHashes[:0]
 	n.rawRoot = nil
-	n.namespaceRanges = map[string]LeafRange{} // Fresh map each time
+	n.namespaceRanges = map[string]LeafRange{}
 	n.minNID = bytes.Repeat([]byte{0xFF}, int(n.treeHasher.NamespaceSize()))
 	n.maxNID = bytes.Repeat([]byte{0x00}, int(n.treeHasher.NamespaceSize()))
-	if reuseHasher, ok := n.treeHasher.(memoryReuseHasher); ok {
+	if reuseHasher, ok := n.treeHasher.(bufferedHasher); ok && n.reuseBuffers {
 		reuseHasher.resetBuffer()
 	}
 }
@@ -514,7 +519,7 @@ func (n *NamespacedMerkleTree) Root() ([]byte, error) {
 		if err != nil {
 			return nil, err // this should never happen since leaves are validated in the Push method
 		}
-		if n.reuseBuffer {
+		if n.reuseBuffers {
 			// we will reuse root's bytes, so we copy
 			n.rawRoot = make([]byte, len(res))
 			copy(n.rawRoot, res)
@@ -578,6 +583,7 @@ func (n *NamespacedMerkleTree) computeRoot(start, end int) ([]byte, error) {
 	switch end - start {
 	case 0:
 		rootHash := n.treeHasher.EmptyRoot()
+		// check visit for nil is better than having noop due to additional alloc on variadic parameters
 		if n.visit != nil {
 			n.visit(rootHash)
 		}
@@ -630,8 +636,9 @@ func (n *NamespacedMerkleTree) updateNamespaceRanges() {
 		lastIndex := n.Size() - 1
 		lastPushed := n.leaves[lastIndex]
 		var lastNsStr string
-		if n.reuseBuffer {
-			// this should be safe to do in all cases, but to be on the safe side using only on a specific option
+		if n.reuseBuffers {
+			// this should be safe to do in all cases, because leaves always stay in a tree
+			// but to be on the safe side using only when optimizing for performance
 			lastNsStr = unsafeBytesToString(lastPushed[:n.treeHasher.NamespaceSize()])
 		} else {
 			lastNsStr = string(lastPushed[:n.treeHasher.NamespaceSize()])
@@ -745,6 +752,8 @@ func (n *NamespacedMerkleTree) Size() int {
 	return len(n.leaves)
 }
 
+// unsafeBytesToString converts a byte slice to a string without copying memory, using unsafe operations.
+// Use with caution as modifications to the original byte slice affect the resulting string.
 func unsafeBytesToString(b []byte) string {
 	if len(b) == 0 {
 		return ""
