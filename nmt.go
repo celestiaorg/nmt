@@ -94,6 +94,8 @@ func CustomHasher(h Hasher) Option {
 
 // ReuseBuffers option will use default's hasher buffer reuse capabilities
 // and reuse part of leaves' buffers to check if the namespace exists in a map.
+// Bear in mind that when we want to reuse the NMT for the next batch of data (e.g. new square row),
+// we need to call `Reset` on the tree.
 func ReuseBuffers(reuse bool) Option {
 	return func(o *Options) {
 		o.ReuseBuffers = reuse
@@ -189,6 +191,9 @@ func (n *NamespacedMerkleTree) Prove(index int) (Proof, error) {
 	return n.ProveRange(index, index+1)
 }
 
+// Reset resets the tree data for subsequent reuse, also resets the allocated buffers for leafHashes,
+// so they won't be allocated again. We don't reuse buffers for `leaves`,
+// because the data is provided externally and not managed by the NMT.
 func (n *NamespacedMerkleTree) Reset() {
 	n.leaves = n.leaves[:0]
 	n.leafHashes = n.leafHashes[:0]
