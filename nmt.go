@@ -41,6 +41,7 @@ type Options struct {
 	NodeVisitor        NodeVisitorFn
 	// ReuseBuffers determines whether memory buffers should be reused to optimize performance and reduce allocations.
 	ReuseBuffers bool
+	ResetFunc    func()
 	Hasher       Hasher
 }
 
@@ -105,6 +106,7 @@ func ReuseBuffers(reuse bool) Option {
 type NamespacedMerkleTree struct {
 	// reuseBuffers determines whether buffers should be reused to optimize memory usage and reduce allocations.
 	reuseBuffers bool
+	resetFunc    func()
 	treeHasher   Hasher
 	visit        NodeVisitorFn
 
@@ -135,12 +137,6 @@ type NamespacedMerkleTree struct {
 	rawRoot []byte
 }
 
-// bufferedHasher is the interface to which default hasher conforms, which resets
-// the buffer and enables it to reuse for hashes.
-type bufferedHasher interface {
-	resetBuffer()
-}
-
 // New initializes a namespaced Merkle tree using the given base hash function
 // and for the given namespace size (number of bytes). If the namespace size is
 // 0 this corresponds to a regular non-namespaced Merkle tree.
@@ -159,22 +155,22 @@ func New(h hash.Hash, setters ...Option) *NamespacedMerkleTree {
 	// first create the default hasher using the updated options
 	hasher := NewNmtHasher(h, opts.NamespaceIDSize, opts.IgnoreMaxNamespace)
 	opts.Hasher = hasher
+	opts.ResetFunc = hasher.resetBuffer
 
 	// set the options a second time to replace the hasher if needed
 	for _, setter := range setters {
 		setter(opts)
 	}
 	if opts.ReuseBuffers {
-		if reuseHasher, ok := opts.Hasher.(bufferedHasher); ok {
-			// initializing buffer for first run
-			reuseHasher.resetBuffer()
-		}
+		// initializing buffer for first run
+		opts.ResetFunc()
 	}
 
 	return &NamespacedMerkleTree{
 		treeHasher:      opts.Hasher,
 		visit:           opts.NodeVisitor,
 		reuseBuffers:    opts.ReuseBuffers,
+		resetFunc:       opts.ResetFunc,
 		leaves:          make([][]byte, 0, opts.InitialCapacity),
 		leafHashes:      make([][]byte, 0, opts.InitialCapacity),
 		namespaceRanges: make(map[string]LeafRange),
@@ -201,8 +197,8 @@ func (n *NamespacedMerkleTree) Reset() {
 	n.namespaceRanges = map[string]LeafRange{}
 	n.minNID = bytes.Repeat([]byte{0xFF}, int(n.treeHasher.NamespaceSize()))
 	n.maxNID = bytes.Repeat([]byte{0x00}, int(n.treeHasher.NamespaceSize()))
-	if reuseHasher, ok := n.treeHasher.(bufferedHasher); ok && n.reuseBuffers {
-		reuseHasher.resetBuffer()
+	if n.reuseBuffers {
+		n.resetFunc()
 	}
 }
 
