@@ -58,6 +58,7 @@ type NmtHasher struct { //nolint:revive
 	// "HashNode".
 	ignoreMaxNs      bool
 	precomputedMaxNs namespace.ID
+	buffer           *byteBuffer
 
 	tp   byte   // keeps type of NMT node to be hashed
 	data []byte // written data of the NMT node
@@ -191,7 +192,7 @@ func (n *NmtHasher) HashLeaf(ndata []byte) ([]byte, error) {
 
 	nID := ndata[:n.NamespaceLen]
 	resLen := int(2*n.NamespaceLen) + n.baseHasher.Size()
-	minMaxNIDs := make([]byte, 0, resLen)
+	minMaxNIDs := n.getBytes(resLen)
 	minMaxNIDs = append(minMaxNIDs, nID...) // nID
 	minMaxNIDs = append(minMaxNIDs, nID...) // nID || nID
 
@@ -307,8 +308,8 @@ func (n *NmtHasher) HashNode(left, right []byte) ([]byte, error) {
 
 	// compute the namespace range of the parent node
 	minNs, maxNs := computeNsRange(lRange.Min, lRange.Max, rRange.Min, rRange.Max, n.ignoreMaxNs, n.precomputedMaxNs)
-
-	res := make([]byte, 0, len(minNs)+len(maxNs)+h.Size())
+	totalLen := len(minNs) + len(maxNs) + h.Size()
+	res := n.getBytes(totalLen)
 	res = append(res, minNs...)
 	res = append(res, maxNs...)
 
@@ -316,6 +317,23 @@ func (n *NmtHasher) HashNode(left, right []byte) ([]byte, error) {
 	h.Write(left)
 	h.Write(right)
 	return h.Sum(res), nil
+}
+
+// resetBuffer resets the buffer or creates it if it is not set.
+func (n *NmtHasher) resetBuffer() {
+	if n.buffer != nil {
+		n.buffer.reset()
+	} else {
+		n.buffer = newBuffer()
+	}
+}
+
+// getBytes gets bytes from the buffer or allocates them.
+func (n *NmtHasher) getBytes(size int) []byte {
+	if n.buffer != nil {
+		return n.buffer.get(size)
+	}
+	return make([]byte, 0, size)
 }
 
 // computeNsRange computes the namespace range of the parent node based on the namespace ranges of its left and right children.
@@ -326,4 +344,42 @@ func computeNsRange(leftMinNs, leftMaxNs, rightMinNs, rightMaxNs []byte, ignoreM
 		maxNs = leftMaxNs
 	}
 	return minNs, maxNs
+}
+
+// byteBuffer is a simple non-thread-safe buffer of byte slices.
+type byteBuffer struct {
+	free [][]byte // available buffers
+	used [][]byte // buffers currently in use
+}
+
+// newBuffer creates a new byte buffer.
+func newBuffer() *byteBuffer {
+	return &byteBuffer{}
+}
+
+// get retrieves a byte slice from the buffer,
+// If no free buffers available, allocates a new one.
+func (p *byteBuffer) get(size int) []byte {
+	var b []byte
+
+	if len(p.free) > 0 {
+		lastIdx := len(p.free) - 1
+		b = p.free[lastIdx]
+		p.free = p.free[:lastIdx]
+
+		if cap(b) < size {
+			b = make([]byte, size)
+		}
+	} else {
+		b = make([]byte, size)
+	}
+	b = b[:0]
+	p.used = append(p.used, b)
+	return b
+}
+
+// reset moves all used buffers back to the free buffer.
+func (p *byteBuffer) reset() {
+	p.free = append(p.free, p.used...)
+	p.used = p.used[:0]
 }
