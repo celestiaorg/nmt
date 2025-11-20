@@ -12,7 +12,7 @@ jobs:
     name: golangci-lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: technote-space/get-diff-action@v6
         with:
           SUFFIX_FILTER: |
@@ -28,5 +28,5 @@ jobs:
   markdown-lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: celestiaorg/.github/.github/actions/markdown-lint@main
