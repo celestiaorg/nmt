@@ -11,6 +11,7 @@ import (
 	"unsafe"
 
 	"github.com/celestiaorg/nmt/namespace"
+	"github.com/prysmaticlabs/gohashtree"
 )
 
 const (
@@ -520,19 +521,33 @@ func (n *NamespacedMerkleTree) Push(namespacedData namespace.PrefixedData) error
 // Any error returned by this method is irrecoverable and indicate an illegal state of the tree (n).
 func (n *NamespacedMerkleTree) Root() ([]byte, error) {
 	if n.rawRoot == nil {
-		res, err := n.computeRoot(0, n.Size())
+		res, err := fastHash(n.leaves)
 		if err != nil {
-			return nil, err // this should never happen since leaves are validated in the Push method
+			return nil, err
 		}
-		if n.reuseBuffers {
-			// we will reuse root's bytes, so we copy
-			n.rawRoot = make([]byte, len(res))
-			copy(n.rawRoot, res)
-		} else {
-			n.rawRoot = res
-		}
+		n.rawRoot = res
 	}
 	return n.rawRoot, nil
+}
+func fastHash(leaves [][]byte) ([]byte, error) {
+	digests := make([][32]byte, len(leaves)/2)
+	hLeaves := make([][32]byte, len(leaves))
+	for i := range leaves {
+		hLeaves[i] = [32]byte(leaves[i])
+	}
+	for {
+		err := gohashtree.Hash(digests, hLeaves)
+		if err != nil {
+			return nil, err
+		}
+		hLeaves = digests
+		if len(digests) > 1 {
+			digests = make([][32]byte, len(digests)/2)
+		} else {
+			break
+		}
+	}
+	return digests[0][:], nil
 }
 
 // MinNamespace returns the minimum namespace ID in this Namespaced Merkle Tree.
