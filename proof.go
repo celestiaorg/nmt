@@ -316,6 +316,16 @@ func (proof Proof) validateCompleteness(nth *NmtHasher, nID namespace.ID) error 
 		nodes = nodes[1:]
 		leafIndex += uint64(subtreeSize)
 	}
+	// If the nodes slice was exhausted before the left traversal reached
+	// proof.Start(), the proof is truncated. Without this guard, rightSubtrees
+	// below would be empty and the right-side namespace check would be
+	// silently skipped — see GHSA-r9fq-g486-v8pg.
+	if leafIndex != uint64(proof.Start()) {
+		return fmt.Errorf(
+			"proof nodes insufficient: left traversal reached leaf index %d, expected %d",
+			leafIndex, proof.Start(),
+		)
+	}
 	// rightSubtrees only contains the subtrees after r.End
 	rightSubtrees := nodes
 
