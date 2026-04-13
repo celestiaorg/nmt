@@ -322,8 +322,8 @@ func (proof Proof) validateCompleteness(nth *NmtHasher, nID namespace.ID) error 
 	// silently skipped — see GHSA-r9fq-g486-v8pg.
 	if leafIndex != uint64(proof.Start()) {
 		return fmt.Errorf(
-			"proof nodes insufficient: left traversal reached leaf index %d, expected %d",
-			leafIndex, proof.Start(),
+			"%w: proof nodes insufficient: left traversal reached leaf index %d, expected %d",
+			ErrFailedCompletenessCheck, leafIndex, proof.Start(),
 		)
 	}
 	// rightSubtrees only contains the subtrees after r.End

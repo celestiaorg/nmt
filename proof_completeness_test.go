@@ -27,7 +27,7 @@ func TestValidateCompleteness_TruncatedProof_RejectsEmptyNodes(t *testing.T) {
 	}
 
 	err := proof.validateCompleteness(nth, targetNID)
-	require.Error(t, err,
+	require.ErrorIs(t, err, ErrFailedCompletenessCheck,
 		"validateCompleteness must reject a proof whose nodes are "+
 			"exhausted before the left traversal reaches proof.Start()")
 }
@@ -60,7 +60,7 @@ func TestValidateCompleteness_TruncatedProof_RejectsInsufficientNodes(t *testing
 	}
 
 	err := proof.validateCompleteness(nth, targetNID)
-	require.Error(t, err,
+	require.ErrorIs(t, err, ErrFailedCompletenessCheck,
 		"validateCompleteness must reject a proof whose nodes are "+
 			"exhausted partway through the left traversal "+
 			"(leafIndex stuck before proof.Start())")
