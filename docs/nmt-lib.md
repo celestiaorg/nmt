@@ -58,7 +58,7 @@ Note that the `IgnoreMaxNamespace` flag is Celestia-specific and is motivated by
 
 Data items are added to the tree using the `Push` method.
 Data items should be prefixed with namespaces of size set out for the NMT (i.e., `tree.NamespaceSize()`) and added in ascending order of their namespace IDs to avoid errors during the `Push` process.
-Non-compliance with either of these requirements cause `Push` to fail.
+Non-compliance with either of these requirements will cause `Push` to fail.
 
 ```go
 func (n *NamespacedMerkleTree) Push(namespacedData namespace.PrefixedData) error

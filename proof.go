@@ -732,9 +732,9 @@ func nextSubtreeSize(start, end uint64) int {
 	// the highest left subtree
 	ideal := bits.TrailingZeros64(start)
 	// number of bits required to represent end-start
-	max := bits.Len64(end-start) - 1
-	if ideal > max {
-		return 1 << uint(max)
+	maxBits := bits.Len64(end-start) - 1
+	if ideal > maxBits {
+		return 1 << uint(maxBits)
 	}
 	return 1 << uint(ideal)
 }
