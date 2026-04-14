@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - main
+permissions:
+  contents: read
 jobs:
   # Runs golangci-lint over the nmt repository
   # This workflow is run on every pull request and push to main
@@ -14,13 +16,13 @@ jobs:
     timeout-minutes: 4
     steps:
       - uses: actions/checkout@v4
-      - uses: technote-space/get-diff-action@v6
+      - uses: technote-space/get-diff-action@f27caffdd0fb9b13f4fc191c016bb4e0632844af # v6
         with:
           SUFFIX_FILTER: |
             .go
             .mod
             .sum
-      - uses: golangci/golangci-lint-action@v6
+      - uses: golangci/golangci-lint-action@55c2c1448f86e01eaae002a5a3a9624417608d84 # v6
         with:
           version: v1.61.0
           args: --timeout 10m
@@ -30,4 +32,4 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: celestiaorg/.github/.github/actions/markdown-lint@main
+      - uses: celestiaorg/.github/.github/actions/markdown-lint@157c2dcf3a5a7ebb9328d212c992e22d653a0ce2 # main
