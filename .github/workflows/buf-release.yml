@@ -3,17 +3,19 @@ on:
   push:
     tags:
       - "v*"
+permissions:
+  contents: read
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - uses: bufbuild/buf-setup-action@v1
+      - uses: bufbuild/buf-setup-action@a47c93e0b1648d5651a065437926377d060baa99 # v1
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           version: "1.44.0"
       # Push the protobuf definitions to the BSR
-      - uses: bufbuild/buf-push-action@v1
+      - uses: bufbuild/buf-push-action@a654ff18effe4641ebea4a4ce242c49800728459 # v1
         with:
           buf_token: ${{ secrets.BUF_TOKEN }}
       - name: "push the tag label to BSR"
