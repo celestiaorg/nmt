@@ -31,4 +31,4 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - uses: celestiaorg/.github/.github/actions/markdown-lint@157c2dcf3a5a7ebb9328d212c992e22d653a0ce2 # main
+      - uses: celestiaorg/.github/.github/actions/markdown-lint@04535a74c285ebb9fd7113fb536dedfe5e25f6e5 # main
