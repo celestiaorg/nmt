@@ -151,6 +151,15 @@ func (proof Proof) isValidEmptyRangeProof(nth *NmtHasher, nID namespace.ID, root
 		return true
 	}
 
+	// validate the root format before slicing its namespace bounds below.
+	// Without this check, a root shorter than 2*nID.Size() would cause
+	// MinNamespace/MaxNamespace to panic with a slice bounds error instead of
+	// returning a verification failure. The non-empty path performs the
+	// equivalent validation via nth.ValidateNodeFormat(root) in VerifyLeafHashes.
+	if err := nth.ValidateNodeFormat(root); err != nil {
+		return false
+	}
+
 	nIDLen := nID.Size()
 	rootMin := namespace.ID(MinNamespace(root, nIDLen))
 	rootMax := namespace.ID(MaxNamespace(root, nIDLen))
