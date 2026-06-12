@@ -559,6 +559,34 @@ func (proof Proof) VerifySubtreeRootInclusion(nth *NmtHasher, subtreeRoots [][]b
 		}
 	}
 
+	// Bound the proof span before constructing the leaf ranges. ToLeafRanges
+	// allocates one LeafRange per (at most) subtreeWidth leaves of the span
+	// [proof.Start(), proof.End()), and proof.End() is attacker-controlled.
+	// Each provided subtree root can cover at most subtreeWidth leaves, so a
+	// proof whose span exceeds len(subtreeRoots)*subtreeWidth leaves can never
+	// satisfy the len(subtreeRoots) == len(ranges) check below. Reject such
+	// proofs here, before allocating, to avoid memory/CPU amplification from a
+	// large attacker-chosen span.
+	if subtreeWidth <= 0 {
+		return false, fmt.Errorf("subtree root width %d should be strictly positive", subtreeWidth)
+	}
+	if len(subtreeRoots) == 0 {
+		return false, fmt.Errorf("number of subtree roots cannot be zero")
+	}
+	// span is guaranteed >= 1 because proof.Start() < proof.End() was checked above.
+	span := proof.End() - proof.Start()
+	// Each leaf range covers at most subtreeWidth leaves, so ToLeafRanges will
+	// produce at least ceil(span/subtreeWidth) ranges. If that already exceeds
+	// len(subtreeRoots) the count check below would fail, so reject now. The
+	// comparison is written with division to avoid overflowing the int
+	// multiplication len(subtreeRoots)*subtreeWidth on attacker-chosen spans:
+	// ceil(span/subtreeWidth) > len(subtreeRoots).
+	quotient := span / subtreeWidth
+	remainder := span % subtreeWidth
+	if quotient > len(subtreeRoots) || (quotient == len(subtreeRoots) && remainder != 0) {
+		return false, fmt.Errorf("proof span %d exceeds the maximum number of leaves that %d subtree roots of width %d can cover", span, len(subtreeRoots), subtreeWidth)
+	}
+
 	// get the subtree roots leaf ranges
 	ranges, err := ToLeafRanges(proof.Start(), proof.End(), subtreeWidth)
 	if err != nil {
