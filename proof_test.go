@@ -102,6 +102,29 @@ func TestVerifyNamespace_EmptyProof(t *testing.T) {
 	}
 }
 
+// TestVerifyNamespace_EmptyProofShortRoot is a regression test for a panic in
+// the empty-range proof path of VerifyNamespace. An empty range proof combined
+// with a root shorter than 2*nID.Size() previously caused
+// MinNamespace/MaxNamespace to panic with "slice bounds out of range" because
+// the root was sliced without first validating its format. The fix validates
+// the root and returns a verification failure instead of panicking.
+func TestVerifyNamespace_EmptyProofShortRoot(t *testing.T) {
+	const nIDLen = 8
+	// empty range proof: start == end == 0, no nodes, no leafHash
+	proof := NewEmptyRangeProof(true)
+	require.True(t, proof.IsEmptyProof())
+
+	nID := namespace.ID(bytes.Repeat([]byte{0x01}, nIDLen))
+	// root shorter than 2*nID.Size(), which would panic the namespace-bound
+	// slicing in the empty-range path prior to the fix.
+	shortRoot := make([]byte, 4)
+
+	require.NotPanics(t, func() {
+		got := proof.VerifyNamespace(sha256.New(), nID, nil, shortRoot)
+		require.False(t, got)
+	})
+}
+
 func TestProof_VerifyNamespace_False(t *testing.T) {
 	const testNidLen = 3
 
