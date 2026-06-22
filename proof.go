@@ -559,6 +559,24 @@ func (proof Proof) VerifySubtreeRootInclusion(nth *NmtHasher, subtreeRoots [][]b
 		}
 	}
 
+	// Bound the proof span before allocating leaf ranges.
+	// A wider span cannot be covered by the provided subtree roots.
+	if subtreeWidth <= 0 {
+		return false, fmt.Errorf("subtree root width %d should be strictly positive", subtreeWidth)
+	}
+	if len(subtreeRoots) == 0 {
+		return false, fmt.Errorf("number of subtree roots cannot be zero")
+	}
+	// proof.Start() < proof.End() was checked above, so span is at least 1.
+	span := proof.End() - proof.Start()
+	// Reject when ceil(span/subtreeWidth) exceeds the available roots.
+	// Use division to avoid overflowing len(subtreeRoots)*subtreeWidth.
+	quotient := span / subtreeWidth
+	remainder := span % subtreeWidth
+	if quotient > len(subtreeRoots) || (quotient == len(subtreeRoots) && remainder != 0) {
+		return false, fmt.Errorf("proof span %d exceeds the maximum number of leaves that %d subtree roots of width %d can cover", span, len(subtreeRoots), subtreeWidth)
+	}
+
 	// get the subtree roots leaf ranges
 	ranges, err := ToLeafRanges(proof.Start(), proof.End(), subtreeWidth)
 	if err != nil {

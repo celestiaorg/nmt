@@ -1889,6 +1889,45 @@ func TestVerifySubtreeRootInclusion_infiniteRecursion(t *testing.T) {
 	})
 }
 
+// TestVerifySubtreeRootInclusion_allocationBound ensures that an
+// attacker-controlled proof.End() cannot force VerifySubtreeRootInclusion to
+// allocate a huge slice of leaf ranges via ToLeafRanges before the cheap
+// len(subtreeRoots) count check. The verifier must reject a proof whose span
+// exceeds len(subtreeRoots)*subtreeWidth leaves up front, without allocating.
+func TestVerifySubtreeRootInclusion_allocationBound(t *testing.T) {
+	tree := exampleNMT(1, true, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15)
+	root, err := tree.Root()
+	require.NoError(t, err)
+
+	hasher := tree.treeHasher.(*NmtHasher)
+
+	// A valid subtree root to keep subtreeRoots well-formed and non-empty.
+	subtreeRoot, err := tree.ComputeSubtreeRoot(0, 8)
+	require.NoError(t, err)
+	subtreeRoots := [][]byte{subtreeRoot}
+
+	// Attacker-sized span: a tiny proof message with a huge End and a small
+	// fixed width. Without the bound, ToLeafRanges would allocate roughly
+	// (1<<24)/64 = 262144 LeafRange entries before the count check rejects it.
+	const attackerEnd = 1 << 24
+	const subtreeWidth = 64
+	proof := NewInclusionProof(0, attackerEnd, nil, true)
+
+	ok, err := proof.VerifySubtreeRootInclusion(hasher, subtreeRoots, subtreeWidth, root)
+	require.False(t, ok)
+	require.Error(t, err)
+	// It must be the early span bound, not the post-ToLeafRanges count mismatch.
+	require.Contains(t, err.Error(), "exceeds the maximum number of leaves")
+	require.NotContains(t, err.Error(), "different than the number of the expected leaf ranges")
+
+	// Verify ToLeafRanges itself would have allocated the large slice, proving
+	// the verifier short-circuited before that expensive construction.
+	ranges, rErr := ToLeafRanges(0, attackerEnd, subtreeWidth)
+	require.NoError(t, rErr)
+	require.Equal(t, attackerEnd/subtreeWidth, len(ranges))
+	require.Greater(t, len(ranges), len(subtreeRoots))
+}
+
 func TestComputeRootWithBasicValidation(t *testing.T) {
 	tree := exampleNMT(1, true, 1, 2, 3, 3, 3, 4, 5, 6, 7, 8)
 	hasher := tree.treeHasher.(*NmtHasher)
