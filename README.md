@@ -94,6 +94,12 @@ The above will create a Namespaced merkle tree with four leafs which looks like 
 
 Where `nid_0 = nid_1 = 0` and `nid_2 = nid_3 = 1` and `data_i = "leaf_i"` for `i = 0,...,3`.
 
+## Documentation
+
+- [NMT library guide](docs/nmt-lib.md): how to construct an NMT and generate and verify proofs using this library.
+- [NMT specification](docs/spec/nmt.md): the NMT data structure and the proof generation and verification logic.
+- [NMT proof format](docs/proof-format.md): the exact format of NMT proofs, their serialization, and how to verify them.
+
 ## Related
 
 This implementation was heavily inspired by the initial implementation in [celestiaorg/lazyledger-prototype](https://github.com/celestiaorg/lazyledger-prototype).
