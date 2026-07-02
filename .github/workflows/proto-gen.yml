@@ -1,0 +1,40 @@
+name: proto-gen
+# This workflow verifies that the committed generated Protobuf files (*.pb.go)
+# match the files produced by regenerating from the definition files (*.proto).
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  proto-gen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: 'go.mod'
+
+      - uses: arduino/setup-protoc@c65c819552d16ad3c9b72d9dfd5ba5237b9c906b # v3.0.0
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check generated Protobuf files match committed files
+        run: |
+          set -euo pipefail
+
+          make proto-gen
+
+          if ! git diff --stat --exit-code ; then
+            echo ">> ERROR:"
+            echo ">>"
+            echo ">> The committed generated Protobuf files don't match the files"
+            echo ">> generated from the Protobuf definition files."
+            echo ">> Run 'make proto-gen' and commit the changes."
+            echo ">>"
+            exit 1
+          fi

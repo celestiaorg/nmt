@@ -31,7 +31,7 @@ type Proof struct {
 	// Nodes hold the tree nodes necessary for the Merkle range proof.
 	Nodes [][]byte `protobuf:"bytes,3,rep,name=nodes,proto3" json:"nodes,omitempty"`
 	// leaf_hash contains the namespace.ID if NMT does not have it and
-	// it should be proven. LeafHash is necessary to prove the Absence Proof.
+	// it should be proven. leaf_hash is necessary to prove the Absence Proof.
 	// This field will be empty in case of Inclusion Proof.
 	LeafHash []byte `protobuf:"bytes,4,opt,name=leaf_hash,json=leafHash,proto3" json:"leaf_hash,omitempty"`
 	// The is_max_namespace_ignored flag influences the calculation of the

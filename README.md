@@ -115,6 +115,16 @@ Markdown files must conform to [GitHub Flavored Markdown](https://github.github.
 - [markdownlint](https://github.com/DavidAnson/markdownlint)
 - [Markdown Table Prettifier](https://github.com/darkriszty/MarkdownTablePrettify-VSCodeExt)
 
+### Protobuf
+
+The [pb](./pb) package contains Protobuf definition files (`*.proto`) and the Go code (`*.pb.go`) generated from them. If you update a definition file, regenerate the Go code and commit both:
+
+```sh
+make proto-gen
+```
+
+This requires [protoc](https://protobuf.dev/installation/) to be installed. CI verifies that the committed generated code matches the definition files.
+
 ## Audits
 
 Date      | Auditor                                       | Report
