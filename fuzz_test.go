@@ -13,28 +13,40 @@ import (
 	"github.com/celestiaorg/nmt/namespace"
 )
 
-// FuzzProveVerifyNamespace builds trees from randomly generated namespaces and
-// leaf data, then checks that namespace proofs and inclusion proofs for every
-// namespace verify against the root. The fuzzed seed drives a deterministic
-// random generator so that every failure is reproducible from its corpus
-// entry. Run with: go test -fuzz=FuzzProveVerifyNamespace
+// FuzzProveVerifyNamespace builds a tree from namespaces and leaf data parsed
+// out of the raw fuzz input, then checks that namespace proofs and inclusion
+// proofs for every namespace verify against the root. Parsing the input bytes
+// directly (rather than fuzzing a PRNG seed) lets the coverage-guided fuzzer
+// mutate the actual tree structure and leaf data.
+// Run with: go test -fuzz=FuzzProveVerifyNamespace
 func FuzzProveVerifyNamespace(f *testing.F) {
 	if testing.Short() {
 		f.Skip("FuzzProveVerifyNamespace skipped in short mode.")
 	}
-	for seed := int64(0); seed < 5; seed++ {
-		f.Add(seed)
-	}
-	f.Fuzz(func(t *testing.T, seed int64) {
-		rng := rand.New(rand.NewSource(seed))
-		for _, nsSize := range []int{8, 16, 32} {
-			proveAndVerifyNamespaces(t, rng, nsSize)
+	// Seed corpus: deterministic pseudo-random inputs covering every
+	// namespace size, plus the empty-tree edge case.
+	f.Add([]byte{})
+	rng := rand.New(rand.NewSource(1))
+	for sizeIdx := 0; sizeIdx < 3; sizeIdx++ {
+		for _, inputLen := range []int{64, 2048, 16384} {
+			seed := make([]byte, inputLen)
+			rng.Read(seed)
+			seed[0] = byte(sizeIdx)
+			f.Add(seed)
 		}
+	}
+	f.Fuzz(func(t *testing.T, input []byte) {
+		if len(input) == 0 {
+			return
+		}
+		nsSizes := []int{8, 16, 32}
+		nsSize := nsSizes[int(input[0])%len(nsSizes)]
+		proveAndVerifyNamespaces(t, input[1:], nsSize)
 	})
 }
 
-func proveAndVerifyNamespaces(t *testing.T, rng *rand.Rand, nsSize int) {
-	nidDataMap, sortedKeys := makeRandDataAndSortedKeys(rng, nsSize)
+func proveAndVerifyNamespaces(t *testing.T, input []byte, nsSize int) {
+	nidDataMap, sortedKeys := makeNsDataAndSortedKeys(input, nsSize)
 	t.Logf("Generated %v namespaces for size: %v ...", len(nidDataMap), nsSize)
 	hash := sha256.New()
 	tree := nmt.New(hash, nmt.NamespaceIDSize(nsSize))
@@ -77,7 +89,7 @@ func proveAndVerifyNamespaces(t *testing.T, rng *rand.Rand, nsSize int) {
 			}
 			singleItemProof, err := tree.Prove(leafIdx)
 			if err != nil {
-				t.Fatalf("error on Prove(%v): %v", i, err)
+				t.Fatalf("error on Prove(%v): %v", leafIdx, err)
 			}
 			if ok := singleItemProof.VerifyInclusion(hash, data[i][:nsSize], [][]byte{data[i][nsSize:]}, treeRoot); !ok {
 				t.Fatalf("expected VerifyInclusion() == true; data = %#v; proof = %#v", data[i], singleItemProof)
@@ -105,43 +117,41 @@ func proveAndVerifyNamespaces(t *testing.T, rng *rand.Rand, nsSize int) {
 	t.Logf("... with %v of %v namespaces non-empty.", nonEmptyNsCount, len(sortedKeys))
 }
 
-// makeRandDataAndSortedKeys generates a map of random namespaces to lists of
-// leaves (each leaf prefixed with its namespace), plus the namespace keys in
-// ascending order. Some namespaces are left empty so that proofs of absence
-// get exercised.
-func makeRandDataAndSortedKeys(rng *rand.Rand, nsSize int) (map[string][][]byte, []string) {
-	// The ranges are kept small enough that a single fuzz iteration completes
-	// in milliseconds; per-leaf proving is quadratic in the total leaf count,
-	// and iterations slower than a few seconds trip the fuzzer's hang
-	// detector.
+// makeNsDataAndSortedKeys parses the fuzz input into a map of namespaces to
+// lists of leaves (each leaf prefixed with its namespace), plus the namespace
+// keys in ascending order. Namespaces with a count byte below
+// emptyNamespaceThreshold are left empty so that proofs of absence get
+// exercised.
+func makeNsDataAndSortedKeys(input []byte, nsSize int) (map[string][][]byte, []string) {
+	// The caps keep a single fuzz iteration in the milliseconds range;
+	// per-leaf proving is quadratic in the total leaf count, and iterations
+	// slower than a few seconds trip the fuzzer's hang detector.
 	const (
-		minNumberOfNamespaces = 4
-		maxNumberOfNamespaces = 16
-
-		minElementsPerNamespace = 0
+		maxNumberOfNamespaces   = 16
 		maxElementsPerNamespace = 32
+		maxElementSize          = 64
 
-		maxElementSize = 64
-
-		emptyNamespaceProbability = 0.15
+		// ~15% of count bytes leave the namespace empty.
+		emptyNamespaceThreshold = 40
 	)
 
-	numNamespaces := randRange(rng, minNumberOfNamespaces, maxNumberOfNamespaces)
-	nidDataMap := make(map[string][][]byte, numNamespaces)
-	for len(nidDataMap) < numNamespaces {
-		ns := make([]byte, nsSize)
-		rng.Read(ns)
+	r := &byteReader{data: input}
+	nidDataMap := make(map[string][][]byte)
+	for len(nidDataMap) < maxNumberOfNamespaces && r.remaining() > 0 {
+		ns := r.read(nsSize)
 		if _, ok := nidDataMap[string(ns)]; ok {
 			continue
 		}
 		var leaves [][]byte
-		if rng.Float64() >= emptyNamespaceProbability {
-			leaves = make([][]byte, randRange(rng, minElementsPerNamespace, maxElementsPerNamespace))
-			for i := range leaves {
-				leaf := make([]byte, nsSize+rng.Intn(maxElementSize+1))
-				copy(leaf, ns)
-				rng.Read(leaf[nsSize:])
-				leaves[i] = leaf
+		if countByte := r.readByte(); countByte >= emptyNamespaceThreshold {
+			numLeaves := 1 + int(countByte)%maxElementsPerNamespace
+			leaves = make([][]byte, 0, numLeaves)
+			for i := 0; i < numLeaves; i++ {
+				payloadLen := int(r.readByte()) % (maxElementSize + 1)
+				leaf := make([]byte, 0, nsSize+payloadLen)
+				leaf = append(leaf, ns...)
+				leaf = append(leaf, r.read(payloadLen)...)
+				leaves = append(leaves, leaf)
 			}
 		}
 		nidDataMap[string(ns)] = leaves
@@ -155,7 +165,23 @@ func makeRandDataAndSortedKeys(rng *rand.Rand, nsSize int) (map[string][][]byte,
 	return nidDataMap, keys
 }
 
-// randRange returns a random int in the inclusive range [low, high].
-func randRange(rng *rand.Rand, low, high int) int {
-	return low + rng.Intn(high-low+1)
+// byteReader hands out chunks of the fuzz input, zero-padding once the input
+// is exhausted so parsing never fails mid-structure.
+type byteReader struct {
+	data []byte
+}
+
+func (r *byteReader) remaining() int {
+	return len(r.data)
+}
+
+func (r *byteReader) readByte() byte {
+	return r.read(1)[0]
+}
+
+func (r *byteReader) read(n int) []byte {
+	out := make([]byte, n)
+	m := copy(out, r.data)
+	r.data = r.data[m:]
+	return out
 }
