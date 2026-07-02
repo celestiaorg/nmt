@@ -140,7 +140,8 @@ The recomputation consumes `nodes` from front to back while recursing through th
 ```text
 computeRoot(rangeStart, rangeEnd):
   // if the current subtree does not overlap the proof range, it is covered
-  // by the next unconsumed proof node
+  // by the next unconsumed proof node; popFront returns nil if the proof
+  // nodes are exhausted, meaning the subtree does not exist in the tree
   if rangeEnd <= proof.start or rangeStart >= proof.end:
     return popFront(proof.nodes)
 
@@ -151,6 +152,12 @@ computeRoot(rangeStart, rangeEnd):
   k = largest power of two strictly smaller than (rangeEnd - rangeStart)
   left  = computeRoot(rangeStart, rangeStart + k)
   right = computeRoot(rangeStart + k, rangeEnd)
+
+  // when the number of leaves in the tree is not a power of two, subtrees
+  // near the end of the tree may not exist; only the right subtree can be
+  // non-existent
+  if right is nil:
+    return left
   return NsH(0x01, left, right)
 
 size = smallest power of two >= proof.end
