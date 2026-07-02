@@ -184,6 +184,8 @@ In the example given earlier, each node is `34` bytes in length and takes the fo
 
 `isMaxNamespaceIDIgnored`: If this field is true, then namespace range of the tree nodes are set as explained in the [Ignore Max Namespace](#ignore-max-namespace) section.
 
+For a precise description of the proof format, including the exact ordering of the proof `nodes` and how proofs are serialized, see [NMT Proof Format](./proof-format.md).
+
 ## Verify Namespace Proof
 
 The correctness of a namespace `Proof` for a specific namespace ID `nID` can be verified using the [`VerifyNamespace`](https://github.com/celestiaorg/nmt/blob/main/proof.go) method.
