@@ -1177,6 +1177,27 @@ func TestLargestPowerOfTwo(t *testing.T) {
 	}
 }
 
+func TestNextSubtreeSize(t *testing.T) {
+	tests := []struct {
+		name       string
+		start, end uint64
+		expected   int
+	}{
+		{name: "single leaf", start: 0, end: 1, expected: 1},
+		{name: "full range from zero", start: 0, end: 8, expected: 8},
+		{name: "unaligned start", start: 1, end: 9, expected: 1},
+		{name: "limited by start alignment", start: 4, end: 12, expected: 4},
+		{name: "limited by remaining range", start: 8, end: 12, expected: 4},
+		{name: "large aligned start", start: 16, end: 24, expected: 8},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, nextSubtreeSize(tt.start, tt.end))
+		})
+	}
+}
+
 func TestToLeafRanges(t *testing.T) {
 	tests := []struct {
 		proofStart, proofEnd, subtreeWidth int
