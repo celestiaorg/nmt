@@ -1185,9 +1185,12 @@ func TestNextSubtreeSize(t *testing.T) {
 	}{
 		{name: "single leaf", start: 0, end: 1, expected: 1},
 		{name: "full range from zero", start: 0, end: 8, expected: 8},
+		{name: "round non-power-of-two range from zero", start: 0, end: 12, expected: 8},
 		{name: "unaligned start", start: 1, end: 9, expected: 1},
 		{name: "limited by start alignment", start: 4, end: 12, expected: 4},
 		{name: "limited by remaining range", start: 8, end: 12, expected: 4},
+		{name: "round non-power-of-two remaining range", start: 8, end: 14, expected: 4},
+		{name: "composite even start alignment", start: 12, end: 20, expected: 4},
 		{name: "large aligned start", start: 16, end: 24, expected: 8},
 	}
 
