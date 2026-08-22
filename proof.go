@@ -142,33 +142,43 @@ func (proof Proof) IsEmptyProof() bool {
 	return proof.start == proof.end && len(proof.nodes) == 0 && len(proof.leafHash) == 0
 }
 
-func (proof Proof) isValidEmptyRangeProof(nth *NmtHasher, nID namespace.ID, root []byte, leaves [][]byte, checkNS bool) bool {
-	if !proof.IsEmptyProof() || len(leaves) != 0 {
+func (proof Proof) isValidEmptyRangeProof(
+	nth *NmtHasher,
+	nID namespace.ID,
+	root []byte,
+	leaves [][]byte,
+	verifyNamespaceRange bool,
+) bool {
+	if !proof.IsEmptyProof() {
+		return false
+	}
+	if len(leaves) != 0 {
 		return false
 	}
 
-	if !checkNS {
+	// VerifyInclusion does not make a completeness claim, so an empty proof and
+	// empty leaf range are sufficient there. VerifyNamespace additionally has
+	// to prove that the namespace cannot occur in the tree.
+	if !verifyNamespaceRange {
 		return true
 	}
+	return isEmptyRootOrNamespaceOutsideRange(nth, nID, root)
+}
 
-	// validate the root format before slicing its namespace bounds below.
-	// Without this check, a root shorter than 2*nID.Size() would cause
-	// MinNamespace/MaxNamespace to panic with a slice bounds error instead of
-	// returning a verification failure. The non-empty path performs the
-	// equivalent validation via nth.ValidateNodeFormat(root) in VerifyLeafHashes.
+func isEmptyRootOrNamespaceOutsideRange(nth *NmtHasher, nID namespace.ID, root []byte) bool {
+	// Validate before slicing the namespace bounds. The non-empty path performs
+	// the equivalent validation in VerifyLeafHashes.
 	if err := nth.ValidateNodeFormat(root); err != nil {
 		return false
+	}
+	if bytes.Equal(root, nth.EmptyRoot()) {
+		return true
 	}
 
 	nIDLen := nID.Size()
 	rootMin := namespace.ID(MinNamespace(root, nIDLen))
 	rootMax := namespace.ID(MaxNamespace(root, nIDLen))
-
-	// empty proofs are always rejected unless 1) nID is outside the range of
-	// namespaces covered by the root 2) the root represents an empty tree, since
-	// it purports to cover the zero namespace but does not actually include
-	// any such nodes
-	return nID.Less(rootMin) || rootMax.Less(nID) || bytes.Equal(root, nth.EmptyRoot())
+	return nID.Less(rootMin) || rootMax.Less(nID)
 }
 
 // ComputeAndValidateLeafHashes validates and hashes a list of leaves using the provided NMT hasher.

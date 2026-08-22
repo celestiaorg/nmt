@@ -125,6 +125,59 @@ func TestVerifyNamespace_EmptyProofShortRoot(t *testing.T) {
 	})
 }
 
+func TestVerifyNamespace_EmptyProofRangeBoundaries(t *testing.T) {
+	tree := exampleNMT(1, true, 1, 2, 3, 4)
+	root, err := tree.Root()
+	require.NoError(t, err)
+
+	tests := []struct {
+		name string
+		nID  namespace.ID
+		root []byte
+		want bool
+	}{
+		{name: "below minimum", nID: namespace.ID{0}, root: root, want: true},
+		{name: "at minimum", nID: namespace.ID{1}, root: root},
+		{name: "inside range", nID: namespace.ID{2}, root: root},
+		{name: "at maximum", nID: namespace.ID{4}, root: root},
+		{name: "above maximum", nID: namespace.ID{5}, root: root, want: true},
+		{name: "empty tree", nID: namespace.ID{0}, root: tree.treeHasher.EmptyRoot(), want: true},
+		{name: "malformed root", nID: namespace.ID{0}, root: []byte{1}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			proof := NewEmptyRangeProof(true)
+			require.Equal(t, tt.want, proof.VerifyNamespace(sha256.New(), tt.nID, nil, tt.root))
+		})
+	}
+}
+
+func TestVerifyInclusion_EmptyProofStructure(t *testing.T) {
+	tree := exampleNMT(1, true, 1, 2, 3, 4)
+	root, err := tree.Root()
+	require.NoError(t, err)
+
+	tests := []struct {
+		name   string
+		proof  Proof
+		leaves [][]byte
+		want   bool
+	}{
+		{name: "empty proof and nil leaves", proof: NewEmptyRangeProof(true), want: true},
+		{name: "empty proof and empty leaves", proof: NewEmptyRangeProof(true), leaves: [][]byte{}, want: true},
+		{name: "non-empty leaves", proof: NewEmptyRangeProof(true), leaves: [][]byte{{1}}},
+		{name: "proof node", proof: Proof{start: 0, end: 0, nodes: [][]byte{{1}}, isMaxNamespaceIDIgnored: true}},
+		{name: "absence leaf hash", proof: Proof{start: 0, end: 0, leafHash: []byte{1}, isMaxNamespaceIDIgnored: true}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.want, tt.proof.VerifyInclusion(sha256.New(), namespace.ID{1}, tt.leaves, root))
+		})
+	}
+}
+
 func TestProof_VerifyNamespace_False(t *testing.T) {
 	const testNidLen = 3
 
