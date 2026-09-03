@@ -589,60 +589,18 @@ func (proof Proof) VerifySubtreeRootInclusion(nth *NmtHasher, subtreeRoots [][]b
 		return false, fmt.Errorf("number of subtree roots %d is different than the number of the expected leaf ranges %d", len(subtreeRoots), len(ranges))
 	}
 
-	var computeRoot func(start, end int) ([]byte, error)
-	// computeRoot can return error iff the HashNode function fails while calculating the root
-	computeRoot = func(start, end int) ([]byte, error) {
-		// if the current range does not overlap with the proof range, pop and
-		// return a proof node if present, else return nil because subtree
-		// doesn't exist
-		if end <= proof.Start() || start >= proof.End() {
-			return popIfNonEmpty(&proof.nodes), nil
-		}
-
-		if len(ranges) == 0 {
-			return nil, fmt.Errorf("expected to have a subtree root for range [%d, %d)", start, end)
-		}
-
-		if ranges[0].Start == start && ranges[0].End == end {
-			ranges = ranges[1:]
-			return popIfNonEmpty(&subtreeRoots), nil
-		}
-
-		if end-start == 1 {
-			// At this level, we reached a leaf, but we couldn't find any range corresponding
-			// to needed leaf [start, end).
-			// This means that the initial provided [start, end) range was invalid.
-			return nil, fmt.Errorf("the provided range [%d, %d) does not reference a valid inner node", proof.start, proof.end)
-		}
-
-		// Recursively get left and right subtree
-		k := getSplitPoint(end - start)
-		left, err := computeRoot(start, start+k)
-		if err != nil {
-			return nil, fmt.Errorf("failed to compute subtree root [%d, %d): %w", start, start+k, err)
-		}
-		right, err := computeRoot(start+k, end)
-		if err != nil {
-			return nil, fmt.Errorf("failed to compute subtree root [%d, %d): %w", start+k, end, err)
-		}
-
-		// only right leaf/subtree can be non-existent
-		if right == nil {
-			return left, nil
-		}
-		hash, err := nth.HashNode(left, right)
-		if err != nil {
-			return nil, fmt.Errorf("failed to hash node: %w", err)
-		}
-		return hash, nil
-	}
-
 	// estimate the leaf size of the subtree containing the proof range
 	proofRangeSubtreeEstimate := getSplitPoint(proof.End()) * 2
 	if proofRangeSubtreeEstimate < 1 {
 		proofRangeSubtreeEstimate = 1
 	}
-	rootHash, err := computeRoot(0, proofRangeSubtreeEstimate)
+	rootHash, err := proof.computeRootFromSubtreeRoots(
+		nth,
+		&ranges,
+		&subtreeRoots,
+		0,
+		proofRangeSubtreeEstimate,
+	)
 	if err != nil {
 		return false, fmt.Errorf("failed to compute root [%d, %d): %w", 0, proofRangeSubtreeEstimate, err)
 	}
@@ -654,6 +612,58 @@ func (proof Proof) VerifySubtreeRootInclusion(nth *NmtHasher, subtreeRoots [][]b
 	}
 
 	return bytes.Equal(rootHash, root), nil
+}
+
+// computeRootFromSubtreeRoots recursively computes a root from subtree roots
+// and the proof nodes surrounding their leaf ranges.
+func (proof *Proof) computeRootFromSubtreeRoots(
+	nth *NmtHasher,
+	ranges *[]LeafRange,
+	subtreeRoots *[][]byte,
+	start, end int,
+) ([]byte, error) {
+	// If the current range does not overlap with the proof range, pop and
+	// return a proof node if present, else return nil because the subtree
+	// does not exist.
+	if end <= proof.Start() || start >= proof.End() {
+		return popIfNonEmpty(&proof.nodes), nil
+	}
+
+	if len(*ranges) == 0 {
+		return nil, fmt.Errorf("expected to have a subtree root for range [%d, %d)", start, end)
+	}
+
+	nextRange := (*ranges)[0]
+	if nextRange.Start == start && nextRange.End == end {
+		*ranges = (*ranges)[1:]
+		return popIfNonEmpty(subtreeRoots), nil
+	}
+
+	if end-start == 1 {
+		// At this level, we reached a leaf, but couldn't find a corresponding
+		// range. This means the initial range was invalid.
+		return nil, fmt.Errorf("the provided range [%d, %d) does not reference a valid inner node", proof.start, proof.end)
+	}
+
+	k := getSplitPoint(end - start)
+	left, err := proof.computeRootFromSubtreeRoots(nth, ranges, subtreeRoots, start, start+k)
+	if err != nil {
+		return nil, fmt.Errorf("failed to compute subtree root [%d, %d): %w", start, start+k, err)
+	}
+	right, err := proof.computeRootFromSubtreeRoots(nth, ranges, subtreeRoots, start+k, end)
+	if err != nil {
+		return nil, fmt.Errorf("failed to compute subtree root [%d, %d): %w", start+k, end, err)
+	}
+
+	// Only the right leaf or subtree can be non-existent.
+	if right == nil {
+		return left, nil
+	}
+	hash, err := nth.HashNode(left, right)
+	if err != nil {
+		return nil, fmt.Errorf("failed to hash node: %w", err)
+	}
+	return hash, nil
 }
 
 // ToLeafRanges returns the leaf ranges corresponding to the provided subtree roots.

@@ -1885,6 +1885,36 @@ func TestVerifySubtreeRootInclusion(t *testing.T) {
 	}
 }
 
+func BenchmarkVerifySubtreeRootInclusion(b *testing.B) {
+	leaves := make([]byte, 256)
+	for i := range leaves {
+		leaves[i] = byte(i)
+	}
+	tree := exampleNMT(1, true, leaves...)
+	root, err := tree.Root()
+	require.NoError(b, err)
+	proof, err := tree.ProveRange(64, 192)
+	require.NoError(b, err)
+
+	const subtreeWidth = 8
+	subtreeRoots := make([][]byte, 0, (192-64)/subtreeWidth)
+	for start := 64; start < 192; start += subtreeWidth {
+		subtreeRoot, err := tree.ComputeSubtreeRoot(start, start+subtreeWidth)
+		require.NoError(b, err)
+		subtreeRoots = append(subtreeRoots, subtreeRoot)
+	}
+	hasher := tree.treeHasher.(*NmtHasher)
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		ok, err := proof.VerifySubtreeRootInclusion(hasher, subtreeRoots, subtreeWidth, root)
+		if err != nil || !ok {
+			b.Fatalf("verification failed: ok=%v err=%v", ok, err)
+		}
+	}
+}
+
 // TestVerifySubtreeRootInclusion_infiniteRecursion is motivated by a failing test
 // case in celestia-node
 func TestVerifySubtreeRootInclusion_infiniteRecursion(t *testing.T) {
