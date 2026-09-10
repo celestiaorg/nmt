@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"hash"
+	"math"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -2072,4 +2073,91 @@ func TestComputePrefixedLeafHashes_EmptyInput(t *testing.T) {
 	hashes, err := ComputePrefixedLeafHashes(nth, nid, [][]byte{})
 	require.NoError(t, err)
 	require.Empty(t, hashes)
+}
+
+// TestVerifyNamespace_OverflowingProofEnd covers a proof whose end index is
+// large enough that doubling getSplitPoint(end) overflows int. Without a
+// bound, the subtree estimate collapses to a single leaf, the supplied leaf
+// hashes are never consumed, and the computed root degenerates into a left
+// fold over the attacker-supplied proof nodes. Supplying the two children of
+// the real root then reproduces the real root for arbitrary leaves.
+func TestVerifyNamespace_OverflowingProofEnd(t *testing.T) {
+	const nIDSize = 1
+	// namespace 5 is absent from the tree and sits strictly between the
+	// left half (1..4) and the right half (6..9).
+	tree := exampleNMT(nIDSize, true, 1, 2, 3, 4, 6, 7, 8, 9)
+	root, err := tree.Root()
+	require.NoError(t, err)
+	nth := tree.treeHasher.(*NmtHasher)
+
+	left, err := tree.ComputeSubtreeRoot(0, 4)
+	require.NoError(t, err)
+	right, err := tree.ComputeSubtreeRoot(4, 8)
+	require.NoError(t, err)
+
+	absentNID := namespace.ID{5}
+	fabricatedLeaf := append([]byte{5}, []byte("never published")...)
+
+	// smallest end for which getSplitPoint(end)*2 overflows int
+	overflowStart := math.MaxInt/2 + 1
+	overflowEnd := overflowStart + 1
+	forged := NewInclusionProof(overflowStart, overflowEnd, [][]byte{left, right}, true)
+
+	t.Run("VerifyNamespace", func(t *testing.T) {
+		assert.False(t, forged.VerifyNamespace(sha256.New(), absentNID, [][]byte{fabricatedLeaf}, root))
+	})
+
+	t.Run("VerifyInclusion", func(t *testing.T) {
+		assert.False(t, forged.VerifyInclusion(sha256.New(), absentNID, [][]byte{[]byte("never published")}, root))
+	})
+
+	t.Run("VerifyLeafHashes", func(t *testing.T) {
+		leafHashes, err := ComputeAndValidateLeafHashes(nth, absentNID, [][]byte{fabricatedLeaf})
+		require.NoError(t, err)
+		ok, err := forged.VerifyLeafHashes(nth, true, absentNID, leafHashes, root)
+		assert.False(t, ok)
+		assert.ErrorIs(t, err, ErrInvalidRange)
+	})
+
+	t.Run("VerifySubtreeRootInclusion", func(t *testing.T) {
+		fabricatedSubtreeRoot, err := nth.HashLeaf(fabricatedLeaf)
+		require.NoError(t, err)
+		ok, err := forged.VerifySubtreeRootInclusion(nth, [][]byte{fabricatedSubtreeRoot}, 1, root)
+		assert.False(t, ok)
+		assert.ErrorIs(t, err, ErrInvalidRange)
+	})
+}
+
+func TestProofRangeSubtreeEstimate(t *testing.T) {
+	tests := []struct {
+		end       int
+		expected  int
+		expectErr bool
+	}{
+		{end: 1, expected: 1},
+		{end: 2, expected: 2},
+		{end: 3, expected: 4},
+		{end: 4, expected: 4},
+		{end: 5, expected: 8},
+		{end: 8, expected: 8},
+		{end: 9, expected: 16},
+		// largest power of two representable as int
+		{end: math.MaxInt/2 + 1, expected: math.MaxInt/2 + 1},
+		// smallest end whose estimate overflows int
+		{end: math.MaxInt/2 + 2, expectErr: true},
+		{end: math.MaxInt, expectErr: true},
+		{end: 0, expectErr: true},
+		{end: -1, expectErr: true},
+	}
+	for _, tt := range tests {
+		t.Run(fmt.Sprintf("end=%d", tt.end), func(t *testing.T) {
+			got, err := proofRangeSubtreeEstimate(tt.end)
+			if tt.expectErr {
+				assert.ErrorIs(t, err, ErrInvalidRange)
+				return
+			}
+			assert.NoError(t, err)
+			assert.Equal(t, tt.expected, got)
+		})
+	}
 }
