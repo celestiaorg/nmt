@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"hash"
+	"math"
 	"math/bits"
 	"slices"
 
@@ -445,7 +446,10 @@ func (proof Proof) computeRoot(nth *NmtHasher, leafHashes [][]byte) ([]byte, err
 	}
 
 	// estimate the leaf size of the subtree containing the proof range
-	proofRangeSubtreeEstimate := max(getSplitPoint(proof.end)*2, 1)
+	proofRangeSubtreeEstimate, err := proofRangeSubtreeEstimate(proof.end)
+	if err != nil {
+		return nil, err
+	}
 	rootHash, err := computeRoot(0, proofRangeSubtreeEstimate)
 	if err != nil {
 		return nil, fmt.Errorf("failed to compute root [%d, %d): %w", 0, proofRangeSubtreeEstimate, err)
@@ -638,9 +642,9 @@ func (proof Proof) VerifySubtreeRootInclusion(nth *NmtHasher, subtreeRoots [][]b
 	}
 
 	// estimate the leaf size of the subtree containing the proof range
-	proofRangeSubtreeEstimate := getSplitPoint(proof.End()) * 2
-	if proofRangeSubtreeEstimate < 1 {
-		proofRangeSubtreeEstimate = 1
+	proofRangeSubtreeEstimate, err := proofRangeSubtreeEstimate(proof.End())
+	if err != nil {
+		return false, err
 	}
 	rootHash, err := computeRoot(0, proofRangeSubtreeEstimate)
 	if err != nil {
@@ -761,6 +765,28 @@ func ProtoToProof(protoProof pb.Proof) Proof {
 		protoProof.Nodes,
 		protoProof.IsMaxNamespaceIgnored,
 	)
+}
+
+// proofRangeSubtreeEstimate returns the number of leaves of the smallest
+// power-of-two subtree, rooted at leaf index 0, that covers the proof range
+// [0, end). It returns ErrInvalidRange if end is not positive or if the
+// estimate is not representable as an int. Doubling getSplitPoint(end) must
+// not be allowed to overflow: a wrapped, negative estimate would be clamped to
+// a single leaf, the proof range would never be visited, and the computed root
+// would degenerate into a fold over the caller-supplied proof nodes.
+func proofRangeSubtreeEstimate(end int) (int, error) {
+	if end < 1 {
+		return 0, fmt.Errorf("proof end %d must be positive: %w", end, ErrInvalidRange)
+	}
+	// getSplitPoint(1) is 0, and a single leaf is the smallest subtree
+	if end == 1 {
+		return 1, nil
+	}
+	splitPoint := getSplitPoint(end)
+	if splitPoint > math.MaxInt/2 {
+		return 0, fmt.Errorf("proof end %d exceeds the largest supported tree size: %w", end, ErrInvalidRange)
+	}
+	return splitPoint * 2, nil
 }
 
 // nextSubtreeSize returns the number of leaves of the subtree adjacent to start
