@@ -13,6 +13,9 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
     steps:
 
       - name: Check out code
@@ -34,4 +37,12 @@ jobs:
       - name: Test
         run: |
           export PATH=$PATH:$(go env GOPATH)/bin
-          go test -v ./...
+          go test -v -coverprofile=coverage.txt -covermode=atomic ./...
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@0b35c9ecc4f0529d0eb674914510c22f85b196b4 # v7.1.0
+        with:
+          disable_search: true
+          fail_ci_if_error: true
+          files: ./coverage.txt
+          use_oidc: true
