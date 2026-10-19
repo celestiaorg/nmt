@@ -116,6 +116,14 @@ Rust     | [Sovereign-Labs/nmt-rs](https://github.com/Sovereign-Labs/nmt-rs)
 
 ## Contributing
 
+PR titles must follow [conventional commits](https://www.conventionalcommits.org/en/v1.0.0/) and start the subject with `[high]`, `[medium]`, or `[low]` to indicate the review thoroughness needed. For example: `fix!: [high] correct proof verification` or `docs: [low] clarify setup instructions`. Include the same tag in the PR description and explain why you chose it.
+
+- `[high]`: Deep review for consensus, security, or other changes with significant risk, e.g. hashing, proof generation or verification, and namespace range logic (consensus-critical for celestia-app and celestia-node).
+- `[medium]`: Standard review for code changes with limited impact and well-understood behavior.
+- `[low]`: Focused review for straightforward docs, tests, or tooling changes with low risk.
+
+Choose the higher level when unsure. A small diff can still need deep review. CI checks the title format; reviewers should confirm the chosen level.
+
 Markdown files must conform to [GitHub Flavored Markdown](https://github.github.com/gfm/). Markdown must be formatted with:
 
 - [markdownlint](https://github.com/DavidAnson/markdownlint)

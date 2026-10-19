@@ -2,6 +2,8 @@ version: 2
 updates:
   - package-ecosystem: github-actions
     directory: "/"
+    commit-message:
+      prefix: "chore(deps): [medium] "
     schedule:
       interval: daily
     cooldown:
@@ -9,6 +11,8 @@ updates:
     open-pull-requests-limit: 10
   - package-ecosystem: gomod
     directory: "/"
+    commit-message:
+      prefix: "chore(deps): [high] "
     schedule:
       interval: daily
     cooldown:
