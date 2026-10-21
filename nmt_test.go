@@ -735,24 +735,45 @@ func BenchmarkComputeRoot(b *testing.B) {
 func Test_Root_RaceCondition(t *testing.T) {
 	// this is very similar to: https://github.com/HuobiRDCenter/huobi_Golang/pull/9
 	tree := New(sha256.New())
-	_ = tree.Push([]byte("some data is good enough here"))
+	require.NoError(t, tree.Push([]byte("some data is good enough here")))
+
 	numRoutines := 200
-	wg := sync.WaitGroup{}
+	start := make(chan struct{})
+	results := make(chan []byte, numRoutines)
+	errs := make(chan error, numRoutines)
+	var wg sync.WaitGroup
 	wg.Add(numRoutines)
 	for i := 0; i < numRoutines; i++ {
 		go func() {
-			defer func() {
-				if r := recover(); r != nil {
-					t.Errorf("race condition: panic %s", r)
-				}
-				wg.Done()
-			}()
-			_, err := tree.Root()
-			require.NoError(t, err)
+			defer wg.Done()
+			<-start
+			root, err := tree.Root()
+			if err != nil {
+				errs <- err
+				return
+			}
+			results <- root
 		}()
 	}
 
+	close(start)
 	wg.Wait()
+	close(results)
+	close(errs)
+
+	for err := range errs {
+		require.NoError(t, err)
+	}
+
+	var expected []byte
+	for root := range results {
+		if expected == nil {
+			expected = root
+			continue
+		}
+		require.Equal(t, expected, root)
+	}
+	require.NotNil(t, expected)
 }
 
 func shouldPanic(t *testing.T, f func()) {
