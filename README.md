@@ -122,7 +122,7 @@ PR titles must follow [conventional commits](https://www.conventionalcommits.org
 - `[medium]`: Standard review for code changes with limited impact and well-understood behavior.
 - `[low]`: Focused review for straightforward docs, tests, or tooling changes with low risk.
 
-Choose the higher level when unsure. A small diff can still need deep review. CI checks the title format; reviewers should confirm the chosen level.
+Choose the higher level when unsure. A small diff can still need deep review. CI checks the title format; reviewers should confirm the chosen level. The [required review policy](.github/review-policy.md) documents how the tier sets the number of independent approvals.
 
 Markdown files must conform to [GitHub Flavored Markdown](https://github.github.com/gfm/). Markdown must be formatted with:
 
