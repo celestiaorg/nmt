@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"hash"
 	"math/bits"
+	"sync"
 	"unsafe"
 
 	"github.com/celestiaorg/nmt/namespace"
@@ -132,6 +133,7 @@ type NamespacedMerkleTree struct {
 	// rawRoot caches the value of the tree root whenever the Root() method is
 	// invoked. It's important to note that rawRoot may become outdated and may
 	// not accurately reflect the current state of the leaves.
+	rootMu  sync.RWMutex
 	rawRoot []byte
 }
 
@@ -517,20 +519,34 @@ func (n *NamespacedMerkleTree) Push(namespacedData namespace.PrefixedData) error
 // been added through the use of the Push method. the returned byte slice is of
 // size 2* n.NamespaceSize + the underlying hash output size, and should be
 // parsed as minND || maxNID || hash
+// Root may be called concurrently with other Root calls after all leaves have
+// been added. It must not be called concurrently with methods that modify the
+// tree, such as Push, ForceAddLeaf, or Reset.
 // Any error returned by this method is irrecoverable and indicate an illegal state of the tree (n).
 func (n *NamespacedMerkleTree) Root() ([]byte, error) {
-	if n.rawRoot == nil {
-		res, err := n.computeRoot(0, n.Size())
-		if err != nil {
-			return nil, err // this should never happen since leaves are validated in the Push method
-		}
-		if n.reuseBuffers {
-			// we will reuse root's bytes, so we copy
-			n.rawRoot = make([]byte, len(res))
-			copy(n.rawRoot, res)
-		} else {
-			n.rawRoot = res
-		}
+	n.rootMu.RLock()
+	root := n.rawRoot
+	n.rootMu.RUnlock()
+	if root != nil {
+		return root, nil
+	}
+
+	n.rootMu.Lock()
+	defer n.rootMu.Unlock()
+	if n.rawRoot != nil {
+		return n.rawRoot, nil
+	}
+
+	res, err := n.computeRoot(0, n.Size())
+	if err != nil {
+		return nil, err // this should never happen since leaves are validated in the Push method
+	}
+	if n.reuseBuffers {
+		// we will reuse root's bytes, so we copy
+		n.rawRoot = make([]byte, len(res))
+		copy(n.rawRoot, res)
+	} else {
+		n.rawRoot = res
 	}
 	return n.rawRoot, nil
 }
