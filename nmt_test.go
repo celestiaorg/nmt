@@ -1531,3 +1531,21 @@ func TestComputeSubtreeRoot(t *testing.T) {
 		})
 	}
 }
+
+func TestLargeNamespaceIDSize(t *testing.T) {
+	for _, size := range []int{127, 128, 255} {
+		t.Run(fmt.Sprintf("size %d", size), func(t *testing.T) {
+			nID := bytes.Repeat([]byte{1}, size)
+			data := []byte("leaf")
+			tree := New(sha256.New(), NamespaceIDSize(size))
+			for i := 0; i < 2; i++ {
+				require.NoError(t, tree.Push(append(append([]byte{}, nID...), data...)))
+			}
+			root, err := tree.Root()
+			require.NoError(t, err)
+			proof, err := tree.ProveRange(0, 1)
+			require.NoError(t, err)
+			require.True(t, proof.VerifyInclusion(sha256.New(), nID, [][]byte{data}, root))
+		})
+	}
+}

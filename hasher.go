@@ -191,7 +191,7 @@ func (n *NmtHasher) HashLeaf(ndata []byte) ([]byte, error) {
 	}
 
 	nID := ndata[:n.NamespaceLen]
-	resLen := int(2*n.NamespaceLen) + n.baseHasher.Size()
+	resLen := 2*int(n.NamespaceLen) + n.baseHasher.Size()
 	minMaxNIDs := n.getBytes(resLen)
 	minMaxNIDs = append(minMaxNIDs, nID...) // nID
 	minMaxNIDs = append(minMaxNIDs, nID...) // nID || nID
