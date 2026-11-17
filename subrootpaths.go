@@ -148,10 +148,7 @@ func GetSubrootPaths(squareSize uint, idxStart uint, shareCount uint) ([][][]int
 
 	startRow := idxStart / squareSize
 	// Compute ceil((idxStart + shareCount)/squareSize) without overflow.
-	closingRow := (idxStart + shareCount - 1) / squareSize
-	if (idxStart+shareCount-1)%squareSize != 0 {
-		closingRow++
-	}
+	closingRow := (idxStart+shareCount-1)/squareSize + 1
 
 	shareStart := idxStart % squareSize
 	shareEnd := (idxStart + shareCount - 1) % squareSize

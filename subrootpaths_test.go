@@ -120,6 +120,21 @@ func TestPathGeneration(t *testing.T) {
 			desc:  "Span for last two rows in square, should return last branch of second to last row, left half of last row, and two branches on right half of last row",
 		},
 		{
+			input: pathSpan{squareSize: 4, startNode: 0, length: 5},
+			want:  pathResult{{{}}, {{0, 0}}},
+			desc:  "Whole first row plus the first node of the second row, should return the first row root and the left-most node of the second row",
+		},
+		{
+			input: pathSpan{squareSize: 4, startNode: 1, length: 4},
+			want:  pathResult{{{0, 1}, {1}}, {{0, 0}}},
+			desc:  "Unaligned start, ending on the first node of the second row, should return two paths in the first row and the left-most node of the second row",
+		},
+		{
+			input: pathSpan{squareSize: 8, startNode: 3, length: 14},
+			want:  pathResult{{{0, 1, 1}, {1}}, {{}}, {{0, 0, 0}}},
+			desc:  "Three row span ending on the first node of the third row, should return two paths in the first row, the second row root, and the left-most node of the third row",
+		},
+		{
 			input: pathSpan{squareSize: 32, startNode: 992, length: 32},
 			want:  pathResult{{{}}},
 			desc:  "Span for last row in the square, should return empty list.",
