@@ -756,14 +756,16 @@ type LeafRange struct {
 // which is formatted as: minimum namespace ID || maximum namespace ID || hash
 // digest.
 func MinNamespace(hash []byte, size namespace.IDSize) []byte {
-	return hash[:size:size]
+	n := int(size)
+	return hash[:n:n]
 }
 
 // MaxNamespace extracts the maximum namespace ID from a given namespace hash,
 // which is formatted as: minimum namespace ID || maximum namespace ID || hash
 // digest.
 func MaxNamespace(hash []byte, size namespace.IDSize) []byte {
-	return hash[size : size*2 : size*2]
+	n := int(size)
+	return hash[n : 2*n : 2*n]
 }
 
 // Size returns the number of leaves in the tree.
