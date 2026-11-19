@@ -10,12 +10,12 @@ permissions:
 
 jobs:
 
+  # build runs on the Go version in go.mod, the lowest that importers may use.
   build:
     name: Build
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      id-token: write
     steps:
 
       - name: Check out code
@@ -37,7 +37,29 @@ jobs:
       - name: Test
         run: |
           export PATH=$PATH:$(go env GOPATH)/bin
-          go test -v -coverprofile=coverage.txt -covermode=atomic ./...
+          go test -v ./...
+
+  # test-latest-go runs the tests on the newest supported Go release and
+  # uploads coverage. Coverage comes from this job only: Go releases split code
+  # into coverage blocks differently, so mixing them moves the percentage. See
+  # "Go version" in README.md.
+  test-latest-go:
+    name: Test (latest Go)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v7
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version: '1.27.x'
+
+      - name: Test
+        run: go test -v -coverprofile=coverage.txt -covermode=atomic ./...
 
       - name: Upload coverage
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
