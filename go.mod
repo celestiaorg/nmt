@@ -5,11 +5,11 @@ go 1.23
 require (
 	github.com/gogo/protobuf v1.3.2
 	github.com/stretchr/testify v1.12.1
-	github.com/tidwall/gjson v1.20.0
+	github.com/tidwall/gjson v1.20.2
 )
 
 require (
 	github.com/tidwall/match v1.1.1 // indirect
-	github.com/tidwall/pretty v1.2.1 // indirect
+	github.com/tidwall/pretty v1.3.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.5 // indirect
 )
