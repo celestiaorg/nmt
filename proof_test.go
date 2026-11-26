@@ -2161,3 +2161,22 @@ func TestProofRangeSubtreeEstimate(t *testing.T) {
 		})
 	}
 }
+
+// TestVerifyLeafHashes_AbsenceProofNamespaceLongerThanHasher checks that an
+// absence proof with a namespace ID longer than the hasher's node returns an
+// error instead of panicking.
+func TestVerifyLeafHashes_AbsenceProofNamespaceLongerThanHasher(t *testing.T) {
+	nth := NewNmtHasher(sha256.New(), 0, false) // node size 32
+	nID := namespace.ID(make([]byte, 33))
+	proof := NewAbsenceProof(0, 1, nil, make([]byte, 32), false)
+
+	var (
+		ok  bool
+		err error
+	)
+	require.NotPanics(t, func() {
+		ok, err = proof.VerifyLeafHashes(nth, true, nID, [][]byte{make([]byte, 32)}, make([]byte, 32))
+	})
+	assert.False(t, ok)
+	assert.ErrorContains(t, err, "does not match the namespace size of the NMT hasher")
+}
