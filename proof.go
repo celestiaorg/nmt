@@ -174,6 +174,9 @@ func (proof Proof) isValidEmptyRangeProof(nth *NmtHasher, nID namespace.ID, root
 
 // ComputeAndValidateLeafHashes validates and hashes a list of leaves using the provided NMT hasher.
 func ComputeAndValidateLeafHashes(nth *NmtHasher, nid namespace.ID, leaves [][]byte) ([][]byte, error) {
+	if nid.Size() != nth.NamespaceSize() {
+		return nil, fmt.Errorf("namespace ID size (%d) does not match the namespace size of the NMT hasher (%d)", nid.Size(), nth.NamespaceSize())
+	}
 	hashes := make([][]byte, len(leaves))
 	for i, leaf := range leaves {
 		if nth.ValidateLeaf(leaf) != nil {

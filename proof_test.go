@@ -2042,6 +2042,17 @@ func TestComputeAndValidateLeafHashes_WithErrors(t *testing.T) {
 		_, err := ComputeAndValidateLeafHashes(hasher, nid, leaves)
 		require.ErrorContains(t, err, "does not belong to expected namespace")
 	})
+
+	t.Run("namespace size mismatch", func(t *testing.T) {
+		nth := NewNmtHasher(sha256.New(), 1, false)
+		for _, nid := range []namespace.ID{{1, 2, 3}, {}} {
+			var err error
+			require.NotPanics(t, func() {
+				_, err = ComputeAndValidateLeafHashes(nth, nid, [][]byte{{1}})
+			})
+			require.ErrorContains(t, err, "does not match the namespace size of the NMT hasher")
+		}
+	})
 }
 
 func TestComputePrefixedLeafHashes_WithHasher(t *testing.T) {
