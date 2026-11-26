@@ -2191,3 +2191,23 @@ func TestVerifyLeafHashes_AbsenceProofNamespaceLongerThanHasher(t *testing.T) {
 	assert.False(t, ok)
 	assert.ErrorContains(t, err, "does not match the namespace size of the NMT hasher")
 }
+
+// TestVerifyNamespace_AbsenceProofWithLeaves checks that VerifyNamespace
+// rejects an absence proof when the caller supplies non-empty leaves.
+func TestVerifyNamespace_AbsenceProofWithLeaves(t *testing.T) {
+	tree := exampleNMT(1, false, 1, 3)
+	root, err := tree.Root()
+	require.NoError(t, err)
+
+	absentNID := namespace.ID{2}
+	proof, err := tree.ProveNamespace(absentNID)
+	require.NoError(t, err)
+	require.True(t, proof.IsOfAbsence())
+
+	// the absence proof is valid without leaves
+	require.True(t, proof.VerifyNamespace(sha256.New(), absentNID, nil, root))
+	require.True(t, proof.VerifyNamespace(sha256.New(), absentNID, [][]byte{}, root))
+
+	leaves := [][]byte{append([]byte{2}, []byte("not in the tree")...)}
+	assert.False(t, proof.VerifyNamespace(sha256.New(), absentNID, leaves, root))
+}

@@ -240,6 +240,10 @@ func (proof Proof) VerifyNamespace(h hash.Hash, nID namespace.ID, leaves [][]byt
 
 	gotLeafHashes := make([][]byte, 0, len(leaves))
 	if proof.IsOfAbsence() {
+		// an absence proof covers no leaves of nID, so leaves must be empty
+		if len(leaves) > 0 {
+			return false
+		}
 		gotLeafHashes = append(gotLeafHashes, proof.leafHash)
 	} else {
 		var err error
