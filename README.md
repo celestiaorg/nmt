@@ -126,6 +126,18 @@ This repository follows the Go version policy for Celestia libraries. Agents and
 
 Applications (celestia-app, celestia-core, celestia-node) follow a different rule: they pin `go.mod`, CI and Docker images to one exact patch release of Go.
 
+## Fuzzing
+
+The fuzz targets are native Go fuzz tests (`func FuzzXxx`). `go test ./...` runs their seed inputs. To let the fuzzer search for new inputs, run:
+
+```sh
+make fuzz FUZZTIME=1m
+```
+
+The [fuzz workflow](.github/workflows/fuzz.yml) runs each target for 60 seconds on pull requests and pushes to `main`, and for 10 minutes each night. When you add a fuzz target, add it to the matrix in that workflow.
+
+A crashing input can describe an exploitable bug. Outside pull requests, the workflow keeps the fuzz output out of the public logs and files a Linear issue with the details. Keep crash details out of public pull requests and issues.
+
 ## Contributing
 
 PR titles must follow [conventional commits](https://www.conventionalcommits.org/en/v1.0.0/) and start the subject with `[high]`, `[medium]`, or `[low]` to indicate the review thoroughness needed. For example: `fix!: [high] correct proof verification` or `docs: [low] clarify setup instructions`. Include the same tag in the PR description and explain why you chose it.
