@@ -174,6 +174,9 @@ func (proof Proof) isValidEmptyRangeProof(nth *NmtHasher, nID namespace.ID, root
 
 // ComputeAndValidateLeafHashes validates and hashes a list of leaves using the provided NMT hasher.
 func ComputeAndValidateLeafHashes(nth *NmtHasher, nid namespace.ID, leaves [][]byte) ([][]byte, error) {
+	if nid.Size() != nth.NamespaceSize() {
+		return nil, fmt.Errorf("namespace ID size (%d) does not match the namespace size of the NMT hasher (%d)", nid.Size(), nth.NamespaceSize())
+	}
 	hashes := make([][]byte, len(leaves))
 	for i, leaf := range leaves {
 		if nth.ValidateLeaf(leaf) != nil {
@@ -237,6 +240,10 @@ func (proof Proof) VerifyNamespace(h hash.Hash, nID namespace.ID, leaves [][]byt
 
 	gotLeafHashes := make([][]byte, 0, len(leaves))
 	if proof.IsOfAbsence() {
+		// an absence proof covers no leaves of nID, so leaves must be empty
+		if len(leaves) > 0 {
+			return false
+		}
 		gotLeafHashes = append(gotLeafHashes, proof.leafHash)
 	} else {
 		var err error
@@ -267,6 +274,11 @@ func (proof Proof) validateProofStructure(nth *NmtHasher, nID namespace.ID, leaf
 		return fmt.Errorf("supplied leafHashes size %d, expected size %d: %w", len(leafHashes), expectedLeafHashesCount, ErrWrongLeafHashesSize)
 	}
 
+	// check that namespace ID size matches the NMT hasher's namespace size
+	if nID.Size() != nth.NamespaceSize() {
+		return fmt.Errorf("namespace ID size (%d) does not match the namespace size of the NMT hasher (%d)", nID.Size(), nth.NamespaceSize())
+	}
+
 	// if the proof is an absence proof,
 	// the leafHash must be valid w.r.t the NMT hasher and queried namespace ID
 	if proof.IsOfAbsence() {
@@ -279,11 +291,6 @@ func (proof Proof) validateProofStructure(nth *NmtHasher, nID namespace.ID, leaf
 			// leafHash.minNID  must be greater than nID
 			return fmt.Errorf("leaf hash %x does not belong to namespace %x", proof.leafHash, nID)
 		}
-	}
-
-	// check that namespace ID size matches the NMT hasher's namespace size
-	if nID.Size() != nth.NamespaceSize() {
-		return fmt.Errorf("namespace ID size (%d) does not match the namespace size of the NMT hasher (%d)", nID.Size(), nth.NamespaceSize())
 	}
 
 	// check that all the proof.nodes are valid w.r.t the NMT hasher

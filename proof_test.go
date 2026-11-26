@@ -2042,6 +2042,17 @@ func TestComputeAndValidateLeafHashes_WithErrors(t *testing.T) {
 		_, err := ComputeAndValidateLeafHashes(hasher, nid, leaves)
 		require.ErrorContains(t, err, "does not belong to expected namespace")
 	})
+
+	t.Run("namespace size mismatch", func(t *testing.T) {
+		nth := NewNmtHasher(sha256.New(), 1, false)
+		for _, nid := range []namespace.ID{{1, 2, 3}, {}} {
+			var err error
+			require.NotPanics(t, func() {
+				_, err = ComputeAndValidateLeafHashes(nth, nid, [][]byte{{1}})
+			})
+			require.ErrorContains(t, err, "does not match the namespace size of the NMT hasher")
+		}
+	})
 }
 
 func TestComputePrefixedLeafHashes_WithHasher(t *testing.T) {
@@ -2160,4 +2171,43 @@ func TestProofRangeSubtreeEstimate(t *testing.T) {
 			assert.Equal(t, tt.expected, got)
 		})
 	}
+}
+
+// TestVerifyLeafHashes_AbsenceProofNamespaceLongerThanHasher checks that an
+// absence proof with a namespace ID longer than the hasher's node returns an
+// error instead of panicking.
+func TestVerifyLeafHashes_AbsenceProofNamespaceLongerThanHasher(t *testing.T) {
+	nth := NewNmtHasher(sha256.New(), 0, false) // node size 32
+	nID := namespace.ID(make([]byte, 33))
+	proof := NewAbsenceProof(0, 1, nil, make([]byte, 32), false)
+
+	var (
+		ok  bool
+		err error
+	)
+	require.NotPanics(t, func() {
+		ok, err = proof.VerifyLeafHashes(nth, true, nID, [][]byte{make([]byte, 32)}, make([]byte, 32))
+	})
+	assert.False(t, ok)
+	assert.ErrorContains(t, err, "does not match the namespace size of the NMT hasher")
+}
+
+// TestVerifyNamespace_AbsenceProofWithLeaves checks that VerifyNamespace
+// rejects an absence proof when the caller supplies non-empty leaves.
+func TestVerifyNamespace_AbsenceProofWithLeaves(t *testing.T) {
+	tree := exampleNMT(1, false, 1, 3)
+	root, err := tree.Root()
+	require.NoError(t, err)
+
+	absentNID := namespace.ID{2}
+	proof, err := tree.ProveNamespace(absentNID)
+	require.NoError(t, err)
+	require.True(t, proof.IsOfAbsence())
+
+	// the absence proof is valid without leaves
+	require.True(t, proof.VerifyNamespace(sha256.New(), absentNID, nil, root))
+	require.True(t, proof.VerifyNamespace(sha256.New(), absentNID, [][]byte{}, root))
+
+	leaves := [][]byte{append([]byte{2}, []byte("not in the tree")...)}
+	assert.False(t, proof.VerifyNamespace(sha256.New(), absentNID, leaves, root))
 }
