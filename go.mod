@@ -5,7 +5,7 @@ go 1.26.0
 require (
 	github.com/gogo/protobuf v1.3.2
 	github.com/stretchr/testify v1.12.1
-	github.com/tidwall/gjson v1.20.4
+	github.com/tidwall/gjson v1.20.5
 )
 
 require (
